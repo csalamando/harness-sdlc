@@ -1,0 +1,55 @@
+<mxfile host="app.diagrams.net" agent="sdlc-diagrams-c4" version="24.0.0">
+  <diagram id="c4-container" name="C4-Container (ejemplo EP-1)">
+    <mxGraphModel dx="900" dy="650" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="persona" value="&lt;b&gt;Usuario&lt;/b&gt;&lt;br&gt;Cliente de la aplicación" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#08427B;strokeColor=#052E56;fontColor=#ffffff;arcSize=30;verticalAlign=bottom;labelPosition=center;verticalLabelPosition=bottom;align=center;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="80" y="320" width="120" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="boundary" value="&lt;b&gt;Sistema: Mi Producto&lt;/b&gt; [System Boundary]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#444444;dashed=1;fontColor=#444444;align=left;verticalAlign=top;spacingLeft=8;fontSize=12;container=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="280" y="120" width="640" height="560" as="geometry"/>
+        </mxCell>
+        <mxCell id="spa" value="&lt;b&gt;Web SPA&lt;/b&gt;&lt;br&gt;[React + TypeScript]&lt;br&gt;&lt;br&gt;Interfaz de usuario del producto" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#438DD5;strokeColor=#2E6295;fontColor=#ffffff;arcSize=6;fontSize=12;verticalAlign=middle;align=center;" vertex="1" parent="boundary">
+          <mxGeometry x="40" y="80" width="180" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="apim" value="&lt;b&gt;API Gateway&lt;/b&gt;&lt;br&gt;[Azure API Management]&lt;br&gt;&lt;br&gt;Enruta, autentica, rate limiting" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/integration/API_Management_Services.svg;verticalLabelPosition=bottom;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="boundary">
+          <mxGeometry x="330" y="80" width="68" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="func" value="&lt;b&gt;API Backend&lt;/b&gt;&lt;br&gt;[Azure Functions]&lt;br&gt;&lt;br&gt;Lógica de negocio (BR-xxx)" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/compute/Function_Apps.svg;verticalLabelPosition=bottom;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="boundary">
+          <mxGeometry x="330" y="280" width="64" height="64" as="geometry"/>
+        </mxCell>
+        <mxCell id="sql" value="&lt;b&gt;Base de datos&lt;/b&gt;&lt;br&gt;[Azure SQL]" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/databases/SQL_Server.svg;verticalLabelPosition=bottom;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="boundary">
+          <mxGeometry x="560" y="280" width="64" height="68" as="geometry"/>
+        </mxCell>
+        <mxCell id="kv" value="&lt;b&gt;Secretos&lt;/b&gt;&lt;br&gt;[Key Vault]" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/security/Key_Vaults.svg;verticalLabelPosition=bottom;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="boundary">
+          <mxGeometry x="60" y="280" width="56" height="68" as="geometry"/>
+        </mxCell>
+        <mxCell id="ext" value="&lt;b&gt;Servicio de Pagos&lt;/b&gt;&lt;br&gt;[Sistema externo]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#999999;strokeColor=#6B6B6B;fontColor=#ffffff;arcSize=6;fontSize=12;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="980" y="300" width="160" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="Usa&lt;br&gt;[HTTPS]" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;jettySize=auto;strokeColor=#444444;fontSize=11;align=center;verticalAlign=middle;endArrow=block;endFill=1;" edge="1" parent="1" source="persona" target="spa">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="Llama API&lt;br&gt;[HTTPS/JSON]" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;jettySize=auto;strokeColor=#444444;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="spa" target="apim">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="Invoca&lt;br&gt;[HTTPS]" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;jettySize=auto;strokeColor=#444444;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="apim" target="func">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="Lee/Escribe&lt;br&gt;[TDS]" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;jettySize=auto;strokeColor=#444444;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="func" target="sql">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="Obtiene secretos&lt;br&gt;[HTTPS]" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;jettySize=auto;strokeColor=#444444;fontSize=11;endArrow=block;endFill=1;dashed=1;" edge="1" parent="1" source="func" target="kv">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="Procesa pago&lt;br&gt;[HTTPS/JSON]" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;jettySize=auto;strokeColor=#444444;fontSize=11;endArrow=block;endFill=1;" edge="1" parent="1" source="func" target="ext">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="leyenda" value="&lt;b&gt;Leyenda&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#08427B&quot;&gt;■&lt;/font&gt; Persona&lt;br&gt;&lt;font color=&quot;#438DD5&quot;&gt;■&lt;/font&gt; Container propio&lt;br&gt;&lt;font color=&quot;#999999&quot;&gt;■&lt;/font&gt; Sistema externo" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fafafa;strokeColor=#cccccc;align=left;spacingLeft=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="980" y="560" width="170" height="90" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

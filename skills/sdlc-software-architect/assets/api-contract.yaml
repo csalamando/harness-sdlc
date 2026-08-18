@@ -1,0 +1,34 @@
+openapi: 3.0.3
+info:
+  title: <Nombre API>
+  version: 0.1.0
+paths:
+  /recurso:
+    get:
+      summary: <qué hace>
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recurso'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Recurso:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }

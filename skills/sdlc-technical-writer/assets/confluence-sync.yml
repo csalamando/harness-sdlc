@@ -1,0 +1,28 @@
+# Workflow (posterior): sincronizar docs/ hacia Confluence
+# Ubicación destino: .github/workflows/confluence-sync.yml
+# Secretos requeridos: CONFLUENCE_BASE_URL, CONFLUENCE_USER, CONFLUENCE_TOKEN, CONFLUENCE_SPACE
+name: confluence-sync
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**"]
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Opción 1: action del Marketplace (ajustar inputs a la action elegida)
+      - name: Publicar Markdown en Confluence
+        uses: markdown-confluence/publish-action@v5
+        with:
+          confluenceBaseUrl: ${{ secrets.CONFLUENCE_BASE_URL }}
+          confluenceApiToken: ${{ secrets.CONFLUENCE_TOKEN }}
+          folderToPublish: docs
+        env:
+          ATLASSIAN_USERNAME: ${{ secrets.CONFLUENCE_USER }}
+      # Opción 2 (alternativa): script propio contra la API REST para control
+      # de jerarquía y labels — ver references/publishing.md sección 3.
+      # Regla del arnés: Confluence es espejo read-only de Git; las páginas
+      # publicadas llevan banner "generado automáticamente, editar en el repo".

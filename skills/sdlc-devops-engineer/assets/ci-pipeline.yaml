@@ -1,0 +1,17 @@
+# Pipeline CI/CD — adaptar a GitHub Actions / Azure DevOps
+name: ci-cd
+on:
+  pull_request:
+  push: { branches: [main] }
+
+stages:
+  - lint:          # linters de front y back
+  - unit:          # tests unitarios + cobertura (umbral de spec/test-plan.md)
+  - contract:      # schemathesis contra spec/api-contract.yaml + Pact
+  - security:      # semgrep, sca (snyk), gitleaks — umbrales de AppSec
+  - build:         # artefactos + imágenes Docker versionadas
+  - e2e:           # Playwright/Cypress contra ambiente efímero
+  - deploy_staging:
+  - smoke_staging:
+  - deploy_prod:   # manual: true  (GATE 3 humano)
+    rollback:      # estrategia: <blue-green|canary|version> — probada en staging

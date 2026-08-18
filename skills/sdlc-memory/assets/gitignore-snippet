@@ -1,0 +1,2 @@
+# sdlc-memory: el indice es derivado, se reconstruye con mem.py reindex
+spec/memory/.index/

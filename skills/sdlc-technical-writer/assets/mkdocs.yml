@@ -1,0 +1,22 @@
+site_name: "<Nombre del Producto> — Documentación"
+docs_dir: docs
+theme:
+  name: material
+  language: es
+  features:
+    - navigation.sections
+    - search.highlight
+    - content.code.copy
+plugins:
+  - search
+nav:
+  - Inicio: index.md
+  - Guía de usuario: user-guide.md
+  - Referencia de API: api-reference.md   # regenerada desde spec/api-contract.yaml en CI (Redoc)
+  - Onboarding devs: onboarding-dev.md
+markdown_extensions:
+  - admonition
+  - tables
+  - fenced_code
+  - pymdownx.superfences   # Mermaid: ```mermaid renderiza en el sitio
+extra_css: []

@@ -1,0 +1,38 @@
+# Workflow: publicar docs/ a GitHub Pages con MkDocs
+# Ubicación destino en el repo del proyecto: .github/workflows/docs-pages.yml
+name: docs-pages
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "mkdocs.yml", "spec/api-contract.yaml"]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install mkdocs mkdocs-material mike
+      # Regenerar API reference desde el contrato (fuente única = OpenAPI)
+      - name: Generar api-reference desde OpenAPI
+        run: |
+          npx -y @redocly/cli build-docs spec/api-contract.yaml -o site-api || true
+          cp site-api/index.html docs/api-reference.html || true
+      - run: mkdocs build --strict
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: ${{ steps.deployment.outputs.page_url }} }
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
