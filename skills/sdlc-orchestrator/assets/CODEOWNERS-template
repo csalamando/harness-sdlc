@@ -1,0 +1,40 @@
+# CODEOWNERS del proyecto — frontera dura de autoridad sobre spec/.
+# Copiar a .github/CODEOWNERS (o CODEOWNERS en raíz) y activar en GitHub:
+# Settings → Branches → Branch protection → "Require review from Code Owners".
+# Sustituir los @usuarios por los miembros/equipos reales.
+# Coherente con spec/authority-matrix.yaml: un owner por artefacto.
+
+# Fase 0 — Discovery
+spec/vision.md                      @po-owner
+spec/epics.md                       @po-owner
+spec/backlog.md                     @po-owner
+spec/architecture-proposal.md       @solution-architect
+spec/technical-stories.md           @solution-architect
+spec/cost-assumptions.yaml          @solution-architect
+spec/cost-estimation.md             @solution-architect
+
+# Fase 1 — Análisis
+spec/user-stories.md                @business-analyst
+spec/business-rules.md              @business-analyst
+
+# Fase 2 — Diseño
+spec/ux-flows.md                    @ux-designer
+spec/design-system.md               @ux-designer
+spec/architecture.md                @software-architect
+spec/api-contract.yaml              @software-architect
+spec/data-model.md                  @software-architect
+spec/adr/                           @software-architect
+spec/test-plan.md                   @software-architect
+spec/tech-debt.md                   @software-architect
+spec/threat-model.md                @security-engineer
+spec/tech-radar.yaml                @architecture-board
+spec/architectural-principles.yaml  @architecture-board
+
+# Fase 5-7 — Entrega y operación
+spec/qa-report.md                   @qa-lead
+spec/slo.md                         @sre-lead
+spec/impact-report.md               @product-analyst
+
+# Gobierno — la matriz y los recibos solo los toca quien administra el arnés
+spec/authority-matrix.yaml          @architecture-board
+spec/receipts/                      @architecture-board

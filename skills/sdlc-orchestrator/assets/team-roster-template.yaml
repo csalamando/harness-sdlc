@@ -1,0 +1,11 @@
+# Roster del equipo — mapea usuario (GitHub) → roles del arnés.
+# Lo usa authority_check.py --author en CI para validar que quien toca un
+# artefacto de spec/ tiene el rol dueño según spec/authority-matrix.yaml.
+# Un usuario puede tener varios roles (p. ej. la misma persona es SA y SWA).
+
+members:
+  # usuario-github: [rol-1, rol-2]
+  carlos: [software-architect, solution-architect]
+  ana: [business-analyst]
+  luis: [product-owner]
+  # agregar aquí el resto del equipo

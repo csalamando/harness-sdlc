@@ -1,0 +1,42 @@
+# Matriz de autoridad — qué rol es DUEÑO de cada artefacto de la spec.
+# Un solo owner por artefacto. Emitir/firmar un artefacto sin ser su owner
+# bloquea el gate (receipt.py emit --role valida contra esta matriz).
+# Cambiar esta matriz es un cambio de gobierno: requiere PR y queda auditado.
+#
+# Opinar no es poseer: cualquier rol participa vía Advice Process (Paso 5);
+# la matriz solo restringe la AUTORÍA y la EMISIÓN del recibo.
+
+artifacts:
+  # Fase 0 — Discovery
+  - path: spec/vision.md                  owner: product-owner
+  - path: spec/epics.md                   owner: product-owner
+  - path: spec/backlog.md                 owner: product-owner
+  - path: spec/architecture-proposal.md   owner: solution-architect
+  - path: spec/technical-stories.md       owner: solution-architect
+  - path: spec/cost-assumptions.yaml      owner: cloud-pricing
+  - path: spec/cost-estimation.md         owner: cloud-pricing
+
+  # Fase 1 — Análisis
+  - path: spec/user-stories.md            owner: business-analyst
+  - path: spec/business-rules.md          owner: business-analyst
+
+  # Fase 2 — Diseño
+  - path: spec/ux-flows.md                owner: ux-designer
+  - path: spec/design-system.md           owner: ux-designer
+  - path: spec/architecture.md            owner: software-architect
+  - path: spec/api-contract.yaml          owner: software-architect
+  - path: spec/data-model.md              owner: software-architect
+  - path: spec/adr/                       owner: software-architect   # único que firma ADRs
+  - path: spec/test-plan.md               owner: software-architect
+  - path: spec/tech-debt.md               owner: software-architect
+  - path: spec/threat-model.md            owner: security-engineer
+  - path: spec/tech-radar.yaml            owner: enterprise-architect
+  - path: spec/architectural-principles.yaml owner: enterprise-architect
+
+  # Fase 5-7 — Entrega y operación
+  - path: spec/qa-report.md               owner: qa-automation
+  - path: spec/slo.md                     owner: sre
+  - path: spec/impact-report.md           owner: product-analyst
+
+  # Gobierno (cambiar la matriz misma)
+  - path: spec/authority-matrix.yaml      owner: orchestrator

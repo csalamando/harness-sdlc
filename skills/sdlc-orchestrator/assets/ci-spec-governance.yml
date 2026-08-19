@@ -1,0 +1,52 @@
+# Workflow de CI: autoridad + gates de spec en cada PR que toque spec/.
+# Guardar como .github/workflows/spec-governance.yml
+# Requiere las skills del arnés en el repo (p. ej. .claude/skills/sdlc-orchestrator).
+
+name: spec-governance
+on:
+  pull_request:
+    paths: ["spec/**"]
+
+jobs:
+  authority-and-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Autoridad — cada archivo spec/ modificado lo toca su rol dueño
+        run: |
+          ORCH=.claude/skills/sdlc-orchestrator/scripts
+          FAILED=0
+          for f in $(git diff --name-only origin/${{ github.base_ref }}...HEAD -- spec/ | grep -v spec/receipts/); do
+            # Mapear autor del commit al rol esperado vía CODEOWNERS/matriz del equipo
+            python3 $ORCH/authority_check.py "$f" --author "${{ github.actor }}" \
+              --map spec/authority-matrix.yaml --team spec/team-roster.yaml || FAILED=1
+          done
+          exit $FAILED
+
+      - name: Gates — artefactos modificados pasan su checklist y su recibo está vigente
+        run: |
+          ORCH=.claude/skills/sdlc-orchestrator/scripts
+          FAILED=0
+          for f in $(git diff --name-only origin/${{ github.base_ref }}...HEAD -- spec/); do
+            case "$f" in
+              spec/user-stories.md)            T=user-stories ;;
+              spec/architecture-proposal.md)   T=architecture-proposal ;;
+              spec/technical-stories.md)       T=technical-stories ;;
+              spec/cost-estimation.md)         T=cost-estimation ;;
+              spec/architecture.md)            T=architecture ;;
+              spec/api-contract.yaml)          T=api-contract ;;
+              spec/test-plan.md)               T=test-plan ;;
+              spec/threat-model.md)            T=threat-model ;;
+              spec/qa-report.md)               T=qa-report ;;
+              spec/slo.md)                     T=slo ;;
+              spec/adr/*.md)                   T=adr ;;
+              *) continue ;;
+            esac
+            python3 $ORCH/gate_checker.py "$f" --tipo $T || FAILED=1
+          done
+          exit $FAILED
