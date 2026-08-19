@@ -1,0 +1,54 @@
+# Supuestos de estimación — <iniciativa>
+# Toda cifra de negocio declara su fuente. Fecha de validez de precios: YYYY-MM-DD
+
+validity_date: "YYYY-MM-DD"
+currency: USD
+
+scenarios:
+  minimum:        # mínimo viable
+    active_users: 1000
+    rps_avg: 5
+    rps_peak: 20
+    storage_gb: 50
+    storage_growth_gb_month: 5
+    egress_gb_month: 100
+  expected:       # crecimiento esperado
+    active_users: 10000
+    rps_avg: 50
+    rps_peak: 200
+    storage_gb: 500
+    storage_growth_gb_month: 50
+    egress_gb_month: 1000
+  peak:           # pico
+    active_users: 50000
+    rps_avg: 200
+    rps_peak: 1000
+    storage_gb: 2000
+    storage_growth_gb_month: 200
+    egress_gb_month: 5000
+
+options:
+  - name: "Opcion A"
+    description: "<arquitectura>"
+    environments: [dev, staging, prod]
+    services:    # servicios abstractos; el script los mapea a AWS/Azure
+      - type: compute        # compute | database | storage | network | other
+        sizing: medium       # small | medium | large | xlarge
+        quantity: 2
+        hours_month: 730
+      - type: database
+        sizing: medium
+        quantity: 1
+        ha: true
+      - type: storage
+      - type: network
+    capex:
+      engineering_hours: 1200
+      hourly_rate: 60
+      one_time: 5000         # migración, setup, licencias iniciales
+
+# Precios unitarios verificados contra calculadora oficial (opcional).
+# El script registra cada override en la estimación.
+overrides:
+  # aws.compute.medium_hourly: 0.048
+  # azure.database.medium_hourly: 0.10
