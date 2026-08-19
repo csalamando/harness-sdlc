@@ -280,6 +280,10 @@ Agradecimiento especial a los autores de las fuentes anteriores: este arnés no 
 
 ---
 
+## Versionado
+
+El arnés sigue [SemVer](https://semver.org/lang/es/): **MAJOR** = cambios incompatibles en gates/recibos/spec, **MINOR** = skills o gates nuevos retrocompatibles, **PATCH** = correcciones. Cada versión se publica como [GitHub Release](https://github.com/csalamando/harness-sdlc/releases) con los `.skill` instalables adjuntos. Historial completo en [CHANGELOG.md](CHANGELOG.md).
+
 ## Licencia
 
 MIT
