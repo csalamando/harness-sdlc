@@ -1,0 +1,38 @@
+# Tech Radar de la organización — plantilla inicial.
+# Copiar a spec/tech-radar.yaml del proyecto y adaptar. Mantener versionado.
+version: "2026-Q3"
+last_updated: "2026-08-20"
+maintainer: "Enterprise Architecture"
+
+quadrants:
+  ADOPT:
+    - technology: "PostgreSQL"
+      category: "Base de datos"
+      rationale: "Estándar relacional de referencia"
+      paved_road: true
+      decision_package: "pkg-database-selection"
+    - technology: "Proveedor OIDC gestionado"
+      category: "Autenticación"
+      rationale: "Estándar corporativo de identidad"
+      paved_road: true
+      decision_package: "pkg-auth"
+
+  TRIAL:
+    - technology: "Redis Cluster"
+      category: "Caché"
+      rationale: "En evaluación para sesiones distribuidas"
+      paved_road: false
+      trial_end_date: "2026-12-31"
+
+  ASSESS:
+    - technology: "GraphQL"
+      category: "API"
+      rationale: "Evaluar para APIs de consultas complejas"
+      paved_road: false
+
+  HOLD:
+    - technology: "SOAP"
+      category: "API"
+      rationale: "Legacy. No usar para nuevos desarrollos"
+      paved_road: false
+      exception_process: "Requiere ADR de excepción + aprobación del Architecture Board"

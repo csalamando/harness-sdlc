@@ -1,0 +1,45 @@
+# Principios Arquitectónicos — plantilla inicial.
+# Copiar a spec/architectural-principles.yaml del proyecto y adaptar.
+version: "1.0"
+last_updated: "2026-08-20"
+
+principles:
+  - id: "PRIN-001"
+    title: "Seguridad por diseño"
+    statement: "Toda comunicación externa usa TLS actualizado. Todo dato sensible se encripta en reposo."
+    implications:
+      - "Gestión de secretos centralizada (nunca en el repo)"
+      - "Rotación de claves definida"
+    enforcement: "mandatory"
+
+  - id: "PRIN-002"
+    title: "Independencia de equipos"
+    statement: "Las soluciones se dividen por dominios. La duplicación controlada es preferible al acoplamiento."
+    implications:
+      - "Cada equipo es dueño de sus datos"
+      - "Integración entre dominios vía contratos explícitos"
+    enforcement: "recommended"
+
+  - id: "PRIN-003"
+    title: "Observabilidad desde el día 1"
+    statement: "Todo servicio en producción emite logs estructurados, métricas y trazas."
+    implications:
+      - "Correlación de requests"
+      - "Métricas y dashboards antes del primer despliegue"
+    enforcement: "mandatory"
+
+  - id: "PRIN-004"
+    title: "Preferir servicios gestionados"
+    statement: "Preferir servicios gestionados del cloud sobre infraestructura auto-gestionada."
+    implications:
+      - "Evaluar opción gestionada antes de self-hosted"
+      - "Documentar TCO en el ADR"
+    enforcement: "recommended"
+
+  - id: "PRIN-005"
+    title: "Resiliencia y tolerancia a fallos"
+    statement: "Todo servicio crítico se diseña para tolerar fallos de dependencias."
+    implications:
+      - "Circuit breakers y timeouts en llamadas externas"
+      - "SLOs y error budgets definidos"
+    enforcement: "mandatory"

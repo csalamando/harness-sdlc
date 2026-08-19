@@ -1,0 +1,43 @@
+name: pkg-auth
+description: "Decisión de mecanismo de autenticación y autorización para APIs"
+version: "1.0"
+risk_tier_min: 1
+last_updated: "2026-08-20"
+
+criteria:
+  - name: "Seguridad"
+    weight: 40
+    metric: "Cumplimiento OAuth2/OIDC, MFA"
+    threshold: "100%"
+  - name: "Cumplimiento normativo"
+    weight: 25
+    metric: "Regulaciones aplicables al dominio (ej. protección de datos)"
+    threshold: "100%"
+  - name: "Experiencia de usuario"
+    weight: 20
+    metric: "Tiempo de login, fricción"
+    threshold: "< 3 segundos"
+  - name: "Costo operativo"
+    weight: 15
+    metric: "$/mes, esfuerzo de mantenimiento"
+    threshold: "Según presupuesto del proyecto"
+
+paved_roads:
+  - technology: "Proveedor OIDC gestionado del cloud corporativo"
+    quadrant: "ADOPT"
+    pre_approved: true
+    notes: "Ajustar al estándar real de la organización"
+  - technology: "IdP auto-hospedado (ej. Keycloak)"
+    quadrant: "TRIAL"
+    pre_approved: false
+    notes: "Requiere justificación y plan de operación"
+
+constraints:
+  - "MFA obligatorio para operaciones sensibles"
+  - "Tokens de acceso con expiración corta (<= 15 minutos)"
+  - "Refresh tokens con rotación obligatoria"
+  - "Rate limiting en endpoints de autenticación"
+
+required_advice:
+  - "Security Engineer"
+  - "Product Owner (fricción UX)"

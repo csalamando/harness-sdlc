@@ -1,0 +1,47 @@
+name: pkg-database-selection
+description: "Decisión de motor de base de datos para nuevos servicios"
+version: "1.0"
+risk_tier_min: 1
+last_updated: "2026-08-20"
+
+criteria:
+  - name: "Consistencia de datos"
+    weight: 30
+    metric: "ACID, consistencia eventual"
+    threshold: "ACID para datos transaccionales"
+  - name: "Escalabilidad"
+    weight: 25
+    metric: "TPS máximo, latencia P99"
+    threshold: "Según SLO del servicio"
+  - name: "Seguridad"
+    weight: 20
+    metric: "Encriptación en reposo y tránsito, auditoría"
+    threshold: "100%"
+  - name: "Costo total de propiedad"
+    weight: 15
+    metric: "Licenciamiento + infraestructura + mantenimiento"
+    threshold: "Según presupuesto del proyecto"
+  - name: "Ecosistema y soporte"
+    weight: 10
+    metric: "Comunidad, soporte enterprise, herramientas"
+    threshold: "Soporte disponible"
+
+paved_roads:
+  - technology: "Motor relacional estándar de la organización"
+    quadrant: "ADOPT"
+    pre_approved: true
+    notes: "Ajustar al Tech Radar real"
+  - technology: "Motor documental gestionado"
+    quadrant: "TRIAL"
+    pre_approved: false
+    notes: "Para datos no transaccionales"
+
+constraints:
+  - "Encriptación en reposo obligatoria"
+  - "Backups automáticos con retención mínima de 30 días"
+  - "Auditoría de accesos habilitada"
+  - "Réplicas de lectura para cargas analíticas"
+
+required_advice:
+  - "Data Engineer"
+  - "Security Engineer"
