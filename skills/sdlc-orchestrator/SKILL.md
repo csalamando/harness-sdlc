@@ -11,7 +11,9 @@ Coordina el pipeline SDLC basado en SDD (spec-driven) y TDD. No produce artefact
 ## Pipeline (ver references/pipeline.md para el detalle completo)
 
 ```
-FASE -1 Setup (DevOps + detect_stack) → FASE 0 PO → FASE 1 BA → FASE 2 UX + Architect + Security + Data
+FASE -1 Setup (DevOps + detect_stack)
+→ FASE 0 Discovery: PO + BA + Solution Architect (propuesta + pricing) [GATE 0: aprobación de la iniciativa]
+→ FASE 1 BA → FASE 2 UX + Architect + Security + Data
 → FASE 3 Spec consolidada [GATE 1 humano] → FASE 4 Dev Back ∥ Dev Front (TDD)
 → FASE 5 QA + Security DAST [GATE 2/2.5] → FASE 6 DevOps + Cloud [GATE 3] → PROD
 → FASE 7 SRE opera + Product Analyst mide → realimenta backlog del PO
@@ -27,6 +29,7 @@ No todo trabajo merece el pipeline completo. Evaluar tamaño y ambigüedad ANTES
 | Cambio mecánico ya entendido, 1-3 archivos, spec intacta | **Directo**: dev con TDD + gate 2. Sin tocar fases 0-3 |
 | Se necesita explorar 4+ archivos para entender, o investigación amplia | **Exploración delegada**: una sub-tarea acotada de lectura; luego se decide la ruta con evidencia |
 | Bug en producción | **Hotfix**: QA reproduce con test → dev corrige (TDD) → gates 2 y 3 |
+| Iniciativa o evolución de producto nueva (sin propuesta aprobada) | **Discovery**: PO + BA + `sdlc-solution-architect` + `sdlc-cloud-pricing` → propuesta de arquitectura con opciones, historias técnicas y estimación CAPEX/OPEX → GATE 0 |
 | Ambigüedad sustancial (requisitos, diseño o alcance poco claros) | **Full-pipeline**: proponer al usuario; iniciar solo tras aprobación |
 | Cambio de alcance aprobado | **Change-request**: ver Gestión de cambios |
 
@@ -94,6 +97,7 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 
 ## Gates
 
+- **GATE 0** (humano — aprobación de la iniciativa): propuesta de arquitectura con ≥2 opciones y recomendación justificada (`gate_checker.py spec/architecture-proposal.md --tipo architecture-proposal`), historias técnicas registradas (`--tipo technical-stories`) y estimación CAPEX/OPEX vigente (`--tipo cost-estimation`). Los tres artefactos emiten recibo GATE 0. Sin iniciativa aprobada, no hay pipeline de construcción.
 - **GATE 1** (humano): spec consolidada aprobada + sin conflicts_with de memoria pendientes + `policy check` en verde (toda política org mandatory attestada compliant o con desviación aprobada vigente) + **para cada ADR Tier 1-2**: `gate_checker.py --tipo adr` en verde (8 pasos, scorecard, Advice Log, Tech Radar, firma `arch_signoff.py` vigente). Sin esto, cero código.
 - **GATE 2**: todas las historias verificadas E2E. Bug crítico → devuelve artefacto al dev con el test que lo reproduce (una corrección acotada; si falla, escala).
 - **GATE 2.5** (Security): ninguna vulnerabilidad crítica/alta abierta.

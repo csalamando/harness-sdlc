@@ -3,7 +3,8 @@
 
 Uso: python3 gate_checker.py <artefacto> --tipo <tipo>
 Tipos: vision, backlog, user-stories, ux-flows, design-system, architecture,
-       api-contract, test-plan, threat-model, qa-report, slo, adr
+       api-contract, test-plan, threat-model, qa-report, slo,
+       technical-stories, architecture-proposal, cost-estimation (GATE 0)
 Exit 0 = pasa el gate. Exit 1 = falla (imprime checks incumplidos).
 """
 import sys, argparse, re, os
@@ -27,6 +28,14 @@ CHECKS = {
     "threat-model": [r"S.*T.*R.*I.*D.*E|Spoofing", r"Mitigación|mitigacion", r"Riesgo|riesgo"],
     "qa-report": [r"[Vv]eredicto", r"HU-\d+", r"[Rr]egresión|regresion", r"[Bb]ugs"],
     "slo": [r"SLI", r"SLO", r"[Ee]rror budget"],
+    # GATE 0 — aprobación de la iniciativa (Solution Architect)
+    "technical-stories": [r"TS-\d+", r"[Tt]ipo.*enabler|debt|spike|nfr", r"[Oo]rigen",
+                          r"[Cc]riterio de aceptación|aceptacion", r"[Cc]osto de NO"],
+    "architecture-proposal": [r"[Cc]ontexto y objetivo de negocio", r"[Oo]pci[oó]n A", r"[Oo]pci[oó]n B",
+                              r"[Cc]omparativa", r"[Rr]ecomendaci[oó]n", r"[Ee]stimaci[oó]n de costos",
+                              r"ADR-P-\d+"],
+    "cost-estimation": [r"CAPEX", r"OPEX", r"TCO", r"[Vv]alidez de precios",
+                        r"[Mm]ínimo viable|[Mm]inimo viable", r"[Pp]ico", r"[Ss]upuestos"],
     # ADR de 8 pasos (Natanzon) — Tier 1-2
     "adr": [r"Problem Statement", r"Last Responsible Moment", r"Criterios de Evaluación",
             r"Opciones Consideradas", r"Advice Log", r"Scorecard", r"Decisión",
