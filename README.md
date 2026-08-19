@@ -12,6 +12,7 @@
 2. [Las 21 skills](#2-las-21-skills)
 3. [El pipeline y los gates](#3-el-pipeline-y-los-gates)
 4. [Routing orgánico](#4-routing-orgánico)
+   - [Autoridad por rol](#4b-autoridad-por-rol-quién-puede-emitir-qué)
 5. [Receipts: confiar en evidencia, no en narración](#5-receipts-confiar-en-evidencia-no-en-narración)
 6. [El sistema de memoria](#6-el-sistema-de-memoria)
 7. [Gobernanza de decisiones (v2.0)](#7-gobernanza-de-decisiones-v20)
@@ -42,7 +43,7 @@ Tres ideas lo diferencian de un pipeline de prompts:
 
 | Skill | Rol | Fase |
 |---|---|---|
-| `sdlc-orchestrator` | Orquestador del pipeline + 11 herramientas CLI | Todas |
+| `sdlc-orchestrator` | Orquestador del pipeline + 12 herramientas CLI | Todas |
 | `sdlc-product-owner` | Visión, épicas, backlog priorizado (el QUÉ y el CUÁNDO) | 0 |
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, escribe historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina (Fase 6) | 0, 6 |
@@ -109,6 +110,18 @@ No todo trabajo merece el pipeline completo. El orquestador elige la **ruta mín
 | Cambio de alcance aprobado | **Change-request**: ver §8 |
 
 Los gates de entrega (2, 2.5, 3) aplican **siempre**, sin importar la ruta.
+
+---
+
+## 4b. Autoridad por rol: quién puede emitir qué
+
+Un dev puede *opinar* sobre un ADR (de hecho debe: Paso 5 del Advice Process), pero no puede *emitirlo*. La **matriz de autoridad** (`spec/authority-matrix.yaml`) declara un único rol dueño por artefacto, y el arnés la hace cumplir en tres niveles:
+
+1. **Recibos con rol:** `receipt.py emit --role <rol>` — si el artefacto tiene owner declarado y el rol no coincide, el recibo se rechaza y el gate no reconoce la aprobación. Un ADR "aprobado" por un dev simplemente no existe para GATE 1.
+2. **CI:** `authority_check.py` valida en cada PR que quien toca `spec/` tiene el rol dueño (mapeo usuario→rol en `spec/team-roster.yaml`).
+3. **Git (frontera dura):** plantilla `CODEOWNERS` + branch protection — un PR que toca `spec/adr/` no se mergea sin el Arquitecto.
+
+Cambiar la matriz es un cambio de gobierno: requiere PR y queda auditado en el historial.
 
 ---
 
@@ -256,7 +269,7 @@ En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias super
 ## 9. Herramientas compartidas y propias
 
 - **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`).
-- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`.
+- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol).
 - **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
 ---
