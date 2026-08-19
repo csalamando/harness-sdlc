@@ -20,7 +20,7 @@ EXPECTED_SKILLS = [
 ]
 ORCH_SCRIPTS = ["gate_checker.py", "context_packager.py", "spec_diff_impact.py",
                 "decision_sizing.py", "advisor.py", "arch_signoff.py",
-                "traceability_matrix.py", "receipt.py", "detect_stack.py"]
+                "traceability_matrix.py", "receipt.py", "detect_stack.py", "authority_check.py"]
 MEM_SCRIPTS = ["mem.py", "mem_mcp.py"]
 
 def check(ok_list, label, ok, detail=""):

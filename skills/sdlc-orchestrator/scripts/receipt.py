@@ -7,8 +7,11 @@ downstream VERIFICAN el recibo: si el artefacto cambio un byte, el recibo ya no 
 y la aprobacion queda invalidada automaticamente.
 
 Uso:
-  python3 receipt.py emit <artefacto> --gate <gate> [--tipo <tipo>]
+  python3 receipt.py emit <artefacto> --gate <gate> [--tipo <tipo>] [--role <rol>]
       Emite spec/receipts/<artefacto>.receipt.json tras validar con gate_checker.
+      Si existe spec/authority-matrix.yaml y el artefacto tiene owner declarado,
+      --role es OBLIGATORIO y debe coincidir con el owner (un dev no puede emitir
+      el recibo de un ADR; un arquitecto no puede emitir el de user-stories).
   python3 receipt.py verify <artefacto>
       Exit 0 si el recibo existe y el hash coincide. Exit 1 si falta o esta invalidado.
   python3 receipt.py status [--spec-dir spec/]
@@ -37,6 +40,19 @@ def sha256(path):
 def cmd_emit(a):
     if not os.path.isfile(a.artefacto):
         print(f"FALLO: no existe {a.artefacto}"); sys.exit(1)
+    # Autoridad: si la matriz cubre el artefacto, el rol emisor debe ser el owner
+    try:
+        from authority_check import owner_of, load_matrix
+        owner = owner_of(a.artefacto, load_matrix(os.path.join(a.spec_dir, "authority-matrix.yaml")))
+    except ImportError:
+        owner = None
+    if owner is not None:
+        if not a.role:
+            print(f"FALLO: {a.artefacto} tiene owner declarado ({owner}) en la matriz de autoridad. "
+                  f"Indica --role para emitir el recibo."); sys.exit(1)
+        if a.role != owner:
+            print(f"NO AUTORIZADO: rol '{a.role}' no puede emitir el recibo de {a.artefacto} "
+                  f"— owner requerido: {owner}. El gate no reconoce esta aprobación."); sys.exit(1)
     if a.tipo:
         checker = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gate_checker.py")
         r = subprocess.run(["python3", checker, a.artefacto, "--tipo", a.tipo], capture_output=True, text=True)
@@ -48,6 +64,7 @@ def cmd_emit(a):
         "sha256": sha256(a.artefacto),
         "gate": a.gate,
         "tipo": a.tipo or "",
+        "rol": a.role or "",
         "emitido": datetime.datetime.now().isoformat(timespec="seconds"),
         "estado": "vigente",
     }
@@ -72,6 +89,16 @@ def cmd_verify(a):
         print(f"RECIBO INVALIDADO: el contenido de {a.artefacto} cambio desde la aprobacion ({rec['gate']}).")
         print("  El gate debe volver a ejecutarse y emitirse un recibo nuevo.")
         sys.exit(1)
+    # Autoridad: el rol emisor registrado debe seguir siendo el owner según la matriz vigente
+    try:
+        from authority_check import owner_of, load_matrix
+        owner = owner_of(a.artefacto, load_matrix(os.path.join(a.spec_dir, "authority-matrix.yaml")))
+    except ImportError:
+        owner = None
+    if owner is not None and rec.get("rol") and rec["rol"] != owner:
+        print(f"RECIBO NO VALIDO: fue emitido por rol '{rec['rol']}' pero el owner de {a.artefacto} "
+              f"es '{owner}' según la matriz vigente. Re-emitir con el rol correcto.")
+        sys.exit(1)
     print(f"RECIBO VIGENTE ({rec['gate']}, emitido {rec['emitido']}): {a.artefacto}")
 
 def cmd_status(a):
@@ -79,15 +106,15 @@ def cmd_status(a):
     files = [f for f in os.listdir(d) if f.endswith(".receipt.json")]
     if not files:
         print("Sin recibos emitidos."); return
-    print("| Artefacto | Gate | Estado | Hash coincide |")
-    print("|---|---|---|---|")
+    print("| Artefacto | Gate | Rol | Estado | Hash coincide |")
+    print("|---|---|---|---|---|")
     for f in sorted(files):
         rec = json.load(open(os.path.join(d, f), encoding="utf-8"))
         art = rec["artefacto"]
         match = "-"
         if os.path.isfile(art):
             match = "si" if sha256(art) == rec["sha256"] else "NO (invalidado)"
-        print(f"| {os.path.basename(art)} | {rec['gate']} | {rec['estado']} | {match} |")
+        print(f"| {os.path.basename(art)} | {rec['gate']} | {rec.get('rol', '-')} | {rec['estado']} | {match} |")
 
 def cmd_revoke(a):
     p = receipt_path(a.spec_dir, a.artefacto)
@@ -103,7 +130,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--spec-dir", default="spec/")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("emit"); p.add_argument("artefacto"); p.add_argument("--gate", required=True); p.add_argument("--tipo", default="")
+    p = sub.add_parser("emit"); p.add_argument("artefacto"); p.add_argument("--gate", required=True); p.add_argument("--tipo", default=""); p.add_argument("--role", default="")
     p = sub.add_parser("verify"); p.add_argument("artefacto")
     sub.add_parser("status")
     p = sub.add_parser("revoke"); p.add_argument("artefacto")
