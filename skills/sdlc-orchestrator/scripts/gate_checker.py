@@ -3,10 +3,10 @@
 
 Uso: python3 gate_checker.py <artefacto> --tipo <tipo>
 Tipos: vision, backlog, user-stories, ux-flows, design-system, architecture,
-       api-contract, test-plan, threat-model, qa-report, slo
+       api-contract, test-plan, threat-model, qa-report, slo, adr
 Exit 0 = pasa el gate. Exit 1 = falla (imprime checks incumplidos).
 """
-import sys, argparse, re
+import sys, argparse, re, os
 
 def has(path, *patterns):
     try:
@@ -27,12 +27,104 @@ CHECKS = {
     "threat-model": [r"S.*T.*R.*I.*D.*E|Spoofing", r"Mitigación|mitigacion", r"Riesgo|riesgo"],
     "qa-report": [r"[Vv]eredicto", r"HU-\d+", r"[Rr]egresión|regresion", r"[Bb]ugs"],
     "slo": [r"SLI", r"SLO", r"[Ee]rror budget"],
+    # ADR de 8 pasos (Natanzon) — Tier 1-2
+    "adr": [r"Problem Statement", r"Last Responsible Moment", r"Criterios de Evaluación",
+            r"Opciones Consideradas", r"Advice Log", r"Scorecard", r"Decisión",
+            r"Re-evaluation Triggers", r"Risk Tier"],
 }
+
+TECH_KEYWORDS = [
+    "kubernetes", "k8s", "docker", "aws", "azure", "gcp", "lambda",
+    "postgres", "postgresql", "mysql", "mongodb", "redis", "kafka",
+    "rabbitmq", "react", "angular", "vue", "spring", "django", "flask",
+    "nodejs", "graphql", "grpc", "terraform", "ansible", "jenkins",
+    "oracle", "sqlserver", "elasticsearch", "spark", "hadoop",
+]
+
+def check_adr_semantics(path, risk_tier):
+    """Validaciones semánticas del ADR de 8 pasos. Devuelve lista de fallos."""
+    text = open(path, encoding="utf-8").read()
+    failures = []
+
+    # 1. Problem Statement sin soluciones prematuras
+    m = re.search(r"## Paso 1: Problem Statement\n(.*?)(?=\n## |\Z)", text, re.DOTALL)
+    if m:
+        body = "\n".join(ln for ln in m.group(1).lower().splitlines()
+                         if not ln.strip().startswith("{") and "validación" not in ln.lower())
+        found = [t for t in TECH_KEYWORDS if re.search(r"\b" + re.escape(t) + r"\b", body)]
+        if found:
+            failures.append(f"Problem Statement con soluciones prematuras: {', '.join(found)}")
+    # 2. Pesos de criterios suman 100%
+    rows = [(n, w) for n, w in re.findall(r"\|\s*([^|]+?)\s*\|\s*(\d+)\s*%\s*\|", text)
+            if "total" not in n.lower() and "peso" not in n.lower()]
+    seen = set()
+    unique = []
+    for n, w in rows:
+        key = (n.strip(), w)
+        if key not in seen:
+            seen.add(key)
+            unique.append((n, int(w)))
+    # Paso 3 y Paso 6 repiten los criterios: deduplicar por nombre
+    crit_weights = {}
+    for n, w in unique:
+        crit_weights.setdefault(n.strip(), w)
+    if crit_weights and sum(crit_weights.values()) != 100:
+        failures.append(f"Pesos de criterios suman {sum(crit_weights.values())}%, deben sumar 100%")
+    # 3. Advice Log con consejos registrados (Tier 1-2)
+    if risk_tier <= 2:
+        advice = re.search(r"## Paso 5: Advice Log\n(.*?)(?=\n## |\Z)", text, re.DOTALL)
+        if not advice or not re.search(r"\|\s*[^|-].+?\|\s*.+?\|\s*\d{4}-\d{2}-\d{2}\s*\|", advice.group(1)):
+            failures.append(f"Advice Log sin consejos registrados (obligatorio en Tier {risk_tier})")
+    return failures
+
+def check_tech_radar(adr_path, radar_path):
+    """Cruza tecnologías del ADR con el Tech Radar. Devuelve lista de fallos."""
+    try:
+        import yaml
+    except ImportError:
+        return ["PyYAML no instalado: no se pudo validar el Tech Radar"]
+    try:
+        radar = yaml.safe_load(open(radar_path, encoding="utf-8").read())
+    except FileNotFoundError:
+        return []  # sin radar no hay validación
+    text = open(adr_path, encoding="utf-8").read().lower()
+    failures = []
+    quadrants = (radar or {}).get("quadrants", {})
+    for tech in quadrants.get("HOLD", []):
+        name = str(tech.get("technology", "")).lower()
+        if name and re.search(r"\b" + re.escape(name) + r"\b", text) \
+                and "excepción" not in text:
+            failures.append(f"Tecnología en HOLD detectada: {tech['technology']} — requiere ADR de excepción")
+    return failures
+
+def check_signoff(adr_path, receipts_dir):
+    """Verifica que exista el Recibo de Arquitectura firmado y vigente."""
+    import json, hashlib
+    m = re.search(r"ADR-(\d+)", os.path.basename(adr_path))
+    if not m:
+        return ["No se pudo extraer el ID del ADR del nombre de archivo"]
+    rpath = os.path.join(receipts_dir, f"ARCH-{m.group(1)}.json")
+    if not os.path.exists(rpath):
+        return [f"No existe Recibo de Arquitectura para ADR-{m.group(1)} (firmar con arch_signoff.py)"]
+    receipt = json.load(open(rpath, encoding="utf-8"))
+    if not receipt.get("signed") or receipt.get("status") != "ACTIVE":
+        return ["El Recibo de Arquitectura no está firmado/activo"]
+    h = hashlib.sha256(open(adr_path, "rb").read()).hexdigest()
+    if h != receipt.get("adr_hash"):
+        return ["El ADR cambió después de la firma: recibo INVALIDADO, volver a firmar"]
+    return []
+
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("artefacto")
     ap.add_argument("--tipo", required=True, choices=sorted(CHECKS))
+    ap.add_argument("--risk-tier", type=int, default=2, choices=[1, 2, 3],
+                    help="Risk Tier de la decisión (solo tipo adr)")
+    ap.add_argument("--tech-radar", default="spec/tech-radar.yaml",
+                    help="Ruta al Tech Radar (solo tipo adr)")
+    ap.add_argument("--receipts-dir", default="spec/receipts",
+                    help="Directorio de recibos (solo tipo adr)")
     a = ap.parse_args()
     patterns = CHECKS[a.tipo]
     try:
@@ -40,9 +132,15 @@ def main():
     except FileNotFoundError:
         print(f"FALLO: no existe {a.artefacto}"); sys.exit(1)
     missing = [p for p in patterns if not re.search(p, text, re.IGNORECASE | re.MULTILINE)]
-    if missing:
-        print(f"GATE NO PASADO ({a.tipo}): faltan {len(missing)} elementos:")
+    semantic = []
+    if a.tipo == "adr":
+        semantic += check_adr_semantics(a.artefacto, a.risk_tier)
+        semantic += check_tech_radar(a.artefacto, a.tech_radar)
+        semantic += check_signoff(a.artefacto, a.receipts_dir)
+    if missing or semantic:
+        print(f"GATE NO PASADO ({a.tipo}):")
         for m in missing: print(f"  - patrón no encontrado: {m}")
+        for s in semantic: print(f"  - {s}")
         sys.exit(1)
     print(f"GATE PASADO ({a.tipo}): {len(patterns)} checks OK -> {a.artefacto}")
 

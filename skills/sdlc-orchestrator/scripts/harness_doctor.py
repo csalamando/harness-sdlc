@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """harness_doctor.py — Health check read-only del arnes SDLC instalado.
 
-Verifica: skills instaladas (15 roles + memoria), plantillas assets presentes,
+Verifica: skills instaladas (17 roles + memoria + diagramas), plantillas assets presentes,
 scripts del orquestador ejecutables, estructura spec/ del proyecto.
 
 Uso: python3 harness_doctor.py [--skills-dir <ruta>] [--project-dir <ruta>]
@@ -14,9 +14,11 @@ EXPECTED_SKILLS = [
     "sdlc-software-architect", "sdlc-security-engineer", "sdlc-data-engineer",
     "sdlc-backend-dev-tdd", "sdlc-frontend-dev-tdd", "sdlc-qa-automation",
     "sdlc-devops-engineer", "sdlc-cloud-engineer", "sdlc-sre",
-    "sdlc-product-analyst", "sdlc-technical-writer", "sdlc-memory",
+    "sdlc-product-analyst", "sdlc-technical-writer", "sdlc-memory", "sdlc-diagrams",
+    "sdlc-decision-engine", "sdlc-enterprise-architect",
 ]
 ORCH_SCRIPTS = ["gate_checker.py", "context_packager.py", "spec_diff_impact.py",
+                "decision_sizing.py", "advisor.py", "arch_signoff.py",
                 "traceability_matrix.py", "receipt.py", "detect_stack.py"]
 MEM_SCRIPTS = ["mem.py", "mem_mcp.py"]
 

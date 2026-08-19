@@ -32,9 +32,22 @@ No todo trabajo merece el pipeline completo. Evaluar tamaño y ambigüedad ANTES
 
 Independientemente de la ruta, los gates de entrega (2, 2.5, 3) siempre aplican.
 
+## Gobernanza de decisiones (Risk Tiering + Firma Arquitectónica)
+
+El Arquitecto de Software es el **Decision Owner técnico**: el PO define el QUÉ/CUÁNDO y nunca aprueba decisiones técnicas; el Arquitecto define el CÓMO y firma. En Fase 2:
+
+1. **Risk Triage**: ejecutar `decision_sizing.py --spec spec/ --output spec/risk-tier.yaml`.
+   - **Tier 3** (bajo): ADR simplificado, gate automático.
+   - **Tier 2** (medio): 8 pasos de Natanzon + Advice Process con peers.
+   - **Tier 1** (alto: PII, pagos, auth, datos críticos): 8 pasos + Advice Process completo + revisión del Enterprise Architect.
+2. **Decision Engine**: cada decisión significativa usa la skill `sdlc-decision-engine` y la plantilla `assets/adr-template-8steps.md` del Arquitecto.
+3. **Advice Process**: `advisor.py --adr <adr> --risk-tier N` identifica stakeholders por impacto (Tier 1 siempre incluye Enterprise Architect). El consejo no es vinculante, pero omitir la consulta bloquea GATE 1.
+4. **Paved Roads**: tecnología ADOPT del Tech Radar (`spec/tech-radar.yaml`, mantenido por el Enterprise Architect) = aprobación pre-autorizada. TRIAL requiere justificación; ASSESS/HOLD requieren ADR de excepción (HOLD además aprobación del Architecture Board).
+5. **Firma**: `arch_signoff.py --adr <adr> --architect "Nombre"` emite `spec/receipts/ARCH-xxx.json`. Un ADR firmado no se modifica: se supersedea. Si el ADR cambia tras la firma, `gate_checker.py --tipo adr` detecta el recibo invalidado.
+
 ## Responsabilidades
 
-1. Mantener `spec/pipeline-state.md`: artefacto, fase, rol dueño, estado, gate pendiente, resultado de `detect_stack.py`.
+1. Mantener `spec/pipeline-state.md`: artefacto, fase, rol dueño, estado, gate pendiente, resultado de `detect_stack.py` y Risk Tier vigente.
 2. Antes de invocar un rol, verificar su DoR: entradas presentes **y con recibo vigente** (ver Recibos).
 3. Al recibir un artefacto, ejecutar `gate_checker.py`; si pasa, **emitir recibo** con `receipt.py emit`.
 4. Armar el paquete de contexto mínimo por rol con `context_packager.py` — nunca pasar toda la spec a todos.
@@ -74,11 +87,14 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `spec_diff_impact.py --cambiado <artefacto> [--relation supersedes|conflicts_with]`: impacto downstream de un cambio.
 - `traceability_matrix.py --spec-dir spec/ --tests-dir tests/ --src-dir src/`: matriz historia → test → código; detecta brechas.
 - `detect_stack.py [--project-dir <ruta>]`: detecta stack, test runner y disponibilidad de Strict TDD (Fase -1). Exit 2 si no hay runner.
-- `harness_doctor.py [--skills-dir <ruta>] [--project-dir <ruta>]`: health check read-only del arnés (16 skills, scripts, estructura spec/).
+- `harness_doctor.py [--skills-dir <ruta>] [--project-dir <ruta>]`: health check read-only del arnés (skills, scripts, estructura spec/).
+- `decision_sizing.py --spec spec/ --output spec/risk-tier.yaml`: clasifica el Risk Tier (1/2/3) y fija el nivel de gobernanza.
+- `advisor.py --adr <adr> --risk-tier N [--output <json>]`: identifica stakeholders del Advice Process por áreas de impacto.
+- `arch_signoff.py --adr <adr> --architect "Nombre"`: firma arquitectónica; genera recibo ARCH-xxx.json con SHA-256 del ADR y artefactos de diseño.
 
 ## Gates
 
-- **GATE 1** (humano): spec consolidada aprobada + sin conflicts_with de memoria pendientes + `policy check` en verde (toda política org mandatory attestada compliant o con desviación aprobada vigente). Sin esto, cero código.
+- **GATE 1** (humano): spec consolidada aprobada + sin conflicts_with de memoria pendientes + `policy check` en verde (toda política org mandatory attestada compliant o con desviación aprobada vigente) + **para cada ADR Tier 1-2**: `gate_checker.py --tipo adr` en verde (8 pasos, scorecard, Advice Log, Tech Radar, firma `arch_signoff.py` vigente). Sin esto, cero código.
 - **GATE 2**: todas las historias verificadas E2E. Bug crítico → devuelve artefacto al dev con el test que lo reproduce (una corrección acotada; si falla, escala).
 - **GATE 2.5** (Security): ninguna vulnerabilidad crítica/alta abierta.
 - **GATE 3**: staging validado + rollback probado.
