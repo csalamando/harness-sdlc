@@ -8,7 +8,7 @@ Esta guía explica cómo instalar y usar las 21 skills del arnés SDLC en cualqu
 
 | Skill | Rol | Fase |
 |---|---|---|
-| `sdlc-orchestrator` | Orquestador del pipeline + 11 herramientas CLI | Todas |
+| `sdlc-orchestrator` | Orquestador del pipeline + 12 herramientas CLI | Todas |
 | `sdlc-product-owner` | Visión y backlog priorizado | 0 |
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina | 0, 6 |
@@ -398,6 +398,19 @@ El arquitecto ya no aparece solo en Fase 2: participa desde la concepción de la
 - **`sdlc-cloud-pricing` (Fases 0 y 6)**: estimación **CAPEX** (ingeniería + one-time) y **OPEX** mensual en 3 escenarios (mínimo viable / crecimiento esperado / pico) para **AWS y Azure**, con TCO a 3 años, supuestos versionados en YAML y fecha de validez de precios. `scripts/cost_estimator.py` genera `spec/cost-estimation.md` desde `spec/cost-assumptions.yaml`; los precios unitarios de referencia pueden sobreescribirse tras verificar las calculadoras oficiales. En Fase 6 el Cloud Engineer la reutiliza para la estimación fina (desviación > 20% → change-request).
 - **GATE 0 (aprobación de la iniciativa)**: nuevo gate humano previo a GATE 1. Exige propuesta con opciones + recomendación, historias técnicas y estimación de costos vigente — los tres con recibo SHA-256. Tipos nuevos del gate: `gate_checker.py <artefacto> --tipo architecture-proposal|technical-stories|cost-estimation`. Sin GATE 0 no hay pipeline de construcción; el costo entra como criterio ponderado obligatorio en la scorecard de la propuesta.
 - **Routing "discovery"**: iniciativa nueva o evolución de producto → ruta PO + BA + Solution Architect + Cloud Pricing → GATE 0, antes de cualquier full-pipeline.
+
+---
+
+## 5d. Novedades v2.2 (autoridad por rol)
+
+¿Cómo garantizar que un dev no "apruebe" decisiones de arquitectura, o que un arquitecto no escriba las historias de usuario? No prohibiendo la participación (el Advice Process la exige), sino haciendo que **el artefacto no autorizado no cuente**:
+
+- **Matriz de autoridad** (`spec/authority-matrix.yaml`, plantilla en `sdlc-orchestrator/assets/`): declara UN rol dueño por artefacto (`spec/adr/` → software-architect, `spec/user-stories.md` → business-analyst, `spec/technical-stories.md` → solution-architect, etc.). Versionada en Git: cambiar quién manda requiere PR y queda auditado.
+- **Recibos con rol (`receipt.py emit --role <rol>`)**: si el artefacto tiene owner en la matriz, el rol emisor debe coincidir — si no, el recibo se rechaza y el gate no reconoce la aprobación. El rol queda grabado en el recibo y `verify` lo re-valida contra la matriz vigente.
+- **`authority_check.py`**: validación standalone (`--role`, o `--author <usuario-git> --team spec/team-roster.yaml`) para usar en CI; incluye plantilla de workflow `assets/ci-spec-governance.yml` que en cada PR verifica autoría + gates de los artefactos tocados.
+- **CODEOWNERS (frontera dura)**: plantilla `assets/CODEOWNERS-template` — con branch protection, un PR que toca `spec/adr/` no se mergea sin revisión del Arquitecto.
+
+Jerarquía de garantías: convención (SKILL.md) → gate (recibo con rol) → CI (`authority_check.py`) → Git (CODEOWNERS + branch protection). Las dos últimas son las que realmente bloquean; las dos primeras hacen que el incumplimiento sea visible e inútil.
 
 ---
 
