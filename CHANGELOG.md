@@ -7,6 +7,14 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.2.0] - 2026-08-20
+
+### Added
+- **Matriz de autoridad** (`spec/authority-matrix.yaml`, plantilla en `sdlc-orchestrator/assets/`): un rol dueño por artefacto de la spec; cambiarla requiere PR (gobierno auditado).
+- **Recibos con rol**: `receipt.py emit --role <rol>` rechaza la emisión si el rol no es el owner declarado; `verify` re-valida el rol contra la matriz vigente; `status` muestra el rol emisor.
+- **`authority_check.py`** (orquestador): validación standalone de autoría (`--role` o `--author` + `spec/team-roster.yaml`) para CI.
+- Plantillas `CODEOWNERS-template` (frontera dura en Git con branch protection), `team-roster-template.yaml` y workflow `ci-spec-governance.yml` (autoridad + gates por PR).
+
 ## [2.1.0] - 2026-08-20
 
 ### Added

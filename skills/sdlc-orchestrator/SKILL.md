@@ -60,6 +60,15 @@ El Arquitecto de Software es el **Decision Owner técnico**: el PO define el QU�
 8. Health check del arnés con `harness_doctor.py` al instalar o cuando algo falle.
 9. Recomendar perfiles de modelo por fase según `references/model-profiles.md`.
 
+## Autoridad por rol (matriz de autoridad)
+
+Cada artefacto de `spec/` tiene **un solo rol dueño**, declarado en `spec/authority-matrix.yaml` (plantilla: `assets/authority-matrix.yaml`). Un dev puede *opinar* sobre un ADR (vía Advice Process), pero no puede *emitirlo*:
+
+- `receipt.py emit --role <rol>`: si el artefacto tiene owner en la matriz, el rol debe coincidir o **el gate no reconoce la aprobación** (un dev emitiendo un ADR → recibo rechazado; un arquitecto emitiendo user-stories → rechazado). El rol queda registrado en el recibo y `verify` lo re-valida contra la matriz vigente.
+- `authority_check.py <artefacto> --role <rol>` o `--author <usuario-git> --team spec/team-roster.yaml`: validación standalone para CI (plantilla de workflow: `assets/ci-spec-governance.yml`; roster: `assets/team-roster-template.yaml`).
+- **Frontera dura en Git**: `assets/CODEOWNERS-template` + branch protection con "Require review from Code Owners" — un PR que toca `spec/adr/` no se mergea sin el Arquitecto.
+- Cambiar la matriz es un cambio de gobierno: owner `orchestrator`, requiere PR y queda auditado.
+
 ## Recibos: confiar en evidencia, no en narración
 
 Cuando un gate pasa, `receipt.py emit` guarda el SHA-256 exacto del artefacto en `spec/receipts/`. Antes de que cualquier fase downstream consuma ese artefacto, `receipt.py verify` comprueba que el contenido no cambió ni un byte desde la aprobación. Si cambió, el recibo se invalida solo y el gate debe re-ejecutarse. Un cambio de spec (`spec_diff_impact.py`) implica revocar los recibos de todos los artefactos impactados. Un artefacto nunca se aprueba dos veces sin nueva evidencia; una sola corrección acotada por gate antes de escalar a humano.
@@ -94,6 +103,7 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `decision_sizing.py --spec spec/ --output spec/risk-tier.yaml`: clasifica el Risk Tier (1/2/3) y fija el nivel de gobernanza.
 - `advisor.py --adr <adr> --risk-tier N [--output <json>]`: identifica stakeholders del Advice Process por áreas de impacto.
 - `arch_signoff.py --adr <adr> --architect "Nombre"`: firma arquitectónica; genera recibo ARCH-xxx.json con SHA-256 del ADR y artefactos de diseño.
+- `authority_check.py <artefacto> --role <rol> | --author <usuario> --team spec/team-roster.yaml`: valida que quien emite/firma un artefacto sea su rol dueño según `spec/authority-matrix.yaml`. Exit 1 si no está autorizado.
 
 ## Gates
 
