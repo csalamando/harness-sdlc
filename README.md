@@ -1,371 +1,279 @@
-Guía de Uso — Arnés SDLC (SDD + TDD)
-Esta guía explica cómo instalar y usar las 15 skills del arnés SDLC en cualquier agente compatible con el estándar abierto Agent Skills (Kimi, Claude Code, Google Antigravity, OpenAI Codex, Cursor, GitHub Copilot, entre otros).
-1. Qué contiene el paquete
-Table
-Skill	Rol	Fase
-sdlc-orchestrator	Orquestador del pipeline + 4 herramientas CLI	Todas
-sdlc-product-owner	Visión y backlog priorizado	0
-sdlc-business-analyst	Historias de usuario + Gherkin + reglas de negocio	1
-sdlc-ux-designer	Flujos UX + design system + tokens.json	2
-sdlc-software-architect	Arquitectura + OpenAPI + ADRs + test-plan	2-3
-sdlc-security-engineer	Threat modeling + SAST/DAST (GATE 2.5)	2, 4, 5
-sdlc-data-engineer	Migraciones + gobierno de datos (condicional)	2
-sdlc-backend-dev-tdd	Backend con TDD estricto	4
-sdlc-frontend-dev-tdd	Frontend con TDD + mocks desde OpenAPI	4
-sdlc-qa-automation	E2E desde Gherkin + regresión + carga (GATE 2)	5
-sdlc-devops-engineer	Setup + CI/CD + IaC + rollback	-1, 6
-sdlc-cloud-engineer	Infraestructura cloud + observabilidad	6
-sdlc-sre	SLOs + incidentes + postmortems	7
-sdlc-product-analyst	Medición de impacto → realimenta backlog	7
-sdlc-technical-writer	Documentación + publicación doc-as-code (Wiki/Pages/Confluence)	4-6
-sdlc-memory	Memoria persistente entre sesiones (transversal)	Todas
-sdlc-diagrams	Diagramas C4, cloud, secuencia, BPMN, Gantt, GitFlow vía drawio MCP	1, 2, 6
-Cada archivo .skill es un ZIP con la estructura estándar:
-plain
-sdlc-<rol>/
-├── SKILL.md        # Instrucciones del rol (obligatorio)
-├── assets/         # Plantillas de artefactos (vision.md, api-contract.yaml, etc.)
-├── references/     # Documentación de apoyo (solo orquestador)
-└── scripts/        # Herramientas CLI (solo orquestador, requieren Python 3)
-2. Instalación según agente / IDE
-Un archivo .skill es un ZIP: para instalarlo manualmente, descomprímelo y copia la carpeta (la que contiene SKILL.md) al directorio de skills de tu agente.
-Kimi (este asistente)
-En una conversación, adjunta los archivos .skill que quieras instalar y pide: "Instala estas skills".
-Se instalan en tu espacio personal de skills y quedan disponibles en todas tus conversaciones futuras.
-Alternativa manual (entornos con acceso al filesystem): copiar cada carpeta a /app/.user/skills/<nombre>/.
-Claude Code
-Table
-Nivel	Ruta	Alcance
-Personal	~/.claude/skills/<skill-name>/	Todos tus proyectos
-Proyecto	.claude/skills/<skill-name>/	Solo ese repo (recomendado: versionar con el equipo)
-bash
-# Ejemplo: instalar todo el arnés a nivel de proyecto
-cd mi-proyecto
-for f in ~/descargas/*.skill; do
-  unzip -q "$f" -d .claude/skills/
-done
-Invocación explícita: /sdlc-orchestrator, /sdlc-business-analyst, etc.
-Invocación implícita: basta con pedir "ejecuta la fase de discovery del pipeline SDLC" y Claude activa la skill cuya descripción coincide.
-Claude Code detecta cambios en skills en caliente, sin reiniciar.
-Google Antigravity (AGY / AGY IDE / AGY CLI)
-Table
-Nivel	Ruta
-Workspace (funciona en las 3 variantes)	<workspace-root>/.agents/skills/<skill-name>/
-Global (única ruta reconocida por las 3 variantes)	~/.gemini/config/skills/<skill-name>/
-bash
-for f in ~/descargas/*.skill; do
-  unzip -q "$f" -d .agents/skills/
-done
-Nota: la documentación oficial menciona otras rutas globales (~/.gemini/antigravity/skills/, ~/.gemini/skills/), pero solo ~/.gemini/config/skills/ es reconocida por AGY, AGY CLI y AGY IDE simultáneamente. Evita las demás.
-OpenAI Codex CLI
-Table
-Nivel	Ruta
-Global	~/.codex/skills/<skill-name>/
-Proyecto	.agents/skills/<skill-name>/
-bash
-for f in ~/descargas/*.skill; do
-  unzip -q "$f" -d ~/.codex/skills/
-done
-Tras instalar, reinicia Codex para que reindexe las skills.
-Invocación explícita: $sdlc-orchestrator dentro de la sesión.
-También puedes usar el instalador integrado: $skill-installer.
-Cursor
-Table
-Nivel	Ruta
-Global	~/.cursor/skills/<skill-name>/
-Proyecto	.cursor/skills/<skill-name>/
-GitHub Copilot
-Table
-Nivel	Ruta
-Global	~/.github/skills/<skill-name>/
-Proyecto	.github/skills/<skill-name>/
-Visual Studio Code (GitHub Copilot en el editor)
-VS Code soporta Agent Skills de forma nativa en el chat y en agent mode (es el mismo estándar abierto, así que las 15 skills del arnés funcionan sin cambios).
-Table
-Nivel	Rutas reconocidas
-Proyecto (versionable con el equipo)	.github/skills/, .claude/skills/, .agents/skills/
-Personal	~/.copilot/skills/, ~/.claude/skills/, ~/.agents/skills/
-bash
-# Instalación a nivel proyecto
-cd mi-proyecto
-for f in ~/descargas/*.skill; do
-  unzip -q "$f" -d .github/skills/
-done
-Formas de uso dentro de VS Code:
-Automática: Copilot lee name + description de cada SKILL.md y activa la skill relevante para tu petición (p. ej. pides "genera las historias de usuario del sprint" y activa sdlc-business-analyst).
-Explícita: escribe /sdlc-orchestrator (o el rol que necesites) en el input del chat, como slash command.
-Gestión visual: teclea /skills o abre Configure Chat → pestaña Skills para ver, crear, habilitar o deshabilitar skills.
-Rutas adicionales: si quieres mantener las skills en otra carpeta (p. ej. sdlc-harness/skills/), agrégala en el setting chat.agentSkillsLocations. En monorepos, activa chat.useCustomizationsInParentRepositories.
-Contexto aislado (experimental): para skills pesadas como el orquestador, puedes añadir context: fork al frontmatter y VS Code la ejecutará en un subagente dedicado, devolviendo solo el resultado final a tu conversación (requiere el setting github.copilot.chat.skillTool.enabled). Muy útil para no ensuciar el contexto principal durante una fase larga del pipeline.
-Notas específicas del arnés en VS Code:
-Los scripts del orquestador corren con el terminal tool de Copilot; revisa el auto-approve/allow-list de comandos para permitir python3 <skill-dir>/scripts/*.py.
-Como las skills viven en .github/skills/ dentro del repo, todo el equipo comparte la misma versión del arnés vía Git.
-Open WebUI
-Open WebUI soporta el estándar de skills como carpetas en el filesystem (sin UI compleja): el servidor escanea un directorio de skills, extrae el metadata de cada SKILL.md, los registra en su base de datos y los expone a los modelos.
-Instalación (Docker, la vía más común)
-bash
-# 1. Descomprimir el arnés en una carpeta del host
-mkdir -p ~/openwebui-data/skills
-for f in ~/descargas/*.skill; do
-  unzip -q "$f" -d ~/openwebui-data/skills/
-done
+# Arnés SDLC — SDD + TDD con gobernanza de decisiones
 
-# 2. Montar la carpeta en el contenedor y reiniciar
-docker run -d \
-  -v ~/openwebui-data/skills:/app/backend/data/skills \
-  -v open-webui:/app/backend/data \
-  -p 3000:8080 \
-  --name open-webui \
-  ghcr.io/open-webui/open-webui:main
-docker restart open-webui
-Tras el reinicio, Open WebUI descubre las 15 skills automáticamente. Flujo: instalar → montar → reiniciar.
-Uso
-Menciona una skill en el chat con $ (p. ej. $sdlc-orchestrator ejecuta el pipeline para...) — también aparecen con /.
-En Workspace → Skills (o el panel de administración correspondiente) puedes ver las skills descubiertas y habilitarlas/deshabilitarlas por modelo.
-Si el modelo tiene habilitada la ejecución de código, los scripts del orquestador (gate_checker.py, etc.) pueden correr en ese entorno; si no, el agente seguirá las instrucciones del SKILL.md pero sin gates automáticos.
-Requisitos y alternativas
-El soporte de skills es reciente: verifica que tu versión de Open WebUI lo incluya. Si estás en una versión anterior, actualiza la imagen.
-Fallback sin soporte nativo: si tu despliegue no soporta skills aún, puedes (a) crear un Model personalizado en Workspace → Models cuyo System Prompt sea el contenido del SKILL.md del orquestador, y adjuntar las plantillas de assets/ como Knowledge, o (b) subir los artefactos a una colección de Knowledge y referenciarlos con #. Es menos elegante (sin carga progresiva ni scripts), pero el pipeline se puede seguir manualmente.
-Instalador multiplataforma (skills.sh)
-Si trabajas con varios agentes a la vez, el gestor de paquetes skills detecta los agentes instalados y coloca cada skill en la ruta correcta:
-bash
-# Publica el arnés en un repo Git y luego:
-npx skills add <tu-usuario>/sdlc-harness --all
-# o solo para agentes específicos:
-npx skills add <tu-usuario>/sdlc-harness -a claude-code -a codex
-Recomendación de nivel
-Nivel proyecto (.claude/skills/, .agents/skills/, etc.): recomendado para el arnés completo — se versiona en Git junto al código y todo el equipo (humano o agente) usa la misma versión.
-Nivel global/personal: útil si usas el arnés en muchos proyectos distintos.
-3. Cómo usar el arnés (para el usuario)
-Flujo recomendado: el orquestador manda
-No invoques roles sueltos salvo que sepas lo que haces. El punto de entrada es siempre el orquestador:
-plain
-"Usando la skill sdlc-orchestrator, ejecuta el pipeline SDLC completo
-para esta idea: <describe tu producto>. Modo: full-pipeline."
-El agente con la skill del orquestador:
-Crea spec/pipeline-state.md y activa la Fase -1 (setup) y Fase 0 (PO).
-Antes de activar cada rol, corre context_packager.py para darle solo el contexto mínimo.
-Al recibir cada artefacto, corre gate_checker.py — si falla, el artefacto se devuelve al rol.
-Se detiene en GATE 1 (aprobación humana de la spec consolidada): aquí tú revisas spec/ antes de que se escriba código.
-Continúa con build (TDD), QA, seguridad y despliegue, deteniéndose en los gates 2, 2.5 y 3.
-Modos de operación
-Table
-Situación	Prompt sugerido
-Producto nuevo	"Ejecuta el pipeline SDLC en modo full-pipeline para…"
-Bug en producción	"Modo hotfix: QA reproduce el bug con un test, el dev lo corrige con TDD y se despliega. Bug: …"
-Cambio de alcance	"Modo change-request: el usuario quiere cambiar <historia>
-Invocar un rol individual (uso avanzado)
-plain
-"Actúa con la skill sdlc-business-analyst: lee spec/vision.md y spec/backlog.md
-y genera las historias de usuario con Gherkin del sprint 1."
-Requisitos de las herramientas CLI del orquestador
-Los 4 scripts (gate_checker.py, context_packager.py, spec_diff_impact.py, traceability_matrix.py) solo necesitan Python 3 (sin dependencias externas). El agente los ejecuta directamente; en entornos sandbox asegúrate de que el agente tenga permiso de ejecutar Python.
-4. Sistema de memoria (sdlc-memory)
-La spec guarda qué se decidió construir; la memoria guarda por qué, qué se aprendió y qué no debe repetirse — entre sesiones, agentes e IDEs. Es transversal a las 15 skills de roles.
-Diseño
-Git-nativo: cada memoria es un markdown con frontmatter en spec/memory/entries/ (fuente de verdad, versionada con la spec). El índice SQLite+FTS5 en .index/ es derivado: agrégalo a .gitignore y reconstrúyelo con reindex tras cada clone/pull.
-Estructura contractual: What / Why / Where / Key details / Learned. Sin Why no se guarda.
-Conflictos tipados: al guardar, FTS detecta memorias similares como candidatas; se resuelven como supersedes (reemplaza), conflicts_with (contradice — bloquea GATE 1 sin resolver) o unrelated.
-Trazabilidad: el campo links conecta cada memoria con HU-xxx, EP-x, ADR-xxx, BR-xxx, SEC-xxx.
-Sesiones: session start abre trabajo; session end --summary deja el resumen que lee la próxima sesión.
-Scopes: memoria compartida por capas (v1.2)
-La memoria existe en tres alcances con precedencia (lo específico vence a lo general):
-Table
-Scope	Ubicación	Compartida por	Contenido
-project	./spec/memory (Git del repo)	Equipo del proyecto	Decisiones y contexto del producto
-user	~/.sdlcmem/user	El dev en todos sus proyectos	Aprendizajes y preferencias personales
-org	~/.sdlcmem/org	Toda la organización	Patrones promovidos + políticas
-Guardar con --scope user|org (default project); buscar sin --scope consulta los tres y etiqueta el origen.
-Promoción: mem.py promote MEM-xxx --to org convierte una memoria de proyecto en patrón organizacional, registrando derived_from sin borrar el original.
-Compartir org entre usuarios: hacer de ~/.sdlcmem/org un clone de un repo Git corporativo; tras push/pull, reindex. Overrides: SDLCMEM_USER_ROOT / SDLCMEM_ORG_ROOT.
-El scope org rechaza automáticamente contenido con patrones de secretos/credenciales.
-Gobierno de políticas (v1.2)
-Las prácticas y lineamientos de la organización son memorias de tipo policy en scope org, con enforcement: mandatory|recommended:
-bash
-# La org publica lineamientos (solo en scope org)
-python3 scripts/mem.py save --scope org --type policy --title "APIs públicas exigen OAuth2+PKCE" \
-    --what "..." --why "estándar corporativo" --enforcement mandatory
+Un arnés de agentes para gobernar el ciclo de vida completo del software (**SDLC**) combinando **Spec-Driven Development (SDD)** y **Test-Driven Development (TDD)**, implementado como un conjunto de **19 skills** que siguen el estándar abierto **Agent Skills** (SKILL.md + assets/references/scripts), ejecutables en Kimi, Claude Code, Antigravity, Codex, Cursor, Copilot, VS Code, Open WebUI y LiteLLM.
 
-# En cada proyecto, ANTES del GATE 1:
-python3 scripts/mem.py policy check      # VIOLATION => exit 1, bloquea el gate
-python3 scripts/mem.py policy attest POL-xxx --status compliant --by architect
+> **Principio rector:** la fuente de verdad es `spec/` versionada en Git. Si una decisión, aprobación o aprendizaje no está versionada, no existe.
 
-# Si el proyecto necesita excepción: revisión y aprobación humana
-python3 scripts/mem.py deviation request --policy POL-xxx --title "API batch m2m" \
-    --justification "..." --risk "..." --mitigation "mTLS + allowlist" --expires 2026-12-31
-python3 scripts/mem.py deviation approve DEV-xxx --approver "Architecture Board" --note "..."
-python3 scripts/mem.py policy check      # ahora WAIVED hasta la expiración
-Reglas del flujo: una solicitud pending no exime; solo aprueba un humano designado (--approver obligatorio); la aprobación tiene expiración — al vencer, el check vuelve a bloquear; una desviación rechazada obliga a cumplir la política; la decisión es irreversible (condiciones nuevas = solicitud nueva). El GATE 1 del orquestador exige policy check en verde: toda política mandatory attestada compliant o con desviación aprobada vigente.
-Vía CLI (cualquier agente con terminal)
-bash
-python3 scripts/mem.py session start --project mi-app
-python3 scripts/mem.py save --type decision --title "JWT con refresh rotation" \
-    --what "Access 15min + refresh rotativo" --why "SEC-001 exige expiración corta" \
-    --links HU-003,SEC-001 --tags auth
-python3 scripts/mem.py search "refresh token" --any
-python3 scripts/mem.py conflicts list
-python3 scripts/mem.py conflicts resolve MEM-...-002 MEM-...-001 --relation supersedes
-python3 scripts/mem.py session end --summary "Fase 2 cerrada"
-python3 scripts/mem.py reindex   # tras git pull/clone
-python3 scripts/mem.py doctor    # salud del sistema
-Raíz por defecto: ./spec/memory (override: --root o variable SDLCMEM_ROOT). Sin dependencias externas: Python 3 stdlib.
-Vía MCP (Claude Code, VS Code, Cursor, Antigravity, Codex)
-El servidor stdio mem_mcp.py expone 16 herramientas (mem_save, mem_search, mem_get, mem_timeline, mem_conflicts_list, mem_conflicts_resolve, mem_session_start, mem_session_end, mem_doctor, mem_promote, mem_policy_list, mem_policy_check, mem_policy_attest, mem_deviation_request, mem_deviation_decide, mem_deviation_list). Registro típico:
-JSON
-{ "mcpServers": { "sdlc-memory": {
-    "command": "python3",
-    "args": ["<ruta>/sdlc-memory/scripts/mem_mcp.py"],
-    "env": { "SDLCMEM_ROOT": "<proyecto>/spec/memory" } } } }
-Claude Code: agrégalo en .mcp.json del proyecto (queda versionado para el equipo).
-VS Code: mcp.json en el workspace o vía Command Palette → "MCP: Add Server".
-Cursor: Settings → MCP → New MCP Server.
-Codex: bloque [mcp_servers.sdlc-memory] en ~/.codex/config.toml.
-Antigravity: mcp_config.json en ~/.gemini/antigravity/.
-Reglas del pipeline
-El orquestador abre sesión al iniciar y busca memoria relevante antes de activar cada fase.
-Cada rol guarda decisiones/aprendizajes con links a sus artefactos al cerrar su fase.
-Un conflicts_with sin resolver bloquea el GATE 1, igual que una contradicción en la spec.
-Si un artefacto cambia (change-request), las memorias con links afectados se marcan superseded.
-4b. Diagramas (sdlc-diagrams)
-Genera todas las familias de diagramas del arnés como .drawio editables versionados en spec/diagrams/: C4, arquitectura/despliegue cloud con iconos oficiales AWS/Azure/GCP, secuencia UML, BPMN 2.0, Gantt, GitFlow y flujos de proceso. Una sola skill con una referencia por familia (carga bajo demanda). Sirve al Architect (Fase 2), Cloud Engineer (Fase 6), BA (BPMN, Fase 1), DevOps (GitFlow, Fase -1) y PO (Gantt/roadmap).
-Decisión clave por familia: XML nativo para C4, cloud y BPMN (control fino, iconos exactos vía search_shapes); importación Mermaid (open_drawio_mermaid) para secuencia, Gantt y GitFlow (sintaxis declarativa, el importador hace el layout).
-Requisito: MCP oficial de draw.io
-JSON
-// .vscode/mcp.json / .cursor/mcp.json / Claude Code: claude mcp add drawio -- npx -y @drawio/mcp
-{ "servers": { "drawio": { "command": "npx", "args": ["-y", "@drawio/mcp"] } } }
-Tool server (npx @drawio/mcp, stdio): open_drawio_xml, search_shapes (~10.000 shapes: AWS, Azure, GCP, K8s...), open_drawio_mermaid, y edición de páginas (list_pages/get_page/set_page). Abre el editor en el navegador. Recomendada para IDEs.
-App server (https://mcp.draw.io/mcp, remoto): create_diagram con preview inline en chat (Claude.ai, Cursor con MCP Apps).
-Sin MCP disponible: la skill genera igualmente el .drawio en disco (editable en app.diagrams.net) — el MCP es el visor, no una dependencia del entregable.
-Flujo
-Elegir nivel C4; un .drawio multipágina, una página por nivel.
-Resolver iconos con search_shapes antes de escribir XML — nunca inventar rutas; la skill incluye style strings listos para C4 y los servicios más usados de AWS (mxgraph.aws4.*), Azure (img/lib/azure2/**.svg) y GCP.
-Construir XML con convenciones C4 (colores oficiales, boundary como contenedor, edges con protocolo, leyenda).
-open_drawio_xml para previsualizar/editar; persistir en spec/diagrams/ con trazabilidad a HU/EP en el nombre de página.
-La skill trae assets/c4-contenedores-ejemplo.drawio (Azure: APIM + Functions + SQL + Key Vault) como plantilla de partida.
-Los diagramas de despliegue reflejan el IaC: si infra/ cambia, el orquestador marca el diagrama como impactado vía spec_diff_impact.
-5. Novedades v1.1 (patrones RDD)
-La versión 1.1 incorpora patrones de Receipt-Driven Development, adaptados al arnés:
-Recibos con hash (receipt.py): al pasar un gate se emite un recibo con el SHA-256 del artefacto en spec/receipts/. Las fases downstream verifican el recibo antes de consumir: si el contenido cambió un byte desde la aprobación, el recibo se invalida solo y el gate se re-ejecuta. Confiar en evidencia derivable, no en la narración del agente. Comandos: emit, verify, status, revoke.
-Routing orgánico: el orquestador elige la ruta mínima antes de empezar — cambio mecánico de 1-3 archivos va directo a TDD; exploración amplia va a una sub-tarea acotada; el pipeline completo solo arranca con ambigüedad sustancial y aprobación del usuario.
-Relaciones en cambios de spec: spec_diff_impact.py --relation supersedes|conflicts_with — un conflicts_with bloquea el GATE 1 hasta resolución humana.
-Fase 8 — Archivo: al cerrar el sprint, merge de delta-specs en la spec maestra, memorias superseded, trazabilidad y recibos en verde, sesión cerrada. La próxima iteración arranca desde spec consolidada.
-harness_doctor.py: health check read-only del arnés instalado (16 skills, scripts compilables, estructura spec/, .gitignore).
-detect_stack.py (Fase -1): detecta stack y test runner; sin runner (exit 2) los gates de cobertura no son exigibles y Strict TDD queda en pausa hasta configurarlo.
-Perfiles de modelo por fase (references/model-profiles.md del orquestador): tier económico/intermedio/potente por rol, con ejemplo de model_list para LiteLLM.
-6. Uso con LiteLLM
-LiteLLM soporta las skills de dos maneras, según lo que necesites:
-Table
-Vía	Cuándo usarla
-A. Skills API (passthrough a Anthropic)	Quieres subir/usar las skills programáticamente contra la API de Anthropic, con el proxy gestionando auth, costos y logging.
-B. Skills Gateway / Skill Hub	Quieres publicar el arnés una vez y que todo el equipo lo instale desde un hub central (p. ej. en Claude Code).
-Importante: la Skills API de LiteLLM sigue el estándar de Anthropic y hoy solo soporta el provider anthropic — los modelos deben tener acceso al entorno de ejecución de código (Code Execution) de Anthropic para que las skills se activen. Las versiones 1.83.7+ del proxy incluyen parches de seguridad relevantes; no uses versiones anteriores en producción.
-A. Skills API vía LiteLLM
-Opción A1 — Python SDK
-Los archivos .skill del arnés son ZIPs válidos, así que se suben directamente (renombrando a .zip):
-Python
-from litellm import create_skill, list_skills
-import glob, shutil, os
+---
 
-# 1. Subir las 15 skills del arnés
-skill_ids = {}
-for f in sorted(glob.glob("./sdlc-*.skill")):
-    zip_path = f.replace(".skill", ".zip")
-    shutil.copy(f, zip_path)  # .skill es un zip estándar
-    resp = create_skill(
-        display_title=os.path.basename(f).replace(".skill", ""),
-        files=[open(zip_path, "rb")],
-        custom_llm_provider="anthropic",
-        api_key="sk-ant-...",
-    )
-    skill_ids[resp.display_title] = resp.id
-    print(f"Creada: {resp.display_title} -> {resp.id}")
+## Tabla de contenidos
 
-# 2. Verificar
-for s in list_skills(custom_llm_provider="anthropic", api_key="sk-ant-...").data:
-    print(s.display_title, s.id)
-Luego las usas en una llamada Messages referenciando los IDs en el contenedor de ejecución:
-Python
-import anthropic
+1. [Visión general](#1-visión-general)
+2. [Las 19 skills](#2-las-19-skills)
+3. [El pipeline y los gates](#3-el-pipeline-y-los-gates)
+4. [Routing orgánico](#4-routing-orgánico)
+5. [Receipts: confiar en evidencia, no en narración](#5-receipts-confiar-en-evidencia-no-en-narración)
+6. [El sistema de memoria](#6-el-sistema-de-memoria)
+7. [Gobernanza de decisiones (v2.0)](#7-gobernanza-de-decisiones-v20)
+8. [Gestión de cambios de spec](#8-gestión-de-cambios-de-spec)
+9. [Herramientas compartidas y propias](#9-herramientas-compartidas-y-propias)
+10. [Créditos y referencias](#10-créditos-y-referencias)
 
-client = anthropic.Anthropic()
-resp = client.beta.messages.create(
-    model="claude-sonnet-4-5",
-    max_tokens=4096,
-    betas=["code-execution-2025-08-25", "skills-2025-10-02"],
-    container={
-        "skills": [
-            {"type": "custom", "skill_id": skill_ids["sdlc-orchestrator"], "version": "latest"},
-            {"type": "custom", "skill_id": skill_ids["sdlc-product-owner"], "version": "latest"},
-            # ...agregar los roles que la fase requiera
-        ]
-    },
-    tools=[{"type": "code_execution_20250825", "name": "code_execution"}],
-    messages=[{"role": "user", "content":
-        "Ejecuta el pipeline SDLC en modo full-pipeline para: <tu idea>"}],
-)
-Recomendación: no subas las 15 skills al contenedor a la vez. Carga el orquestador + los roles de la fase en curso (la metadata de cada skill consume contexto).
-Opción A2 — LiteLLM Proxy (curl)
-bash
-# Subir una skill (el .skill renombrado a .zip)
-curl "http://0.0.0.0:4000/v1/skills?beta=true" \
-  -X POST \
-  -H "X-Api-Key: sk-1234" \
-  -H "anthropic-version: 2023-06-01" \
-  -H "anthropic-beta: skills-2025-10-02" \
-  -F "display_title=sdlc-orchestrator" \
-  -F "files[]=@sdlc-orchestrator.zip"
+---
 
-# Listar / obtener / eliminar
-curl "http://0.0.0.0:4000/v1/skills?beta=true" -H "X-Api-Key: sk-1234" \
-  -H "anthropic-version: 2023-06-01" -H "anthropic-beta: skills-2025-10-02"
-curl "http://0.0.0.0:4000/v1/skills/<skill_id>?beta=true" -X DELETE -H "X-Api-Key: sk-1234" \
-  -H "anthropic-version: 2023-06-01" -H "anthropic-beta: skills-2025-10-02"
-Con varias cuentas de Anthropic, agrega -F "model=<model_name>" para enrutar según el model_list de tu config.yaml.
-B. Skills Gateway / Skill Hub (distribución organizacional)
-Si el arnés lo va a usar todo un equipo, publícalo una vez en el hub del proxy:
-bash
-# 1. Registrar el repo del arnés (sube la carpeta sdlc-harness/skills a un repo Git)
-curl -X POST https://tu-proxy/claude-code/plugins \
-  -H "Authorization: Bearer $LITELLM_ADMIN_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "sdlc-orchestrator",
-    "source": {
-      "source": "git-subdir",
-      "url": "https://github.com/tu-org/sdlc-harness",
-      "path": "skills/sdlc-orchestrator"
-    },
-    "description": "Orquestador del pipeline SDLC con SDD+TDD",
-    "domain": "Engineering",
-    "namespace": "sdlc"
-  }'
-# (repetir por cada una de las 15 skills)
+## 1. Visión general
 
-# 2. Publicar en el hub
-curl -X POST https://tu-proxy/claude-code/plugins/sdlc-orchestrator/enable \
-  -H "Authorization: Bearer $LITELLM_ADMIN_KEY"
-Cada desarrollador apunta su Claude Code al marketplace del proxy una sola vez:
-JSON
-// ~/.claude/settings.json
+El arnés convierte a un agente de propósito general en un **equipo de desarrollo completo con roles especializados**, donde cada rol:
+
+- tiene **entradas y salidas declaradas** (artefactos en `spec/`),
+- cumple un **checklist de salida (DoD)** verificable por script,
+- produce **evidencia auditable** (recibos criptográficos, memorias, trazabilidad),
+- y no puede avanzar sin que los **gates** estén en verde.
+
+Tres ideas lo diferencian de un pipeline de prompts:
+
+1. **RDD (Receipt-Driven Development):** las aprobaciones no son narración del agente ("ya está revisado"), sino recibos SHA-256 vinculados al contenido exacto aprobado. Si el artefacto cambia un byte, el recibo se invalida solo.
+2. **Memoria persistente con gobierno:** lo aprendido no muere al cerrar la sesión. Vive en Markdown versionado con tres scopes (proyecto, usuario, organización) y un flujo de políticas y desviaciones con aprobación humana.
+3. **Gobernanza de decisiones:** las decisiones técnicas significativas siguen un proceso riguroso de 8 pasos con scorecard cuantitativa, advice process y firma del Arquitecto — proporcional al riesgo (Risk Tiers).
+
+---
+
+## 2. Las 19 skills
+
+| Skill | Rol | Fase |
+|---|---|---|
+| `sdlc-orchestrator` | Orquestador del pipeline + 11 herramientas CLI | Todas |
+| `sdlc-product-owner` | Visión, épicas, backlog priorizado (el QUÉ y el CUÁNDO) | 0 |
+| `sdlc-business-analyst` | Historias de usuario + Gherkin + reglas de negocio | 1 |
+| `sdlc-ux-designer` | Flujos UX + design system + tokens | 2 |
+| `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + test-plan. **Decision Owner técnico (el CÓMO)** | 2-3 |
+| `sdlc-decision-engine` | Motor de decisiones: 8 pasos, scorecard, Decision Packages | 2 |
+| `sdlc-enterprise-architect` | Tech Radar, Principios, excepciones, Paved Roads | 2 (Tier 1) |
+| `sdlc-security-engineer` | Threat modeling + SAST/DAST (GATE 2.5) | 2, 4, 5 |
+| `sdlc-data-engineer` | Migraciones + gobierno de datos | 2 |
+| `sdlc-backend-dev-tdd` | Backend con TDD estricto | 4 |
+| `sdlc-frontend-dev-tdd` | Frontend con TDD + mocks desde OpenAPI | 4 |
+| `sdlc-qa-automation` | E2E desde Gherkin + regresión + carga (GATE 2) | 5 |
+| `sdlc-devops-engineer` | Setup + CI/CD + IaC + rollback | -1, 6 |
+| `sdlc-cloud-engineer` | Infraestructura cloud + observabilidad | 6 |
+| `sdlc-sre` | SLOs + incidentes + postmortems | 7 |
+| `sdlc-product-analyst` | Medición de impacto → realimenta backlog | 7 |
+| `sdlc-technical-writer` | Documentación doc-as-code (Wiki / Pages / Confluence) | 4-6 |
+| `sdlc-memory` | Memoria persistente con scopes y gobierno (transversal) | Todas |
+| `sdlc-diagrams` | Diagramas C4, cloud (AWS/Azure/GCP), secuencia, BPMN, Gantt, GitFlow vía drawio MCP | 1, 2, 6 |
+
+Separación de autoridad: **el PO nunca aprueba decisiones técnicas; el Arquitecto de Software es el único rol que firma ADRs.**
+
+---
+
+## 3. El pipeline y los gates
+
+```
+FASE -1 Setup (DevOps + detect_stack) → FASE 0 PO → FASE 1 BA
+→ FASE 2 UX + Architect (+ Decision Engine) + Security + Data
+→ FASE 3 Spec consolidada [GATE 1 humano]
+→ FASE 4 Dev Back ∥ Dev Front (TDD)
+→ FASE 5 QA + Security DAST [GATE 2 / 2.5]
+→ FASE 6 DevOps + Cloud [GATE 3] → PROD
+→ FASE 7 SRE opera + Product Analyst mide → realimenta backlog
+→ FASE 8 Archivo: merge de delta-specs + cierre del ciclo
+```
+
+| Gate | Qué exige |
+|---|---|
+| **GATE 1** (humano) | Spec consolidada aprobada + sin `conflicts_with` de memoria pendientes + `policy check` en verde (toda política org mandatory attestada o con desviación aprobada vigente) + **cada ADR Tier 1-2 con 8 pasos validados, Advice Log registrado, Tech Radar cruzado y firma vigente**. Sin esto, cero código. |
+| **GATE 2** | Todas las historias verificadas E2E. Bug crítico → se devuelve al dev **con el test que lo reproduce** (una corrección acotada; si falla, escala a humano). |
+| **GATE 2.5** | Ninguna vulnerabilidad crítica/alta abierta. |
+| **GATE 3** | Staging validado + rollback probado. |
+
+Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**.
+
+---
+
+## 4. Routing orgánico
+
+No todo trabajo merece el pipeline completo. El orquestador elige la **ruta mínima** antes de empezar:
+
+| Situación | Ruta |
+|---|---|
+| Cambio mecánico ya entendido, 1-3 archivos, spec intacta | **Directo**: dev con TDD + gate 2 |
+| Se necesita explorar 4+ archivos para entender | **Exploración delegada**: sub-tarea acotada de lectura, luego decidir con evidencia |
+| Bug en producción | **Hotfix**: QA reproduce con test → dev corrige (TDD) → gates 2 y 3 |
+| Ambigüedad sustancial | **Full-pipeline**: proponer al usuario; iniciar solo tras aprobación |
+| Cambio de alcance aprobado | **Change-request**: ver §8 |
+
+Los gates de entrega (2, 2.5, 3) aplican **siempre**, sin importar la ruta.
+
+---
+
+## 5. Receipts: confiar en evidencia, no en narración
+
+### El problema
+
+Un agente puede *decir* "la spec está aprobada" o "los tests pasan". Esa afirmación no es verificable y puede quedar desactualizada en el momento en que alguien edita el archivo.
+
+### La solución: recibos criptográficos
+
+Cuando un gate pasa, `receipt.py emit` guarda en `spec/receipts/` un JSON con el **SHA-256 exacto del artefacto aprobado**, el gate, el rol y el timestamp:
+
+```json
 {
-  "extraKnownMarketplaces": {
-    "mi-org": {
-      "source": "url",
-      "url": "https://tu-proxy/claude-code/marketplace.json"
-    }
-  }
+  "receipt_id": "RCP-GATE1-architecture",
+  "artifact": "spec/architecture.md",
+  "sha256": "bb5c683b...",
+  "gate": "GATE-1",
+  "status": "ACTIVE",
+  "timestamp": "2026-08-20T..."
 }
-bash
-/plugin marketplace add sdlc-orchestrator
-Ventajas de esta vía: una sola fuente de verdad para las skills, actualizaciones centralizadas (actualizas el repo Git y el equipo reinstala), y descubrimiento vía UI (AI Hub → Skill Hub) o API pública (GET /public/skill_hub).
-Limitaciones a tener en cuenta con LiteLLM
-Las skills solo se activan en modelos Anthropic con Code Execution habilitado; para otros providers (OpenAI, Gemini…) LiteLLM enruta el texto, pero no ejecuta el mecanismo de skills — en ese caso usa la vía de agentes locales (sección 2) o inyección manual del SKILL.md en el system prompt.
-Los scripts del orquestador (gate_checker.py, etc.) corren dentro del entorno de ejecución del contenedor de Anthropic: verifica que python3 esté disponible allí (lo está en el entorno estándar de Code Execution).
-Los gates humanos (GATE 1 y 3) siguen siendo humanos: estructura tu aplicación para pausar el loop y pedir aprobación entre llamadas.
-7. Notas para agentes que consuman estas skills
-La fuente de verdad es el directorio spec/ del proyecto, versionado en Git junto al código. Nunca generes artefactos sueltos fuera de esa estructura.
-Usa siempre las plantillas de assets/ de cada skill; no reinventes formatos.
-TDD no es opcional en las skills de desarrollo: los tests preceden al código y deben ser verificables en el historial de commits.
-Todo bug encontrado en QA se devuelve al dev con el test que lo reproduce (TDD de bugs).
-Ante un artefacto de entrada faltante o incoherente: detenerse y reportar al orquestador, no improvisar.
-Mantener trazabilidad: cada commit/test referencia su HU-xxx; cada historia su épica EP-xxx.
+```
+
+**Reglas del sistema:**
+
+1. **Verificación antes de consumir.** Antes de que cualquier fase downstream use un artefacto, `receipt.py verify` recalcula el hash del archivo actual y lo compara con el recibo. Un byte de diferencia → recibo **INVALIDATED** y el gate debe re-ejecutarse. Nadie aprueba dos veces sin nueva evidencia.
+2. **Revocación en cascada.** Un cambio de spec (`spec_diff_impact.py`) revoca automáticamente los recibos de todos los artefactos impactados downstream.
+3. **Firma arquitectónica.** Variante especializada: `arch_signoff.py` emite `ARCH-xxx.json` firmado por el Arquitecto, con hash compuesto del ADR **y** de los artefactos de diseño (architecture.md, OpenAPI, modelo de datos, diagramas). Si el diseño diverge de lo firmado en Fase 4, el pipeline se detiene.
+4. **Estados auditables.** `receipt.py status` muestra todos los recibos (ACTIVE / INVALIDATED / REVOKED) — un log de gobierno derivado de criptografía, no de memoria del agente.
+
+```bash
+python3 receipt.py emit --artifact spec/architecture.md --gate GATE-1
+python3 receipt.py verify --artifact spec/architecture.md
+python3 receipt.py status
+python3 receipt.py revoke --artifact spec/architecture.md
+```
+
+*Inspiración: patrón de "receipts" y "trust derivable evidence" observado en el ecosistema de Gentleman-Programming (ver §10), reimplementado a nuestra medida sobre SHA-256 + Git.*
+
+---
+
+## 6. El sistema de memoria
+
+### El problema
+
+Los agentes olvidan todo al cerrar la sesión: decisiones y sus razones, bugs ya resueltos, aprendizajes del proyecto. Y las organizaciones no tienen forma de hacer cumplir sus lineamientos en un flujo de agentes.
+
+### Arquitectura: Markdown es la verdad, SQLite es solo un índice
+
+**La fuente de verdad son archivos Markdown** con frontmatter YAML y estructura What / Why / Where / Key details / Learned:
+
+```
+./spec/memory/entries/     # scope project — viaja en el repo del proyecto
+~/.sdlcmem/user/entries/   # scope user    — compartida entre tus proyectos
+~/.sdlcmem/org/entries/    # scope org     — lineamientos de la organización
+```
+
+Al ser Git-nativa, la memoria tiene **historial, diff, code review y resolución de conflictos gratis**. Junto a cada raíz existe un `index.db` (**SQLite con FTS5**) que solo acelera la búsqueda con ranking. Es **100% derivable**: se borra y se reconstruye con `mem.py reindex`. Nunca pierdes nada por tocar la DB.
+
+```bash
+# Consultar la memoria
+python3 mem.py search "autenticación oauth"   # búsqueda federada en los 3 scopes
+python3 mem.py get MEM-2026-0001
+python3 mem.py timeline
+# O directo sobre el índice:
+sqlite3 spec/memory/index.db "SELECT id, title FROM memories_fts WHERE memories_fts MATCH 'oauth'"
+```
+
+Para agentes, `mem_mcp.py` expone las mismas 16 operaciones como **servidor MCP stdio** (`mem_save`, `mem_search`, `mem_policy_check`, ...).
+
+### Scopes y precedencia
+
+`project` < `user` < `org`. Una búsqueda consulta los tres y ordena por precedencia: la organización gana. La promoción (`mem.py promote MEM-x --to org`) lleva un patrón probado en un proyecto al nivel superior, registrando `derived_from`.
+
+### Relaciones entre memorias
+
+- **`supersedes`**: una memoria reemplaza a otra (la anterior queda como histórico).
+- **`conflicts_with`**: dos memorias se contradicen → **bloquea GATE 1** hasta resolución humana (`conflicts resolve`).
+
+### Gobierno organizacional: políticas y desviaciones
+
+El caso que motivó el diseño: *"si en la organización hay prácticas y lineamientos que se deben cumplir, y un proyecto necesita cambiarlos, debe existir revisión y aprobación"*.
+
+1. **Políticas** (`--type policy --enforcement mandatory|recommended`) se guardan en scope org. Antes de GATE 1, cada proyecto ejecuta `policy check` y `policy attest`: toda política mandatory debe estar **compliant** o tener una **desviación aprobada vigente**.
+2. **Desviaciones** (`deviation request → approve|reject`): el proyecto solicita excepción con justificación; un humano aprueba con **fecha de expiración**. Mientras está *pending*, NO exime. Al expirar, el gate vuelve a bloquear. Las aprobaciones son irreversibles (auditoría).
+3. **Filtro de secretos**: el scope org rechaza memorias que contengan credenciales (patrones de API keys, tokens, contraseñas) — la capa compartida nunca debe filtrar secretos.
+
+```bash
+python3 mem.py save --scope org --type policy --enforcement mandatory \
+  --title "TLS 1.3 en toda comunicación externa" --what "..." --why "..."
+python3 mem.py policy check          # exit 1 si hay violación → bloquea GATE 1
+python3 mem.py deviation request --policy POL-1 --reason "..."
+python3 mem.py deviation approve DEV-1 --approver "CISO" --expires 2026-12-31
+```
+
+*Inspiración: la separación memoria/herramientas y la idea de memoria persistente entre agentes de **Engram** (Gentleman-Programming) — se decidió conscientemente **no adoptarlo** y construir uno propio mejorado: Git-nativo, con scopes, gobierno de políticas y desviaciones, relaciones y MCP (ver §10).*
+
+---
+
+## 7. Gobernanza de decisiones (v2.0)
+
+Basada en el **framework de 8 pasos de Sonya Natanzon**, el **Advice Process** y el **Tech Radar** (ver §10).
+
+### Risk Tiering — gobernanza proporcional al riesgo
+
+`decision_sizing.py` analiza la spec y clasifica:
+
+| Tier | Ejemplos | Gobernanza |
+|---|---|---|
+| **1** (alto) | PII, pagos, autenticación, datos críticos | 8 pasos + Advice completo + revisión Enterprise Architect |
+| **2** (medio) | Microservicios, APIs, integraciones | 8 pasos + Advice con peers |
+| **3** (bajo) | Herramientas internas, UI, prototipos | ADR simplificado + registro en memoria |
+
+### Los 8 pasos (skill `sdlc-decision-engine`)
+
+1. **Problem Statement** sin soluciones prematuras — el gate rechaza *"Necesitamos usar Kafka"*; exige el problema real.
+2. **Last Responsible Moment** — fecha límite real, restricciones, costo de reversa.
+3. **Criterios ponderados** (mín. 3, pesos = 100%) definidos **antes** de ver opciones. Opcionalmente cargados de un **Decision Package** pre-aprobado.
+4. **Opciones** (mín. 2, ideal 3, una radicalmente diferente); se marcan las **Paved Roads**.
+5. **Advice Process** — `advisor.py` identifica stakeholders por impacto (datos → Data Engineer; seguridad → Security Engineer; Tier 1 → siempre Enterprise Architect). El consejo **no es vinculante**; omitir la consulta **sí bloquea** el gate. Todo consejo queda en el **Advice Log**: quién, cuándo, qué, si se aplicó y por qué.
+6. **Scorecard cuantitativa** — `scorecard_calculator.py` pondera criterios × opciones; la opción elegida debe ser la ganadora o tener justificación explícita.
+7. **Decisión** — con consecuencias positivas esperadas y **negativas aceptadas**, y qué NO se decidió.
+8. **Re-evaluation triggers** — condiciones que obligan a revisar la decisión.
+
+### Firma y Tech Radar
+
+- **Firma:** `arch_signoff.py` emite el recibo `ARCH-xxx.json`. Un ADR firmado **no se modifica**: se supersedea con uno nuevo. Si cambia tras la firma, el gate detecta el recibo invalidado.
+- **Tech Radar** (`sdlc-enterprise-architect`): **ADOPT** = Paved Road (pre-aprobado) · **TRIAL** = justificación · **ASSESS** = ADR de excepción · **HOLD** = bloquea el gate salvo excepción aprobada por el Architecture Board.
+- El Enterprise Architect **gobierna por excepción**: asesora, no veta; solo interviene en Tier 1, principio mandatory violado o tecnología en HOLD.
+
+---
+
+## 8. Gestión de cambios de spec
+
+1. Declarar la relación del cambio: **supersedes** (reemplaza — flujo normal) o **conflicts_with** (contradice — requiere resolución humana, bloquea GATE 1).
+2. `spec_diff_impact.py --cambiado <artefacto> --relation <rel>` lista el downstream invalidado (grafo de dependencias de la spec).
+3. `receipt.py revoke` sobre cada artefacto impactado; re-ejecutar **solo** las fases afectadas.
+4. Nueva versión + entrada en CHANGELOG.
+
+En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias superseded, trazabilidad y recibos en verde, sesión cerrada. La próxima iteración arranca desde spec consolidada.
+
+---
+
+## 9. Herramientas compartidas y propias
+
+- **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`).
+- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`.
+- **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
+
+---
+
+## 10. Créditos y referencias
+
+Este arnés es diseño e implementación propios, pero se apoya explícitamente en ideas publicadas por otros, a quienes damos crédito:
+
+| Idea | Autor / Proyecto | Cómo la usamos |
+|---|---|---|
+| **Framework de decisiones de 8 pasos** | [Sonya Natanzon — Architectural Decision Framework](https://github.com/snatanzon/architectural-decision-framework) | Núcleo de `sdlc-decision-engine`: problem statement sin soluciones, criterios ponderados, scorecard, re-evaluation triggers |
+| **Advice Process, Tech Radar, Principios, arquitectura conversacional** | [Martin Fowler / Andrew Harmel-Law — *Scaling Architecture Conversationally*](https://martinfowler.com/articles/scaling-architecture-conversationally.html) | Paso 5 (advice no vinculante pero obligatorio de registrar), Tech Radar con cuadrantes, gobernanza por excepción del Enterprise Architect |
+| **Tech Radar (formato ADOPT/TRIAL/ASSESS/HOLD)** | ThoughtWorks | Estructura de `spec/tech-radar.yaml` y reglas de gate |
+| **Architecture Decision Records** | Michael Nygard | Plantillas de ADR y ciclo de vida (Proposed → Adopted → Superseded) |
+| **"Everything is a plugin" / capability seams** | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Inspiración para skills descubribles y Decision Packages extensibles (el manifiesto dinámico quedó como trabajo futuro) |
+| **Patrones de trabajo con agentes, memoria entre agentes, receipts** | [Gentleman-Programming — gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) y [Engram](https://github.com/Gentleman-Programming/engram) | **Inspiración, no adopción**: estudiamos su forma de trabajar y reimplementamos a nuestra medida — memoria Git-nativa con scopes/gobierno (mejorada sobre Engram) y recibos SHA-256 |
+| **Estándar Agent Skills** | Formato abierto SKILL.md (Anthropic y ecosistema) | Packaging, progressive disclosure (SKILL.md → references → scripts) |
+| **Doc-as-code (Wiki/Pages/Confluence)** | GitHub Wiki, MkDocs Material, markdown-confluence | Publicación de `sdlc-technical-writer` |
+
+Agradecimiento especial a los autores de las fuentes anteriores: este arnés no copia su código; adopta sus **ideas metodológicas** y las integra en un sistema coherente con recibos, memoria gobernada y gates automatizados.
+
+---
+
+## Licencia
+
+MIT

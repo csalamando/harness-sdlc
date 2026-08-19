@@ -1,0 +1,14 @@
+# Índices derivables de sdlc-memory (se reconstruyen con: mem.py reindex)
+spec/memory/.index/
+**/memory/.index/
+.index/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS / editores
+.DS_Store
+.idea/
+.vscode/settings.json
