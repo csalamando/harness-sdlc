@@ -1,6 +1,6 @@
 # Arnés SDLC — SDD + TDD con gobernanza de decisiones
 
-**Un arnés para agentes de IA** que gobierna el ciclo de vida completo del software (**SDLC**) combinando **Spec-Driven Development (SDD)** y **Test-Driven Development (TDD)**. Está implementado como un conjunto de **19 skills** que siguen el estándar abierto **Agent Skills** (SKILL.md + assets/references/scripts) — no es un framework de agentes propio, sino la capa de gobierno que convierte a cualquier agente compatible en un equipo de desarrollo con roles, gates y evidencia auditable. Ejecutable en Kimi, Claude Code, Antigravity, Codex, Cursor, Copilot, VS Code, Open WebUI y LiteLLM.
+**Un arnés para agentes de IA** que gobierna el ciclo de vida completo del software (**SDLC**) combinando **Spec-Driven Development (SDD)** y **Test-Driven Development (TDD)**. Está implementado como un conjunto de **21 skills** que siguen el estándar abierto **Agent Skills** (SKILL.md + assets/references/scripts) — no es un framework de agentes propio, sino la capa de gobierno que convierte a cualquier agente compatible en un equipo de desarrollo con roles, gates y evidencia auditable. Ejecutable en Kimi, Claude Code, Antigravity, Codex, Cursor, Copilot, VS Code, Open WebUI y LiteLLM.
 
 > **Principio rector:** la fuente de verdad es `spec/` versionada en Git. Si una decisión, aprobación o aprendizaje no está versionada, no existe.
 
@@ -9,7 +9,7 @@
 ## Tabla de contenidos
 
 1. [Visión general](#1-visión-general)
-2. [Las 19 skills](#2-las-19-skills)
+2. [Las 21 skills](#2-las-21-skills)
 3. [El pipeline y los gates](#3-el-pipeline-y-los-gates)
 4. [Routing orgánico](#4-routing-orgánico)
 5. [Receipts: confiar en evidencia, no en narración](#5-receipts-confiar-en-evidencia-no-en-narración)
@@ -38,12 +38,14 @@ Tres ideas lo diferencian de un pipeline de prompts:
 
 ---
 
-## 2. Las 19 skills
+## 2. Las 21 skills
 
 | Skill | Rol | Fase |
 |---|---|---|
 | `sdlc-orchestrator` | Orquestador del pipeline + 11 herramientas CLI | Todas |
 | `sdlc-product-owner` | Visión, épicas, backlog priorizado (el QUÉ y el CUÁNDO) | 0 |
+| `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, escribe historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
+| `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina (Fase 6) | 0, 6 |
 | `sdlc-business-analyst` | Historias de usuario + Gherkin + reglas de negocio | 1 |
 | `sdlc-ux-designer` | Flujos UX + design system + tokens | 2 |
 | `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + test-plan. **Decision Owner técnico (el CÓMO)** | 2-3 |
@@ -69,7 +71,9 @@ Separación de autoridad: **el PO nunca aprueba decisiones técnicas; el Arquite
 ## 3. El pipeline y los gates
 
 ```
-FASE -1 Setup (DevOps + detect_stack) → FASE 0 PO → FASE 1 BA
+FASE -1 Setup (DevOps + detect_stack)
+→ FASE 0 Discovery: PO + BA + Solution Architect (propuesta + pricing) [GATE 0 humano: iniciativa aprobada]
+→ FASE 1 BA
 → FASE 2 UX + Architect (+ Decision Engine) + Security + Data
 → FASE 3 Spec consolidada [GATE 1 humano]
 → FASE 4 Dev Back ∥ Dev Front (TDD)
@@ -81,6 +85,7 @@ FASE -1 Setup (DevOps + detect_stack) → FASE 0 PO → FASE 1 BA
 
 | Gate | Qué exige |
 |---|---|
+| **GATE 0** (humano) | Aprobación de la iniciativa: propuesta de arquitectura con ≥2 opciones + recomendación justificada (scorecard con costo como criterio), historias técnicas registradas y estimación **CAPEX/OPEX/TCO vigente** (AWS/Azure, 3 escenarios). Sin caso de negocio aprobado, no hay pipeline de construcción. |
 | **GATE 1** (humano) | Spec consolidada aprobada + sin `conflicts_with` de memoria pendientes + `policy check` en verde (toda política org mandatory attestada o con desviación aprobada vigente) + **cada ADR Tier 1-2 con 8 pasos validados, Advice Log registrado, Tech Radar cruzado y firma vigente**. Sin esto, cero código. |
 | **GATE 2** | Todas las historias verificadas E2E. Bug crítico → se devuelve al dev **con el test que lo reproduce** (una corrección acotada; si falla, escala a humano). |
 | **GATE 2.5** | Ninguna vulnerabilidad crítica/alta abierta. |
@@ -99,6 +104,7 @@ No todo trabajo merece el pipeline completo. El orquestador elige la **ruta mín
 | Cambio mecánico ya entendido, 1-3 archivos, spec intacta | **Directo**: dev con TDD + gate 2 |
 | Se necesita explorar 4+ archivos para entender | **Exploración delegada**: sub-tarea acotada de lectura, luego decidir con evidencia |
 | Bug en producción | **Hotfix**: QA reproduce con test → dev corrige (TDD) → gates 2 y 3 |
+| Iniciativa o evolución de producto nueva | **Discovery**: PO + BA + Solution Architect + Cloud Pricing → propuesta con opciones, historias técnicas y CAPEX/OPEX → GATE 0 |
 | Ambigüedad sustancial | **Full-pipeline**: proponer al usuario; iniciar solo tras aprobación |
 | Cambio de alcance aprobado | **Change-request**: ver §8 |
 

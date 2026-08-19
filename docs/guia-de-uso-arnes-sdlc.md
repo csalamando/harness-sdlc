@@ -1,6 +1,6 @@
 # Guía de Uso — Arnés SDLC (SDD + TDD)
 
-Esta guía explica cómo instalar y usar las 19 skills del arnés SDLC en cualquier agente compatible con el estándar abierto **Agent Skills** (Kimi, Claude Code, Google Antigravity, OpenAI Codex, Cursor, GitHub Copilot, entre otros).
+Esta guía explica cómo instalar y usar las 21 skills del arnés SDLC en cualquier agente compatible con el estándar abierto **Agent Skills** (Kimi, Claude Code, Google Antigravity, OpenAI Codex, Cursor, GitHub Copilot, entre otros).
 
 ---
 
@@ -10,6 +10,8 @@ Esta guía explica cómo instalar y usar las 19 skills del arnés SDLC en cualqu
 |---|---|---|
 | `sdlc-orchestrator` | Orquestador del pipeline + 11 herramientas CLI | Todas |
 | `sdlc-product-owner` | Visión y backlog priorizado | 0 |
+| `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
+| `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina | 0, 6 |
 | `sdlc-business-analyst` | Historias de usuario + Gherkin + reglas de negocio | 1 |
 | `sdlc-ux-designer` | Flujos UX + design system + tokens.json | 2 |
 | `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + test-plan | 2-3 |
@@ -117,7 +119,7 @@ done
 
 ### Visual Studio Code (GitHub Copilot en el editor)
 
-VS Code soporta Agent Skills de forma nativa en el chat y en agent mode (es el mismo estándar abierto, así que las 19 skills del arnés funcionan sin cambios).
+VS Code soporta Agent Skills de forma nativa en el chat y en agent mode (es el mismo estándar abierto, así que las 21 skills del arnés funcionan sin cambios).
 
 | Nivel | Rutas reconocidas |
 |---|---|
@@ -167,7 +169,7 @@ docker run -d \
 docker restart open-webui
 ```
 
-Tras el reinicio, Open WebUI descubre las 19 skills automáticamente. Flujo: **instalar → montar → reiniciar**.
+Tras el reinicio, Open WebUI descubre las 21 skills automáticamente. Flujo: **instalar → montar → reiniciar**.
 
 #### Uso
 
@@ -186,9 +188,9 @@ Si trabajas con varios agentes a la vez, el gestor de paquetes `skills` detecta 
 
 ```bash
 # Publica el arnés en un repo Git y luego:
-npx skills add <tu-usuario>/harness-sdlc --all
+npx skills add <tu-usuario>/sdlc-harness --all
 # o solo para agentes específicos:
-npx skills add <tu-usuario>/harness-sdlc -a claude-code -a codex
+npx skills add <tu-usuario>/sdlc-harness -a claude-code -a codex
 ```
 
 ### Recomendación de nivel
@@ -211,11 +213,12 @@ para esta idea: <describe tu producto>. Modo: full-pipeline."
 
 El agente con la skill del orquestador:
 
-1. Crea `spec/pipeline-state.md` y activa la Fase -1 (setup) y Fase 0 (PO).
-2. Antes de activar cada rol, corre `context_packager.py` para darle solo el contexto mínimo.
-3. Al recibir cada artefacto, corre `gate_checker.py` — si falla, el artefacto se devuelve al rol.
-4. Se detiene en **GATE 1** (aprobación humana de la spec consolidada): aquí tú revisas `spec/` antes de que se escriba código.
-5. Continúa con build (TDD), QA, seguridad y despliegue, deteniéndose en los gates 2, 2.5 y 3.
+1. Crea `spec/pipeline-state.md` y activa la Fase -1 (setup) y Fase 0 (PO + Solution Architect: propuesta de arquitectura, historias técnicas y estimación CAPEX/OPEX).
+2. Se detiene en **GATE 0** (aprobación humana de la iniciativa): revisas la propuesta con opciones y el caso de negocio con costos antes de comprometer construcción.
+3. Antes de activar cada rol, corre `context_packager.py` para darle solo el contexto mínimo.
+4. Al recibir cada artefacto, corre `gate_checker.py` — si falla, el artefacto se devuelve al rol.
+5. Se detiene en **GATE 1** (aprobación humana de la spec consolidada): aquí tú revisas `spec/` antes de que se escriba código.
+6. Continúa con build (TDD), QA, seguridad y despliegue, deteniéndose en los gates 2, 2.5 y 3.
 
 ### Modos de operación
 
@@ -387,6 +390,17 @@ Basada en el framework de 8 pasos de Sonya Natanzon, el Advice Process y el Tech
 
 ---
 
+## 5c. Novedades v2.1 (arquitectura de la iniciativa + pricing cloud)
+
+El arquitecto ya no aparece solo en Fase 2: participa desde la concepción de la iniciativa, donde las decisiones de costo y forma determinan si el negocio aprueba construir.
+
+- **`sdlc-solution-architect` (Fases 0-2)**: el "arquitecto de la iniciativa". Acompaña a negocio/PO/BA a detallar historias (detecta NFRs implícitos y dependencias técnicas), escribe directamente **historias técnicas** (`spec/technical-stories.md`: enablers, deuda, spikes con timebox, NFRs medibles — cada una con origen, aceptación verificable y costo de omisión) y elabora la **propuesta de arquitectura** (`spec/architecture-proposal.md`): ≥2 opciones con diagramas (vía `sdlc-diagrams`), ADRs preliminares de dirección, comparativa cuantitativa y recomendación con scorecard. Frontera clara con `sdlc-software-architect`: el Solution Architect decide **si y con qué forma se construye**; el Software Architect diseña el detalle de la opción aprobada y firma los ADRs.
+- **`sdlc-cloud-pricing` (Fases 0 y 6)**: estimación **CAPEX** (ingeniería + one-time) y **OPEX** mensual en 3 escenarios (mínimo viable / crecimiento esperado / pico) para **AWS y Azure**, con TCO a 3 años, supuestos versionados en YAML y fecha de validez de precios. `scripts/cost_estimator.py` genera `spec/cost-estimation.md` desde `spec/cost-assumptions.yaml`; los precios unitarios de referencia pueden sobreescribirse tras verificar las calculadoras oficiales. En Fase 6 el Cloud Engineer la reutiliza para la estimación fina (desviación > 20% → change-request).
+- **GATE 0 (aprobación de la iniciativa)**: nuevo gate humano previo a GATE 1. Exige propuesta con opciones + recomendación, historias técnicas y estimación de costos vigente — los tres con recibo SHA-256. Tipos nuevos del gate: `gate_checker.py <artefacto> --tipo architecture-proposal|technical-stories|cost-estimation`. Sin GATE 0 no hay pipeline de construcción; el costo entra como criterio ponderado obligatorio en la scorecard de la propuesta.
+- **Routing "discovery"**: iniciativa nueva o evolución de producto → ruta PO + BA + Solution Architect + Cloud Pricing → GATE 0, antes de cualquier full-pipeline.
+
+---
+
 ## 6. Uso con LiteLLM
 
 LiteLLM soporta las skills de dos maneras, según lo que necesites:
@@ -408,7 +422,7 @@ Los archivos `.skill` del arnés son ZIPs válidos, así que se suben directamen
 from litellm import create_skill, list_skills
 import glob, shutil, os
 
-# 1. Subir las 19 skills del arnés
+# 1. Subir las 21 skills del arnés
 skill_ids = {}
 for f in sorted(glob.glob("./sdlc-*.skill")):
     zip_path = f.replace(".skill", ".zip")
@@ -450,7 +464,7 @@ resp = client.beta.messages.create(
 )
 ```
 
-> Recomendación: no subas las 19 skills al contenedor a la vez. Carga el orquestador + los roles de la fase en curso (la metadata de cada skill consume contexto).
+> Recomendación: no subas las 21 skills al contenedor a la vez. Carga el orquestador + los roles de la fase en curso (la metadata de cada skill consume contexto).
 
 #### Opción A2 — LiteLLM Proxy (curl)
 
@@ -478,7 +492,7 @@ Con varias cuentas de Anthropic, agrega `-F "model=<model_name>"` para enrutar s
 Si el arnés lo va a usar todo un equipo, publícalo una vez en el hub del proxy:
 
 ```bash
-# 1. Registrar el repo del arnés (sube la carpeta skills/ a un repo Git)
+# 1. Registrar el repo del arnés (sube la carpeta sdlc-harness/skills a un repo Git)
 curl -X POST https://tu-proxy/claude-code/plugins \
   -H "Authorization: Bearer $LITELLM_ADMIN_KEY" \
   -H "Content-Type: application/json" \
@@ -486,14 +500,14 @@ curl -X POST https://tu-proxy/claude-code/plugins \
     "name": "sdlc-orchestrator",
     "source": {
       "source": "git-subdir",
-      "url": "https://github.com/csalamando/harness-sdlc",
+      "url": "https://github.com/tu-org/sdlc-harness",
       "path": "skills/sdlc-orchestrator"
     },
     "description": "Orquestador del pipeline SDLC con SDD+TDD",
     "domain": "Engineering",
     "namespace": "sdlc"
   }'
-# (repetir por cada una de las 19 skills)
+# (repetir por cada una de las 21 skills)
 
 # 2. Publicar en el hub
 curl -X POST https://tu-proxy/claude-code/plugins/sdlc-orchestrator/enable \
