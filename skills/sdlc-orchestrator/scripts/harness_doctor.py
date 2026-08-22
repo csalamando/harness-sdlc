@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """harness_doctor.py — Health check read-only del arnes SDLC instalado.
 
-Verifica: skills instaladas (15 roles + memoria), plantillas assets presentes,
-scripts del orquestador ejecutables, estructura spec/ del proyecto.
+Verifica: skills instaladas (21 roles + memoria), plantillas assets presentes,
+scripts del orquestador ejecutables, estructura spec/ del proyecto, indice
+code_intel.
 
 Uso: python3 harness_doctor.py [--skills-dir <ruta>] [--project-dir <ruta>]
 Exit 0 si todo OK; 1 si hay problemas.
@@ -20,7 +21,8 @@ EXPECTED_SKILLS = [
 ]
 ORCH_SCRIPTS = ["gate_checker.py", "context_packager.py", "spec_diff_impact.py",
                 "decision_sizing.py", "advisor.py", "arch_signoff.py",
-                "traceability_matrix.py", "receipt.py", "detect_stack.py", "authority_check.py"]
+                "traceability_matrix.py", "receipt.py", "detect_stack.py", "authority_check.py",
+                "code_intel.py", "spec_index.py"]
 MEM_SCRIPTS = ["mem.py", "mem_mcp.py"]
 
 def check(ok_list, label, ok, detail=""):
@@ -60,8 +62,13 @@ def main():
         check(results, f"spec/{sub}", os.path.isdir(p), "(se crea al primer uso)" if not os.path.isdir(p) else "")
     gi = os.path.join(a.project_dir, ".gitignore")
     if os.path.isfile(gi):
-        has_ignore = ".index" in open(gi, encoding="utf-8", errors="ignore").read()
-        check(results, ".gitignore incluye spec/memory/.index/", has_ignore)
+        gi_text = open(gi, encoding="utf-8", errors="ignore").read()
+        check(results, ".gitignore incluye spec/memory/.index/", ".index" in gi_text)
+        check(results, ".gitignore incluye .codeintel/ (índice derivable)", ".codeintel" in gi_text)
+    ci_db = os.path.join(a.project_dir, ".codeintel", "index.db")
+    check(results, ".codeintel/index.db (code_intel indexado)",
+          os.path.isfile(ci_db),
+          "" if os.path.isfile(ci_db) else "(correr: code_intel.py --root <proyecto> index)")
 
     n_fail = results.count(False)
     print(f"\nEstado: {'OK' if n_fail == 0 else f'REVISAR — {n_fail} problema(s)'}")
