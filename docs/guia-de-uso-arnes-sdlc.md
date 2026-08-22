@@ -8,7 +8,7 @@ Esta guía explica cómo instalar y usar las 21 skills del arnés SDLC en cualqu
 
 | Skill | Rol | Fase |
 |---|---|---|
-| `sdlc-orchestrator` | Orquestador del pipeline + 12 herramientas CLI | Todas |
+| `sdlc-orchestrator` | Orquestador del pipeline + 14 herramientas CLI | Todas |
 | `sdlc-product-owner` | Visión y backlog priorizado | 0 |
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina | 0, 6 |
@@ -237,7 +237,7 @@ y genera las historias de usuario con Gherkin del sprint 1."
 
 ### Requisitos de las herramientas CLI del orquestador
 
-Los scripts (`gate_checker.py`, `receipt.py`, `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, etc.) solo necesitan **Python 3** (sin dependencias externas). El agente los ejecuta directamente; en entornos sandbox asegúrate de que el agente tenga permiso de ejecutar Python.
+Los scripts (`gate_checker.py`, `receipt.py`, `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `code_intel.py`, etc.) solo necesitan **Python 3** (sin dependencias externas). El agente los ejecuta directamente; en entornos sandbox asegúrate de que el agente tenga permiso de ejecutar Python.
 
 ---
 
@@ -298,6 +298,7 @@ python3 scripts/mem.py save --type decision --title "JWT con refresh rotation" \
     --what "Access 15min + refresh rotativo" --why "SEC-001 exige expiración corta" \
     --links HU-003,SEC-001 --tags auth
 python3 scripts/mem.py search "refresh token" --any
+python3 scripts/mem.py search "refresh token" --brief   # una línea por memoria
 python3 scripts/mem.py conflicts list
 python3 scripts/mem.py conflicts resolve MEM-...-002 MEM-...-001 --relation supersedes
 python3 scripts/mem.py session end --summary "Fase 2 cerrada"
@@ -411,6 +412,29 @@ El arquitecto ya no aparece solo en Fase 2: participa desde la concepción de la
 - **CODEOWNERS (frontera dura)**: plantilla `assets/CODEOWNERS-template` — con branch protection, un PR que toca `spec/adr/` no se mergea sin revisión del Arquitecto.
 
 Jerarquía de garantías: convención (SKILL.md) → gate (recibo con rol) → CI (`authority_check.py`) → Git (CODEOWNERS + branch protection). Las dos últimas son las que realmente bloquean; las dos primeras hacen que el incumplimiento sea visible e inútil.
+
+---
+
+## 5e. Novedades v2.3 (contexto mínimo e inteligencia de código)
+
+El contexto del agente pasa a ser un recurso gobernado: el objetivo es que el agente **lea solo lo que necesita**, con acceso rápido a spec, código y memorias.
+
+- **`code_intel.py`** (nuevo, orquestador): motor de inteligencia de código propio, inspirado en [Gortex](https://github.com/zzet/gortex) pero reimplementado a medida — Python stdlib puro, **sin daemon ni dependencias**, índice SQLite derivable en `<proyecto>/.codeintel/index.db` (gitignored, reindex incremental por SHA-256 en ~ms). Extracción por niveles: `ast` para Python (fidelidad total) y patrones para 15 lenguajes más (JS/TS/Go/Java/Rust/C/C++/Ruby/PHP/C#/Kotlin/Swift). Comandos:
+  ```bash
+  python3 scripts/code_intel.py --root . index            # indexar/reindexar (incremental)
+  python3 scripts/code_intel.py context <símbolo|archivo> # cuerpo exacto o esqueleto (no leer el archivo entero)
+  python3 scripts/code_intel.py impact <símbolo|archivo>  # blast radius antes de editar
+  python3 scripts/code_intel.py tests <símbolo|archivo>   # tests candidatos → evidencia para GATE 2
+  python3 scripts/code_intel.py search "refresh token"    # FTS5 sobre firmas/docstrings
+  python3 scripts/code_intel.py map                       # mapa por directorio + símbolos más llamados
+  ```
+  Regla para roles de desarrollo: **no leer archivos de código completos** — consultar símbolos. Si el índice no existe, el arnés degrada a lectura normal (capacidad opcional, como drawio sin MCP).
+- **`spec_index.py`** (nuevo, orquestador): genera `spec/INDEX.md`, digest de una página con sha256 + tamaño + resumen de cada artefacto. El agente lee el digest para orientarse y abre solo el artefacto que necesita, verificando recibo. Regenerar al abrir sesión y tras cada aprobación (es barato).
+- **`context_packager.py`**: antepone `spec/INDEX.md` al paquete; para `backend-dev`/`frontend-dev`/`qa`/`sre` con índice disponible, incluye las instrucciones de `code_intel` (`--code-root`).
+- **`mem.py search --brief`**: una línea por memoria (id + tipo + título); abrir con `mem.py get <id>` solo la relevante.
+- **Change-request con impacto total**: `spec_diff_impact.py` (impacto en spec) + `code_intel.py impact` (impacto en código) — la revocación de recibos cubre ambos grafos.
+- **GATE 2**: si hay índice, los tests corridos deben cubrir lo que reporta `code_intel.py tests` para los símbolos tocados.
+- `harness_doctor.py`: 12 scripts del orquestador; verifica `.codeintel/` en `.gitignore` y la existencia del índice.
 
 ---
 
