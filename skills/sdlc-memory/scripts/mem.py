@@ -212,7 +212,13 @@ def cmd_search(a):
         if rows:
             found = True
             print(f"--- scope: {scope} ---")
-            for r in rows: print(f"{r[0]}  [{r[1]}]  {r[2]}  ({r[3][:10]})\n    {r[4]}")
+            for r in rows:
+                if getattr(a, "brief", False):
+                    print(f"{r[0]}  [{r[1]}]  {r[2]}  ({r[3][:10]})")
+                else:
+                    print(f"{r[0]}  [{r[1]}]  {r[2]}  ({r[3][:10]})\n    {r[4]}")
+            if getattr(a, "brief", False):
+                print("    (abrir con: mem.py get <id>)")
     if not found: print("Sin resultados en ningun scope.")
 
 def find_entry(a, mid):
@@ -493,6 +499,7 @@ def main():
         p.add_argument(f"--{f}", default="")
     p.set_defaults(enforcement="recommended")
     p = sub.add_parser("search"); p.add_argument("query"); p.add_argument("--any", action="store_true")
+    p.add_argument("--brief", action="store_true", help="una linea por resultado (ahorra contexto)")
     p.add_argument("--type", default=""); p.add_argument("--project", default="")
     p.add_argument("--scope", choices=SCOPES, default="", help="Limitar busqueda a un scope")
     p = sub.add_parser("get"); p.add_argument("id")
