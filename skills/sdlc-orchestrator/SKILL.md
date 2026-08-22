@@ -1,6 +1,6 @@
 ---
 name: sdlc-orchestrator
-description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés."
+description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol, consultar el código por símbolos (blast radius, tests candidatos) con code_intel, generar el digest de la spec y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés, blast radius, qué tests correr, reducir contexto del agente."
 ---
 
 
@@ -53,8 +53,8 @@ El Arquitecto de Software es el **Decision Owner técnico**: el PO define el QU�
 1. Mantener `spec/pipeline-state.md`: artefacto, fase, rol dueño, estado, gate pendiente, resultado de `detect_stack.py` y Risk Tier vigente.
 2. Antes de invocar un rol, verificar su DoR: entradas presentes **y con recibo vigente** (ver Recibos).
 3. Al recibir un artefacto, ejecutar `gate_checker.py`; si pasa, **emitir recibo** con `receipt.py emit`.
-4. Armar el paquete de contexto mínimo por rol con `context_packager.py` — nunca pasar toda la spec a todos.
-5. Ante cambio de spec: declarar relación (supersedes/conflicts_with), correr `spec_diff_impact.py`, revocar recibos impactados, re-ejecutar solo fases afectadas.
+4. Armar el paquete de contexto mínimo por rol con `context_packager.py` — nunca pasar toda la spec a todos. Si existe `spec/INDEX.md` va primero (orientación de una página).
+5. Ante cambio de spec: declarar relación (supersedes/conflicts_with), correr `spec_diff_impact.py` (impacto en spec) **y** `code_intel.py impact <artefacto/símbolo>` (impacto en código), revocar recibos impactados, re-ejecutar solo fases afectadas.
 6. Mantener trazabilidad con `traceability_matrix.py`: historia → Gherkin → test → código.
 7. Sesiones de memoria: abrir con la skill sdlc-memory al iniciar trabajo, buscar memoria relevante por fase, cerrar con resumen. Un `conflicts_with` de memoria sin resolver bloquea GATE 1.
 8. Health check del arnés con `harness_doctor.py` al instalar o cuando algo falle.
@@ -89,6 +89,16 @@ Al completarse y verificarse un sprint/incremento:
 4. `traceability_matrix.py` final en verde + `receipt.py status` en `spec/receipts/`.
 5. Cerrar sesión de memoria con resumen del sprint. El ciclo queda cerrado y la próxima iteración arranca desde una spec consolidada.
 
+## Contexto mínimo e inteligencia de código (v2.3)
+
+El contexto del agente es un recurso gobernado, no infinito. Tres mecanismos:
+
+1. **`spec_index.py`**: genera `spec/INDEX.md`, un digest de una página con hash + resumen de cada artefacto. Regenerar al abrir sesión y tras cada artefacto aprobado (es barato). El agente lee el digest y solo abre lo que necesita, verificando recibo.
+2. **`code_intel.py`**: índice de símbolos del código (Python vía `ast`, 15 lenguajes más por patrones) en SQLite derivable (`<proyecto>/.codeintel/index.db`, gitignored, incremental por SHA-256). Sin daemon ni dependencias. Regla para roles de desarrollo: **no leer archivos completos** — usar `context` (cuerpo exacto del símbolo o esqueleto del archivo), `impact` (blast radius antes de editar), `tests` (tests candidatos a correr), `search` (firmas/docstrings). Reindexar al abrir sesión (`index` es incremental, ~ms sin cambios).
+3. **`mem.py search --brief`**: una línea por memoria (id + título); abrir con `mem.py get <id>` solo la relevante.
+
+En GATE 2, `code_intel.py tests <símbolo>` es evidencia de qué tests debían correr. Si el índice no existe, el arnés degrada a lectura normal de archivos (como drawio sin MCP: la capacidad es opcional, nunca bloquea).
+
 ## Scripts
 
 Ejecutar con `python3 scripts/<nombre>.py`:
@@ -104,12 +114,14 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `advisor.py --adr <adr> --risk-tier N [--output <json>]`: identifica stakeholders del Advice Process por áreas de impacto.
 - `arch_signoff.py --adr <adr> --architect "Nombre"`: firma arquitectónica; genera recibo ARCH-xxx.json con SHA-256 del ADR y artefactos de diseño.
 - `authority_check.py <artefacto> --role <rol> | --author <usuario> --team spec/team-roster.yaml`: valida que quien emite/firma un artefacto sea su rol dueño según `spec/authority-matrix.yaml`. Exit 1 si no está autorizado.
+- `code_intel.py --root <proyecto> index|symbol|context|impact|tests|search|map|stats`: inteligencia de código local (grafo de símbolos en SQLite, incremental, sin daemon). `context` evita leer archivos completos; `impact` calcula blast radius; `tests` lista tests candidatos para GATE 2.
+- `spec_index.py [--spec-dir spec/]`: regenera `spec/INDEX.md`, digest de una página con hash y resumen por artefacto.
 
 ## Gates
 
 - **GATE 0** (humano — aprobación de la iniciativa): propuesta de arquitectura con ≥2 opciones y recomendación justificada (`gate_checker.py spec/architecture-proposal.md --tipo architecture-proposal`), historias técnicas registradas (`--tipo technical-stories`) y estimación CAPEX/OPEX vigente (`--tipo cost-estimation`). Los tres artefactos emiten recibo GATE 0. Sin iniciativa aprobada, no hay pipeline de construcción.
 - **GATE 1** (humano): spec consolidada aprobada + sin conflicts_with de memoria pendientes + `policy check` en verde (toda política org mandatory attestada compliant o con desviación aprobada vigente) + **para cada ADR Tier 1-2**: `gate_checker.py --tipo adr` en verde (8 pasos, scorecard, Advice Log, Tech Radar, firma `arch_signoff.py` vigente). Sin esto, cero código.
-- **GATE 2**: todas las historias verificadas E2E. Bug crítico → devuelve artefacto al dev con el test que lo reproduce (una corrección acotada; si falla, escala).
+- **GATE 2**: todas las historias verificadas E2E. Si hay índice `code_intel`, los tests corridos deben cubrir lo reportado por `code_intel.py tests` para los símbolos tocados. Bug crítico → devuelve artefacto al dev con el test que lo reproduce (una corrección acotada; si falla, escala).
 - **GATE 2.5** (Security): ninguna vulnerabilidad crítica/alta abierta.
 - **GATE 3**: staging validado + rollback probado.
 
