@@ -89,18 +89,35 @@ Separación de autoridad: **el PO nunca aprueba decisiones técnicas; el Arquite
 
 ## 3. El pipeline y los gates
 
+```mermaid
+flowchart LR
+    F1["FASE -1 · Setup<br/>DevOps + detect_stack"] --> F0["FASE 0 · Discovery<br/>PO + Solution Architect<br/>+ Cloud Pricing"]
+    F0 --> G0{"GATE 0<br/>🧑 humano<br/>iniciativa aprobada"}
+    G0 -->|aprobada| F12["FASE 1 · BA<br/>historias + roles + PDD<br/>FASE 2 · UX + Architect<br/>+ Security + Data"]
+    G0 -->|rechazada| STOP0((⛔ no hay<br/>pipeline))
+    F12 --> F3["FASE 3 · Spec consolidada"]
+    F3 --> G1{"GATE 1<br/>🧑 humano<br/>spec + ADRs firmados<br/>+ prototipo UI"}
+    G1 -->|aprobada| F4["FASE 4 · Build<br/>Dev Back ∥ Dev Front<br/>TDD estricto"]
+    G1 -->|rechazada| STOP1((⛔ cero código))
+    F4 --> G2{"GATE 2 · QA<br/>todas las HU E2E"}
+    G2 --> G25{"GATE 2.5 · Security<br/>cero vulns críticas/altas"}
+    G25 --> F6["FASE 6 · DevOps + Cloud"]
+    F6 --> G3{"GATE 3 · Deploy<br/>staging + rollback<br/>+ diagramas con recibo"}
+    G3 --> PROD[("🚀 PROD")]
+    PROD --> F7["FASE 7 · SRE opera +<br/>Product Analyst mide"]
+    F7 --> F8["FASE 8 · Archivo<br/>sprint review + cierre"]
+    F8 -.->|realimenta backlog| F0
+    F4 -.->|bug crítico: devuelve<br/>con test que lo reproduce| F4
+    style G0 fill:#fff3cd,stroke:#d4a017
+    style G1 fill:#fff3cd,stroke:#d4a017
+    style G2 fill:#d4edda,stroke:#28a745
+    style G25 fill:#d4edda,stroke:#28a745
+    style G3 fill:#d4edda,stroke:#28a745
+    style STOP0 fill:#f8d7da,stroke:#dc3545
+    style STOP1 fill:#f8d7da,stroke:#dc3545
 ```
-FASE -1 Setup (DevOps + detect_stack)
-→ FASE 0 Discovery: PO + BA + Solution Architect (propuesta + pricing) [GATE 0 humano: iniciativa aprobada]
-→ FASE 1 BA
-→ FASE 2 UX + Architect (+ Decision Engine) + Security + Data
-→ FASE 3 Spec consolidada [GATE 1 humano]
-→ FASE 4 Dev Back ∥ Dev Front (TDD)
-→ FASE 5 QA + Security DAST [GATE 2 / 2.5]
-→ FASE 6 DevOps + Cloud [GATE 3] → PROD
-→ FASE 7 SRE opera + Product Analyst mide → realimenta backlog
-→ FASE 8 Archivo: merge de delta-specs + sprint review + cierre del ciclo
-```
+
+Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**.
 
 | Gate | Qué exige |
 |---|---|
@@ -215,6 +232,17 @@ Cuando un gate pasa, `receipt.py emit` guarda en `spec/receipts/` un JSON con el
 }
 ```
 
+```mermaid
+stateDiagram-v2
+    [*] --> ACTIVE: gate pasa → receipt.py emit<br/>(SHA-256 + rol + timestamp)
+    ACTIVE --> INVALIDATED: verify() detecta<br/>1 byte de diferencia
+    ACTIVE --> REVOKED: spec_diff_impact.py<br/>revoca en cascada (cambio upstream)
+    INVALIDATED --> ACTIVE: re-ejecutar gate → nuevo recibo
+    REVOKED --> ACTIVE: re-validar y re-aprobar
+    INVALIDATED --> [*]: pipeline detenido<br/>(el gate no reconoce la aprobación)
+    REVOKED --> [*]: pipeline detenido
+```
+
 **Reglas del sistema:**
 
 1. **Verificación antes de consumir.** Antes de que cualquier fase downstream use un artefacto, `receipt.py verify` recalcula el hash del archivo actual y lo compara con el recibo. Un byte de diferencia → recibo **INVALIDATED** y el gate debe re-ejecutarse. Nadie aprueba dos veces sin nueva evidencia.
@@ -250,6 +278,24 @@ Los agentes olvidan todo al cerrar la sesión: decisiones y sus razones, bugs ya
 ```
 
 Al ser Git-nativa, la memoria tiene **historial, diff, code review y resolución de conflictos gratis**. Junto a cada raíz existe un `index.db` (**SQLite con FTS5**) que solo acelera la búsqueda con ranking. Es **100% derivable**: se borra y se reconstruye con `mem.py reindex`. Nunca pierdes nada por tocar la DB.
+
+```mermaid
+flowchart TB
+    subgraph ORG["🏢 scope ORG — lineamientos de la organización (gana siempre)"]
+        O["políticas mandatory/recommended<br/>desviaciones con aprobación humana<br/>~/.sdlcmem/org/entries/"]
+    end
+    subgraph USER["👤 scope USER — tu experiencia entre proyectos"]
+        U["patrones y aprendizajes personales<br/>~/.sdlcmem/user/entries/"]
+    end
+    subgraph PROJ["📁 scope PROJECT — viaja en el repo del proyecto"]
+        P["decisiones, bugs, contexto del proyecto<br/>./spec/memory/entries/"]
+    end
+    ORG -->|precedencia| USER -->|precedencia| PROJ
+    P -.->|promote: patrón probado<br/>sube de nivel| U -.->|promote| O
+    Q["🔍 mem.py search"] --> ORG
+    Q --> USER
+    Q --> PROJ
+```
 
 ```bash
 # Consultar la memoria

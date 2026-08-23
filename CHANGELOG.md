@@ -7,6 +7,11 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.10.1] - 2026-08-23
+
+### Docs
+- **README con diagramas Mermaid** (render nativo de GitHub, sin imágenes que mantener): el pipeline completo con gates coloreados por tipo (humanos vs automáticos, §3), el ciclo de vida de un recibo RDD como diagrama de estados (ACTIVE → INVALIDATED/REVOKED → re-gate, §5) y las tres capas de memoria con precedencia y promoción (§6). Dogfooding: la propia skill `sdlc-diagrams` predica doc-as-code con Mermaid.
+
 ## [2.10.0] - 2026-08-23
 
 ### Added
