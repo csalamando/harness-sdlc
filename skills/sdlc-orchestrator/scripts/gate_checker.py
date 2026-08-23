@@ -4,7 +4,8 @@
 Uso: python3 gate_checker.py <artefacto> --tipo <tipo>
 Tipos: vision, backlog, user-stories, ux-flows, design-system, architecture,
        api-contract, test-plan, threat-model, qa-report, slo,
-       technical-stories, architecture-proposal, cost-estimation (GATE 0)
+       technical-stories, architecture-proposal, cost-estimation (GATE 0),
+       roles, process-definition (v2.7 — catálogo de roles y PDD AS-IS)
 Exit 0 = pasa el gate. Exit 1 = falla (imprime checks incumplidos).
 """
 import sys, argparse, re, os
@@ -40,6 +41,12 @@ CHECKS = {
     "adr": [r"Problem Statement", r"Last Responsible Moment", r"Criterios de Evaluación",
             r"Opciones Consideradas", r"Advice Log", r"Scorecard", r"Decisión",
             r"Re-evaluation Triggers", r"Risk Tier"],
+    # v2.7 — catálogo de roles gobernado y PDD (AS-IS)
+    "roles": [r"ROL-\d+", r"[Aa]cciones que habilita", r"[Cc]ontexto",
+              r"[Rr]eglas que lo restringen|[Rr]eglas.*restringen"],
+    "process-definition": [r"AS-IS", r"[Dd]isparador", r"[Ee]xcepciones",
+                           r"SLA", r"[Aa]plicaciones involucradas",
+                           r"[Rr]iesgos", r"[Ss]upuestos", r"[Pp]rocess [Oo]wner"],
 }
 
 TECH_KEYWORDS = [
@@ -124,6 +131,20 @@ def check_signoff(adr_path, receipts_dir):
     return []
 
 
+def check_roles_refs(roles_path, stories_path):
+    """Verifica que los ROL-xx citados en las historias existan en el catálogo."""
+    try:
+        defined = set(re.findall(r"ROL-\d+", open(roles_path, encoding="utf-8").read()))
+    except FileNotFoundError:
+        return []
+    try:
+        cited = set(re.findall(r"ROL-\d+", open(stories_path, encoding="utf-8").read()))
+    except FileNotFoundError:
+        return []
+    unknown = sorted(cited - defined)
+    return [f"ROL citado en {stories_path} sin definir en el catálogo: {', '.join(unknown)}"] if unknown else []
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("artefacto")
@@ -146,6 +167,10 @@ def main():
         semantic += check_adr_semantics(a.artefacto, a.risk_tier)
         semantic += check_tech_radar(a.artefacto, a.tech_radar)
         semantic += check_signoff(a.artefacto, a.receipts_dir)
+    if a.tipo in ("roles", "user-stories"):
+        roles_f = a.artefacto if a.tipo == "roles" else "spec/roles.md"
+        stories_f = a.artefacto if a.tipo == "user-stories" else "spec/user-stories.md"
+        semantic += check_roles_refs(roles_f, stories_f)
     if missing or semantic:
         print(f"GATE NO PASADO ({a.tipo}):")
         for m in missing: print(f"  - patrón no encontrado: {m}")
