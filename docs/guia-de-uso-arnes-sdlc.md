@@ -8,7 +8,7 @@ Esta guía explica cómo instalar y usar las 21 skills del arnés SDLC en cualqu
 
 | Skill | Rol | Fase |
 |---|---|---|
-| `sdlc-orchestrator` | Orquestador del pipeline + 14 herramientas CLI | Todas |
+| `sdlc-orchestrator` | Orquestador del pipeline + 15 herramientas CLI | Todas |
 | `sdlc-product-owner` | Visión y backlog priorizado | 0 |
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina | 0, 6 |
@@ -237,7 +237,7 @@ y genera las historias de usuario con Gherkin del sprint 1."
 
 ### Requisitos de las herramientas CLI del orquestador
 
-Los scripts (`gate_checker.py`, `receipt.py`, `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `code_intel.py`, etc.) solo necesitan **Python 3** (sin dependencias externas). El agente los ejecuta directamente; en entornos sandbox asegúrate de que el agente tenga permiso de ejecutar Python.
+Los scripts (`gate_checker.py`, `receipt.py`, `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `code_intel.py`, `skill_metrics.py`, etc.) solo necesitan **Python 3** (sin dependencias externas). El agente los ejecuta directamente; en entornos sandbox asegúrate de que el agente tenga permiso de ejecutar Python.
 
 ---
 
@@ -429,12 +429,28 @@ El contexto del agente pasa a ser un recurso gobernado: el objetivo es que el ag
   python3 scripts/code_intel.py map                       # mapa por directorio + símbolos más llamados
   ```
   Regla para roles de desarrollo: **no leer archivos de código completos** — consultar símbolos. Si el índice no existe, el arnés degrada a lectura normal (capacidad opcional, como drawio sin MCP).
-- **`spec_index.py`** (nuevo, orquestador): genera `spec/INDEX.md`, digest de una página con sha256 + tamaño + resumen de cada artefacto. El agente lee el digest para orientarse y abre solo el artefacto que necesita, verificando recibo. Regenerar al abrir sesión y tras cada aprobación (es barato).
+- **`spec_index.py`** (nuevo, orquestador): genera `spec/INDEX.md`, digest de una página con sha256 + tamaño + resumen de cada artefacto. El agente lee el digest para orientarse y abre solo el artefacto que necesita, verificando recibo. Regenerar al abrir sesión y tras cada aprobación (es barato). El encabezado incluye el bloque "Cómo leer este repo": las 4 reglas de gobierno para cualquier agente que aterrice en el proyecto, con o sin el arnés instalado.
 - **`context_packager.py`**: antepone `spec/INDEX.md` al paquete; para `backend-dev`/`frontend-dev`/`qa`/`sre` con índice disponible, incluye las instrucciones de `code_intel` (`--code-root`).
 - **`mem.py search --brief`**: una línea por memoria (id + tipo + título); abrir con `mem.py get <id>` solo la relevante.
 - **Change-request con impacto total**: `spec_diff_impact.py` (impacto en spec) + `code_intel.py impact` (impacto en código) — la revocación de recibos cubre ambos grafos.
 - **GATE 2**: si hay índice, los tests corridos deben cubrir lo que reporta `code_intel.py tests` para los símbolos tocados.
 - `harness_doctor.py`: 12 scripts del orquestador; verifica `.codeintel/` en `.gitignore` y la existencia del índice.
+
+---
+
+## 5f. Novedades v2.4 (telemetría de skills)
+
+Mide el aporte real de cada skill y **audita que el agente trabaje a través de las skills** — sin meter telemetría en el contexto (la escritura es un flag en comandos que ya existen; la lectura es bajo demanda).
+
+- **Registro de activación**: el orquestador corre `skill_metrics.py use --skill <rol> --fase <N>` antes de invocar cada rol (append-only en `spec/metrics/usage.jsonl`).
+- **Tokens por skill**: `receipt.py emit` acepta `--tokens-in/-out --tokens-src reportado|estimado`. Fuente `reportada` = telemetría exacta de la plataforma del agente (p. ej. OpenTelemetry de Claude Code expone tokens por skill); fuente `estimada` = chars/4 del artefacto, calculada por el propio script — **no depende de que el agente reporte**. `--attempts K` registra en qué intento pasó el gate.
+- **Reporte** (`skill_metrics.py report` → `spec/METRICS.md`), tres vistas:
+  1. **Aporte por skill**: activaciones, artefactos con recibo, % de gates al primer intento, tokens (reportados + estimados por separado).
+  2. **Cobertura (detector de freestyle)**: cruza fases con activaciones. Un rol con artefactos pero **sin activación registrada** = el agente trabajó por fuera de la skill; una **activación sin artefactos** = skill de adorno. Es la respuesta a "¿de verdad se están usando las skills o el agente hace todo solo?".
+  3. **Señales**: candidatas accionables — skills con rechazos repetidos de gate (mejorar SKILL.md/plantillas), costo alto por artefacto (aplicar contexto mínimo), skills sin uso (deprecar o hacer condicionales).
+- **Cierre del loop**: en Fase 8 el orquestador genera `METRICS.md` y guarda las señales como memoria `tipo: learning` — la mejora de las skills queda institucionalizada.
+- **Anti-inflación de contexto**: `METRICS.md` nunca se inyecta en paquetes de contexto; se consulta en Fase 8 o cuando el humano lo pida.
+- `harness_doctor.py`: 13 scripts del orquestador.
 
 ---
 
