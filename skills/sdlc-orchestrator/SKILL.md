@@ -1,6 +1,6 @@
 ---
 name: sdlc-orchestrator
-description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol, consultar el código por símbolos (blast radius, tests candidatos) con code_intel, generar el digest de la spec y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés, blast radius, qué tests correr, reducir contexto del agente."
+description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol, consultar el código por símbolos (blast radius, tests candidatos) con code_intel, generar el digest de la spec, medir el aporte y la disciplina de las skills (skill_metrics) y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés, blast radius, qué tests correr, reducir contexto del agente."
 ---
 
 
@@ -51,8 +51,8 @@ El Arquitecto de Software es el **Decision Owner técnico**: el PO define el QU�
 ## Responsabilidades
 
 1. Mantener `spec/pipeline-state.md`: artefacto, fase, rol dueño, estado, gate pendiente, resultado de `detect_stack.py` y Risk Tier vigente.
-2. Antes de invocar un rol, verificar su DoR: entradas presentes **y con recibo vigente** (ver Recibos).
-3. Al recibir un artefacto, ejecutar `gate_checker.py`; si pasa, **emitir recibo** con `receipt.py emit`.
+2. Antes de invocar un rol, verificar su DoR: entradas presentes **y con recibo vigente** (ver Recibos). Registrar la activación con `skill_metrics.py use --skill <rol> --fase <N>` (telemetría v2.4: sin este registro, el trabajo del rol cuenta como *freestyle* en METRICS.md).
+3. Al recibir un artefacto, ejecutar `gate_checker.py`; si pasa, **emitir recibo** con `receipt.py emit`, incluyendo telemetría si está disponible: `--tokens-in/-out --tokens-src reportado` cuando la plataforma del agente expone el consumo, o `--tokens-src estimado` (chars/4, lo calcula el script) cuando no; `--attempts K` si el gate necesitó reintentos.
 4. Armar el paquete de contexto mínimo por rol con `context_packager.py` — nunca pasar toda la spec a todos. Si existe `spec/INDEX.md` va primero (orientación de una página).
 5. Ante cambio de spec: declarar relación (supersedes/conflicts_with), correr `spec_diff_impact.py` (impacto en spec) **y** `code_intel.py impact <artefacto/símbolo>` (impacto en código), revocar recibos impactados, re-ejecutar solo fases afectadas.
 6. Mantener trazabilidad con `traceability_matrix.py`: historia → Gherkin → test → código.
@@ -87,7 +87,18 @@ Al completarse y verificarse un sprint/incremento:
 2. Fusionar los cambios de spec aprobados durante el sprint (delta-specs) en la spec maestra; la versión anterior queda como histórico.
 3. Marcar memorias superseded según corresponda; resolver conflictos pendientes.
 4. `traceability_matrix.py` final en verde + `receipt.py status` en `spec/receipts/`.
-5. Cerrar sesión de memoria con resumen del sprint. El ciclo queda cerrado y la próxima iteración arranca desde una spec consolidada.
+5. Generar `spec/METRICS.md` con `skill_metrics.py report` (aporte, cobertura y señales por skill) y guardar una memoria `tipo: learning` con las señales relevantes (skills con rechazos de gate, tokens altos, freestyle detectado) — la retroalimentación de mejora de las skills queda institucionalizada.
+6. Cerrar sesión de memoria con resumen del sprint. El ciclo queda cerrado y la próxima iteración arranca desde una spec consolidada.
+
+## Telemetría de skills (v2.4)
+
+La disciplina no se narra, se mide — sin meter telemetría en el contexto del agente (escritura por CLI en comandos que ya existen; lectura bajo demanda). `spec/METRICS.md` responde:
+
+1. **Aporte**: qué generó cada skill (artefactos con recibo), tasa de gates al primer intento (`--attempts`) y tokens por skill — separando fuente `reportada` (telemetría exacta de la plataforma) de `estimada` (chars/4 del artefacto, sin depender del agente).
+2. **Cobertura (freestyle detector)**: cruza fases con las activaciones en `spec/metrics/usage.jsonl`. Un rol con artefactos pero sin activación registrada = **trabajo fuera de la skill**; una activación sin artefactos = skill de adorno. Es la evidencia de que el agente trabaja *a través* del arnés y no por fuera de él.
+3. **Señales**: candidatas accionables para mejorar skills (rechazos de gate repetidos, costo por artefacto alto, skills sin uso).
+
+Regla: `METRICS.md` nunca se inyecta en paquetes de contexto; se consulta en Fase 8 o cuando el humano lo pida.
 
 ## Contexto mínimo e inteligencia de código (v2.3)
 
@@ -104,7 +115,8 @@ En GATE 2, `code_intel.py tests <símbolo>` es evidencia de qué tests debían c
 Ejecutar con `python3 scripts/<nombre>.py`:
 
 - `gate_checker.py <artefacto> --tipo <tipo>`: valida checklist de salida de un artefacto. Exit 0 = pasa gate.
-- `receipt.py emit|verify|status|revoke`: recibos de aprobación vinculados al SHA-256 del artefacto.
+- `receipt.py emit|verify|status|revoke`: recibos de aprobación vinculados al SHA-256 del artefacto. `emit` acepta telemetría opcional: `--tokens-in/-out --tokens-src reportado|estimado --attempts K`.
+- `skill_metrics.py use|report`: telemetría de skills — `use` registra la activación de un rol (append-only en `spec/metrics/usage.jsonl`); `report` genera `spec/METRICS.md` con aporte, cobertura (freestyle detector) y señales.
 - `context_packager.py --rol <rol> --spec-dir spec/`: lista mínima de archivos que ese rol necesita.
 - `spec_diff_impact.py --cambiado <artefacto> [--relation supersedes|conflicts_with]`: impacto downstream de un cambio.
 - `traceability_matrix.py --spec-dir spec/ --tests-dir tests/ --src-dir src/`: matriz historia → test → código; detecta brechas.
