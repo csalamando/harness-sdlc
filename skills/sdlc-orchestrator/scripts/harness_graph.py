@@ -100,17 +100,17 @@ TEMPLATE = """<!DOCTYPE html>
   :root { color-scheme: dark; }
   body { background:#0b1220; color:#e2e8f0; font-family:system-ui,sans-serif; margin:0; padding:2rem; }
   h1 { font-size:1.3rem; } .sub { color:#94a3b8; font-size:.85rem; margin-bottom:1.5rem; }
-  .canvas { position:relative; height:340px; background:#0f172a; border:1px solid #1e293b; border-radius:12px; overflow:hidden; }
+  .canvas { position:relative; height:540px; background:#0f172a; border:1px solid #1e293b; border-radius:12px; overflow:hidden; }
   svg.edges { position:absolute; inset:0; width:100%; height:100%; }
-  .node { position:absolute; transform:translate(-50%,-50%); cursor:pointer; text-align:center; width:110px; }
-  .node .dot { width:44px; height:44px; border-radius:50%; margin:0 auto; background:#1e293b; border:2px solid #3b82f6;
-               display:flex; align-items:center; justify-content:center; font-weight:700; transition:.15s; }
+  .node { position:absolute; transform:translate(-50%,-50%); cursor:pointer; text-align:center; width:150px; }
+  .node .dot { width:56px; height:56px; border-radius:50%; margin:0 auto; background:#1e293b; border:2px solid #3b82f6;
+               display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.15rem; transition:.15s; }
   .node:hover .dot, .node.active .dot { border-color:#f59e0b; transform:scale(1.15); }
-  .node .lbl { font-size:.72rem; margin-top:.4rem; color:#cbd5e1; }
-  .node .cnt { font-size:.62rem; color:#64748b; }
-  .node .gate { position:absolute; top:-14px; left:50%; transform:translateX(-50%); font-size:.55rem;
-                background:#7c2d12; color:#fdba74; border:1px solid #ea580c; border-radius:4px; padding:0 4px; white-space:nowrap; }
-  .loop-tag { font-size:.6rem; fill:#fbbf24; }
+  .node .lbl { font-size:.85rem; margin-top:.45rem; color:#cbd5e1; font-weight:600; }
+  .node .cnt { font-size:.7rem; color:#64748b; }
+  .node .gate { position:absolute; top:-18px; left:50%; transform:translateX(-50%); font-size:.62rem;
+                background:#7c2d12; color:#fdba74; border:1px solid #ea580c; border-radius:4px; padding:1px 6px; white-space:nowrap; }
+  .loop-tag { font-size:.78rem; fill:#fbbf24; font-weight:600; }
   #panel { margin-top:1.5rem; background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:1.2rem; display:none; }
   #panel h2 { margin:.2rem 0; font-size:1.1rem; } #panel .desc { color:#94a3b8; font-size:.85rem; max-width:60ch; }
   .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:.7rem; margin-top:1rem; }
@@ -142,13 +142,21 @@ function edges() {
   for (let i=0;i<DATA.nodes.length-1;i++)
     s += `<line x1="${X(DATA.nodes[i].id)}" y1="${y}" x2="${X(DATA.nodes[i+1].id)}" y2="${y}" stroke="#334155" stroke-width="2" marker-end="url(#a)"/>`;
   for (const [f,t,lbl] of DATA.loops) {
-    if (f===t) { const x=X(f); s += `<path d="M ${x-18} ${y-22} C ${x-45} ${y-70}, ${x+45} ${y-70}, ${x+18} ${y-22}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3"/>
-      <text class="loop-tag" x="${x}" y="${y-64}" text-anchor="middle">${lbl}</text>`; continue; }
-    const x1=X(f), x2=X(t), my = f>t ? y+80 : y-60;
-    s += `<path d="M ${x1} ${y} Q ${(x1+x2)/2} ${my}, ${x2} ${y}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3"/>
-          <text class="loop-tag" x="${(x1+x2)/2}" y="${my + (f>t?14:-6)}" text-anchor="middle">↺ ${lbl}</text>`;
+    if (f===t) { const x=X(f); s += `<path d="M ${x-24} ${y-28} C ${x-60} ${y-110}, ${x+60} ${y-110}, ${x+24} ${y-28}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3" marker-end="url(#loop-arrow)"/>
+      <text class="loop-tag" x="${x}" y="${y-100}" text-anchor="middle">${lbl}</text>`; continue; }
+    const x1=X(f), x2=X(t), span=Math.abs(f-t);
+    const r=34;                                      // radio del nodo: el arco termina en su borde, no tapado
+    const ex = x2 + (f>t ? r : -r);
+    const lift = 80 + 45*span;                       // arcos largos van más afuera: no se pisan
+    const my = f>t ? y+lift : y-lift;
+    const apex = (y+my)/2;                           // punto medio real de la curva Bézier
+    s += `<path d="M ${x1} ${y} Q ${(x1+x2)/2} ${my}, ${ex} ${y}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3" marker-end="url(#loop-arrow)"/>
+          <text class="loop-tag" x="${(x1+x2)/2}" y="${apex + (f>t?18:-8)}" text-anchor="middle">↺ ${lbl}</text>`;
   }
-  svg.innerHTML = `<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#334155"/></marker></defs>` + s;
+  svg.innerHTML = `<defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#334155"/></marker>
+    <marker id="loop-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#f59e0b"/></marker>
+  </defs>` + s;
 }
 function nodes() {
   document.querySelectorAll('.node').forEach(e=>e.remove());

@@ -7,6 +7,15 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.11.1] - 2026-08-23
+
+### Fixed
+- **Grafo del pipeline más legible**: lienzo más alto (340 → 540 px), arcos de feedback escalonados por distancia (los loops largos van por fuera y ya no se pisan), etiquetas en el punto medio real de la curva Bézier, fuentes más grandes (fases .85 rem, loops .78 rem) y nodos de 56 px.
+- **Flechas de dirección en los loops**: cada arco de feedback termina en una flecha ámbar en el **borde** del nodo destino (antes quedaba tapada por el círculo del nodo).
+
+### Propuestas (backlog, no implementado)
+- **Modo `--proyecto` para `harness_graph.py`** (candidato a v2.12): el mismo grafo alimentado del estado real de un proyecto — gates según recibos válidos de `receipt.py`, fase actual por artefactos presentes en `spec/`, avance de sprint desde `sprint_review.py` y `traceability_matrix.py`, arcos de feedback resaltados cuando hay bugs activos. Generaría `spec/pipeline-status.html` como tablero vivo regenerable en CI. Requiere ADR (Risk Tier 2): define un artefacto nuevo y su regla de frescura.
+
 ## [2.11.0] - 2026-08-23
 
 ### Added
