@@ -1,5 +1,9 @@
 # Arnés SDLC — SDD + TDD + RDD con gobernanza de decisiones
 
+[![self-test](https://github.com/csalamando/harness-sdlc/actions/workflows/self-test.yml/badge.svg)](https://github.com/csalamando/harness-sdlc/actions/workflows/self-test.yml)
+[![GitHub release](https://img.shields.io/github/v/release/csalamando/harness-sdlc)](https://github.com/csalamando/harness-sdlc/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Un arnés para agentes de IA** que gobierna el ciclo de vida completo del software (**SDLC**) combinando **Spec-Driven Development (SDD)**, **Test-Driven Development (TDD)** y **Receipt-Driven Development (RDD)**: la spec versionada manda (SDD), los tests preceden al código (TDD) y toda aprobación es un recibo criptográfico verificable, no la narración del agente (RDD). Está implementado como un conjunto de **21 skills** que siguen el estándar abierto **Agent Skills** (SKILL.md + assets/references/scripts) — no es un framework de agentes propio, sino la capa de gobierno que convierte a cualquier agente compatible en un equipo de desarrollo con roles, gates y evidencia auditable. Ejecutable en Kimi, Claude Code, Antigravity, Codex, Cursor, Copilot, VS Code, Open WebUI y LiteLLM.
 
 > **Principio rector:** la fuente de verdad es `spec/` versionada en Git. Si una decisión, aprobación o aprendizaje no está versionada, no existe.
