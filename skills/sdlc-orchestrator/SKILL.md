@@ -1,6 +1,6 @@
 ---
 name: sdlc-orchestrator
-description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol, consultar el código por símbolos (blast radius, tests candidatos) con code_intel, generar el digest de la spec, medir el aporte y la disciplina de las skills (skill_metrics), emitir el sprint review de cierre y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés, blast radius, qué tests correr, reducir contexto del agente, sprint review."
+description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol, consultar el código por símbolos (blast radius, tests candidatos) con code_intel, generar el digest de la spec, medir el aporte y la disciplina de las skills (skill_metrics), emitir el sprint review de cierre, garantizar la aceptación de cambios vía diagramas derivados con recibo y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés, blast radius, qué tests correr, reducir contexto del agente, sprint review, drift de diagramas."
 ---
 
 
@@ -86,7 +86,7 @@ Al completarse y verificarse un sprint/incremento:
 1. Verificar que los recibos de gates 2/2.5/3 están vigentes.
 2. Fusionar los cambios de spec aprobados durante el sprint (delta-specs) en la spec maestra; la versión anterior queda como histórico.
 3. Marcar memorias superseded según corresponda; resolver conflictos pendientes.
-4. `traceability_matrix.py` final en verde + `receipt.py status` en `spec/receipts/`.
+4. `traceability_matrix.py` final en verde + `receipt.py status` en `spec/receipts/` + drift de diagramas en verde (`iac_to_diagram.py check` y `pipeline_diagram.py check` si existen las fuentes).
 5. Generar el **Sprint Review** con `sprint_review.py --sprint <N>` (snapshot versionado en `spec/reports/sprint-review-NN.md`: avance, desempeño del arnés con las métricas de skills, lead times, tendencia vs sprint anterior y aprendizajes) y guardar una memoria `tipo: learning` con las señales relevantes (skills con rechazos de gate, tokens altos, freestyle detectado) — la retroalimentación de mejora queda institucionalizada. `METRICS.md` queda como tablero vivo entre sprints; el sprint review es el registro histórico.
 6. Cerrar sesión de memoria con resumen del sprint. El ciclo queda cerrado y la próxima iteración arranca desde una spec consolidada.
 
@@ -130,15 +130,25 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `code_intel.py --root <proyecto> index|symbol|context|impact|tests|search|map|stats`: inteligencia de código local (grafo de símbolos en SQLite, incremental, sin daemon). `context` evita leer archivos completos; `impact` calcula blast radius; `tests` lista tests candidatos para GATE 2.
 - `spec_index.py [--spec-dir spec/]`: regenera `spec/INDEX.md`, digest de una página con hash y resumen por artefacto.
 
+Los scripts de diagramas viven en `sdlc-diagrams/scripts/`: `iac_to_diagram.py`, `pipeline_diagram.py`, `diagram_render.py` (ver Diagramas como mecanismo de aceptación).
+
 ## Gates
 
 - **GATE 0** (humano — aprobación de la iniciativa): propuesta de arquitectura con ≥2 opciones y recomendación justificada (`gate_checker.py spec/architecture-proposal.md --tipo architecture-proposal`), historias técnicas registradas (`--tipo technical-stories`) y estimación CAPEX/OPEX vigente (`--tipo cost-estimation`). Los tres artefactos emiten recibo GATE 0. Sin iniciativa aprobada, no hay pipeline de construcción.
 - **GATE 1** (humano): spec consolidada aprobada + sin conflicts_with de memoria pendientes + `policy check` en verde (toda política org mandatory attestada compliant o con desviación aprobada vigente) + **para cada ADR Tier 1-2**: `gate_checker.py --tipo adr` en verde (8 pasos, scorecard, Advice Log, Tech Radar, firma `arch_signoff.py` vigente). Sin esto, cero código.
 - **GATE 2**: todas las historias verificadas E2E. Si hay índice `code_intel`, los tests corridos deben cubrir lo reportado por `code_intel.py tests` para los símbolos tocados. Bug crítico → devuelve artefacto al dev con el test que lo reproduce (una corrección acotada; si falla, escala).
 - **GATE 2.5** (Security): ninguna vulnerabilidad crítica/alta abierta.
-- **GATE 3**: staging validado + rollback probado.
+- **GATE 3**: staging validado + rollback probado + diagramas derivados (`spec/diagrams/`) regenerados desde su fuente (IaC / workflows) y con recibo vigente del rol dueño — un diagrama sin recibo vigente es un cambio de infraestructura o pipeline NO aceptado.
 
 Todo gate que pasa emite recibo; todo consumo downstream verifica recibo.
+
+## Diagramas como mecanismo de aceptación de cambios (v2.6)
+
+Los diagramas no son solo documentación: son un punto de control. Regla rectora por dirección (detalle y scripts en `sdlc-diagrams`):
+
+- **Derivados de fuente** (despliegue desde `terraform.tfstate`/ARM; pipeline CI/CD desde `.github/workflows/`): **se recrean, nunca se editan a mano**. El script regenera → el diff en Git es la propuesta de cambio → el rol dueño revisa el contenido y lo **acepta con recibo** (`receipt.py emit --role cloud-engineer|devops-engineer`). Modo `check` (exit 1 = drift) en CI y en Fase 8.
+- **De diseño** (C4, secuencia, BPMN, Gantt, GitFlow): se editan a mano, pero si la spec que representan cambia (ADR supersedeado, `architecture.md`, reglas de negocio), `spec_diff_impact.py` revoca el recibo del diagrama y debe actualizarse y re-aprobarse antes de que el downstream continúe.
+- El render SVG/PNG (`diagram_render.py`) es una vista derivada sin recibo propio; se regenera tras cada aprobación para doc-as-code.
 
 ## Definition of Ready / Done
 

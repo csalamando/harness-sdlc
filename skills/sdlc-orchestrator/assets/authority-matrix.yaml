@@ -38,5 +38,12 @@ artifacts:
   - path: spec/slo.md                     owner: sre
   - path: spec/impact-report.md           owner: product-analyst
 
+  # Diagramas (v2.6) — mecanismo de aceptación de cambios
+  - path: spec/diagrams/despliegue.drawio owner: cloud-engineer     # derivado del IaC (tfstate/ARM); nunca editado a mano
+  - path: spec/diagrams/pipeline-cicd.md  owner: devops-engineer    # derivado de .github/workflows/; nunca editado a mano
+  # Nota: los diagramas de diseño (C4, BPMN, secuencia, Gantt) no se listan
+  # por archivo: los aprueba el rol dueño del artefacto que representan
+  # (C4 → software-architect, BPMN → business-analyst, Gantt → product-owner).
+
   # Gobierno (cambiar la matriz misma)
   - path: spec/authority-matrix.yaml      owner: orchestrator

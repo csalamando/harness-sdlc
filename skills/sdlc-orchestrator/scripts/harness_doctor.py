@@ -23,6 +23,7 @@ ORCH_SCRIPTS = ["gate_checker.py", "context_packager.py", "spec_diff_impact.py",
                 "traceability_matrix.py", "receipt.py", "detect_stack.py", "authority_check.py",
                 "code_intel.py", "spec_index.py", "skill_metrics.py", "sprint_review.py"]
 MEM_SCRIPTS = ["mem.py", "mem_mcp.py"]
+DIAGRAM_SCRIPTS = ["diagram_render.py", "iac_to_diagram.py", "pipeline_diagram.py"]
 
 def check(ok_list, label, ok, detail=""):
     ok_list.append(ok)
@@ -53,6 +54,17 @@ def main():
         p = os.path.join(skills_dir, "sdlc-memory", "scripts", s)
         ok = os.path.isfile(p) and subprocess.run(["python3", "-m", "py_compile", p], capture_output=True).returncode == 0
         check(results, s, ok)
+
+    print("\nScripts de diagramas (compilacion):")
+    for s in DIAGRAM_SCRIPTS:
+        p = os.path.join(skills_dir, "sdlc-diagrams", "scripts", s)
+        ok = os.path.isfile(p) and subprocess.run(["python3", "-m", "py_compile", p], capture_output=True).returncode == 0
+        check(results, s, ok)
+    import shutil as _sh
+    print("  Motores de render (opcionales): drawio-desktop="
+          + ("OK" if any(_sh.which(c) for c in ("drawio", "drawio-desktop", "draw.io")) else "no")
+          + ", mmdc=" + ("OK" if _sh.which("mmdc") or _sh.which("npx") else "no")
+          + " — sin motores, el render se omite y el fuente .drawio/.mmd sigue siendo el entregable")
 
     print(f"\nProyecto: {a.project_dir}")
     spec = os.path.join(a.project_dir, "spec")
