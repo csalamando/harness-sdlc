@@ -19,6 +19,8 @@ artifacts:
   # Fase 1 — Análisis
   - path: spec/user-stories.md            owner: business-analyst
   - path: spec/business-rules.md          owner: business-analyst
+  - path: spec/roles.md                   owner: business-analyst   # catálogo de roles gobernado (v2.7): nombre + acciones + contexto + restricciones
+  - path: spec/process-definition.md      owner: business-analyst   # PDD AS-IS (v2.7, condicional: automatización/rediseño de procesos)
 
   # Fase 2 — Diseño
   - path: spec/ux-flows.md                owner: ux-designer
