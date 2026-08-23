@@ -207,6 +207,13 @@ LOOP_BY_GATE = {"GATE 1": (3, 4), "GATE 2": (5, 4), "GATE 2.5": (5, 4), "GATE 3"
 WORK_PHASE = {"GATE 0": 1, "GATE 1": 3, "GATE 2": 4, "GATE 2.5": 4, "GATE 3": 5}
 
 
+def norm_gate(g):
+    """Normaliza el gate de un recibo a 'GATE N' (alias históricos: 'fase2', 'fase 2', 'gate2')."""
+    import re as _re
+    m = _re.search(r"(\d+(?:\.\d+)?)", str(g or ""))
+    return f"GATE {m.group(1)}" if m else str(g or "")
+
+
 def _span_minutes(s):
     """'3 days, 2:00:00' o '0:30:00' -> minutos."""
     import re as _re
@@ -299,14 +306,14 @@ def derive_project(project_dir):
     vigentes = [r for r in recs if r.get("estado") == "vigente"]
     rehechos = [r for r in recs if r.get("estado") in ("invalidado", "revocado")]
 
-    # Estado de cada macro-fase según los recibos de su gate
+    # Estado de cada macro-fase según los recibos de su gate (normalizados)
     gate_status = {}   # macro -> {"estado": ok|warn|none, "gate": str, "vigentes": n, "rehechos": n}
     for m in MACRO:
         gates = [g for g, mac in GATE_MACRO.items() if mac == m["id"]]
         if not gates:
             continue
-        rv = [r for r in vigentes if r.get("gate") in gates]
-        rr = [r for r in rehechos if r.get("gate") in gates]
+        rv = [r for r in vigentes if norm_gate(r.get("gate")) in gates]
+        rr = [r for r in rehechos if norm_gate(r.get("gate")) in gates]
         estado = "ok" if rv else ("warn" if rr else "none")
         gate_status[m["id"]] = {"estado": estado, "gate": " / ".join(gates),
                                 "vigentes": len(rv), "rehechos": len(rr)}
@@ -322,7 +329,7 @@ def derive_project(project_dir):
     # Loops activos: invalidaciones por gate + sprints + impact-report
     active = {}
     for r in rehechos:
-        loop = LOOP_BY_GATE.get(r.get("gate"))
+        loop = LOOP_BY_GATE.get(norm_gate(r.get("gate")))
         if loop:
             active[loop] = active.get(loop, 0) + 1
     reviews = parse_reviews(spec_dir)
@@ -331,14 +338,22 @@ def derive_project(project_dir):
     if os.path.isfile(os.path.join(spec_dir, "impact-report.md")):
         active[(6, 1)] = 0
 
-    # HU: historias con test y código (degrada a None si no hay estructura)
+    # HU: historias con test y código (degrada a None si no hay estructura).
+    # Los proyectos reales no siempre usan src/ + tests/: se exploran los
+    # directorios candidatos que existan (backend/, frontend/, e2e/, etc.).
     hu = None
     if collect_ids:
         root = os.path.abspath(project_dir)
         us = os.path.join(spec_dir, "user-stories.md")
         stories = collect_ids(us if os.path.isfile(us) else spec_dir, [".md"])
-        tests = collect_ids(os.path.join(root, "tests"), [".py", ".ts", ".tsx", ".js", ".java", ".cs", ".feature"])
-        code = collect_ids(os.path.join(root, "src"), [".py", ".ts", ".tsx", ".js", ".java", ".cs"])
+        test_exts = [".py", ".ts", ".tsx", ".js", ".java", ".cs", ".feature"]
+        code_exts = [".py", ".ts", ".tsx", ".js", ".java", ".cs"]
+        tests, code = set(), set()
+        for d in ("tests", "test", "e2e", "backend/e2e", "frontend/e2e", "backend/tests", "frontend/tests"):
+            tests |= collect_ids(os.path.join(root, d), test_exts)
+        # código: solo dirs de fuente (excluye e2e/tests y node_modules por construcción)
+        for d in ("src", "backend/src", "frontend/src", "app", "lib", "poc/src"):
+            code |= collect_ids(os.path.join(root, d), code_exts)
         if stories:
             hu = {"total": len(stories), "cerradas": len(stories & tests & code)}
 
@@ -350,7 +365,7 @@ def derive_project(project_dir):
         "loops_activos": {f"{f}->{t}": n for (f, t), n in sorted(active.items())},
         "contadores": {
             "sprints": len(reviews),
-            "releases": sum(1 for r in vigentes if r.get("gate") == "GATE 3"),
+            "releases": sum(1 for r in vigentes if norm_gate(r.get("gate")) == "GATE 3"),
             "hu": hu,
             "recibos_vigentes": len(vigentes), "recibos_rehechos": len(rehechos),
             "gates_1er": reviews[-1]["gates_1er"] if reviews else None,
