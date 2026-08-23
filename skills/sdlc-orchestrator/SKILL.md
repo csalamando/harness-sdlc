@@ -134,7 +134,16 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `authority_check.py <artefacto> --role <rol> | --author <usuario> --team spec/team-roster.yaml`: valida que quien emite/firma un artefacto sea su rol dueño según `spec/authority-matrix.yaml`. Exit 1 si no está autorizado.
 - `code_intel.py --root <proyecto> index|symbol|context|impact|tests|search|map|stats`: inteligencia de código local (grafo de símbolos en SQLite, incremental, sin daemon). `context` evita leer archivos completos; `impact` calcula blast radius; `tests` lista tests candidatos para GATE 2.
 - `spec_index.py [--spec-dir spec/]`: regenera `spec/INDEX.md`, digest de una página con hash y resumen por artefacto.
-- `manifest_check.py --write|--check|--summary` (v2.9): deriva el manifiesto del arnés (`assets/harness-manifest.yaml`) desde el frontmatter `harness-*` de cada SKILL.md y la lista de scripts en disco. `--check` falla si hay drift o inconsistencias cruzadas (gate declarado inexistente, artefacto `owns` fuera de la matriz de autoridad). El manifiesto es derivado — nunca se edita a mano; `harness_doctor.py` lee de él sus expectativas.
+- `manifest_check.py --write|--check|--summary` (v2.9): deriva el manifiesto del arnés (`assets/harness-manifest.yaml`) desde el frontmatter `harness-*` de cada SKILL.md y la lista de scripts en disco. `--check` falla si hay drift o inconsistencias cruzadas (gate declarado inexistente, artefacto `owns` fuera de la matriz de autoridad). El manifiesto es derivado — nunca se edita a mano; `harness_doctor.py` lee de él sus expectativas. `--routing [--sin-ui] [--sin-datos] [--sin-procesos]` (v2.10): imprime el routing por fases derivado del manifiesto, excluyendo las capacidades condicionales que no aplican a la iniciativa.
+
+## Routing desde el manifiesto (v2.10)
+
+Al iniciar una iniciativa, el routing ya no se interpreta solo de la prosa de esta skill: se deriva del manifiesto.
+
+1. **Identificar condiciones de la iniciativa** (preguntar o inferir de la visión): ¿tiene UI? ¿maneja datos significativos? ¿automatiza/rediseña un proceso existente?
+2. **Ejecutar** `manifest_check.py --routing` con los flags que correspondan (`--sin-ui`, `--sin-datos`, `--sin-procesos`). La salida es la lista de roles por fase que aplican — las capacidades condicionales que no aplican vienen marcadas como EXCLUIDAS y **no se activan** (ej. sin UI no hay prototipo `spec/ux/`; sin proceso que automatizar no hay PDD; sin datos significativos `sdlc-data-engineer` no participa).
+3. **Elegir la ruta mínima** (routing orgánico §4a del README: directo / exploración / hotfix / discovery / full-pipeline) sobre ese conjunto activo. Los gates de entrega (2, 2.5, 3) aplican siempre.
+4. Añadir una skill al arnés = crearla con su frontmatter `harness-*` y regenerar el manifiesto — aparece en el routing sin editar esta skill.
 
 Los scripts de diagramas viven en `sdlc-diagrams/scripts/`: `iac_to_diagram.py`, `pipeline_diagram.py`, `diagram_render.py` (ver Diagramas como mecanismo de aceptación).
 

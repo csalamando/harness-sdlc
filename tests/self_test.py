@@ -173,6 +173,15 @@ check("frontmatter harness-* presente en las skills",
 # El doctor ya no tiene números quemados: lee las expectativas del manifiesto
 doctor_src = open(os.path.join(ORCH, "harness_doctor.py"), encoding="utf-8").read()
 check("harness_doctor consume el manifiesto (load_manifest)", "load_manifest" in doctor_src)
+# Routing derivado (v2.10): las condicionales se auto-excluyen
+code, out = run("manifest_check.py", "--routing", "--sin-ui", "--sin-datos", "--sin-procesos")
+check("routing --sin-datos excluye sdlc-data-engineer",
+      code == 0 and "data-engineer excluida" in out)
+check("routing --sin-ui excluye el prototipo spec/ux/",
+      code == 0 and "EXCLUIDA" in out and "spec/ux/" in out)
+code2, out2 = run("manifest_check.py", "--routing")
+check("routing sin flags incluye a data-engineer en fase 2",
+      code2 == 0 and "data-engineer" in out2)
 
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")

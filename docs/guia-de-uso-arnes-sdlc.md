@@ -525,7 +525,15 @@ python3 scripts/manifest_check.py --check     # exit 1 si hay drift o inconsiste
 
 `--check` cruza tres fuentes y falla si divergen: gates declarados vs `gate_checker.py`, artefactos `owns` vs la matriz de autoridad, scripts declarados vs disco. `harness_doctor.py` lee sus expectativas del manifiesto — añadir una skill o script ya no requiere actualizar listas quemadas en varios archivos.
 
-**Si modificas una skill** (nuevo gate, nuevo artefacto, nuevo script): edita su frontmatter `harness-*` y regenera con `--write` — el `--check` del self-test y del CI velará porque nada diverja. Las **capas con rank** (que un proyecto u organización sobreescriba una skill del arnés, análogo a los scopes de memoria) quedan documentadas como trabajo futuro.
+**Routing derivado (v2.10)**: al iniciar una iniciativa, el orquestador ejecuta `--routing` con los flags de condición y obtiene los roles por fase que aplican, con las capacidades condicionales auto-excluidas:
+
+```bash
+python3 scripts/manifest_check.py --routing --sin-ui --sin-datos --sin-procesos
+```
+
+Sin UI no hay prototipo `spec/ux/`; sin proceso que automatizar no hay PDD; sin datos significativos `sdlc-data-engineer` no participa. Las **capas con rank** (proyecto > usuario > bundled) se evaluaron y se difirieron — ver `docs/decisions/ADR-001-skills-por-capas-rank.md`.
+
+**Si modificas una skill** (nuevo gate, nuevo artefacto, nuevo script): edita su frontmatter `harness-*` y regenera con `--write` — el `--check` del self-test y del CI velará porque nada diverja.
 
 ---
 

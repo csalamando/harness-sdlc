@@ -7,6 +7,13 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.10.0] - 2026-08-23
+
+### Added
+- **Routing derivado del manifiesto**: `manifest_check.py --routing [--sin-ui] [--sin-datos] [--sin-procesos]` imprime los roles por fase que aplican a la iniciativa, con las capacidades condicionales **auto-excluidas** (sin UI → no hay prototipo `spec/ux/`; sin proceso que automatizar → no hay PDD; sin datos significativos → `sdlc-data-engineer` no participa). El orquestador lo ejecuta al iniciar (nueva sección "Routing desde el manifiesto" en su SKILL.md) — la tabla de routing deja de ser solo prosa interpretada.
+- **`docs/decisions/ADR-001-skills-por-capas-rank.md`**: decisión **diferida** de las capas con rank estilo DeepSeek (proyecto > usuario > bundled). Requieren madurez alta en el uso de este tipo de herramientas (gobierno de variantes, precedencia, validez de recibos con skills divergentes) y el enfoque del arnés es **centralizar esas decisiones para que los equipos maduren sin asumir riesgos**. Con re-evaluation triggers concretos (demanda real de una organización, estándar Agent Skills con capas, madurez demostrada vía Sprint Reviews).
+- `self_test.py`: 3 checks nuevos del routing derivado (sección [7] pasa de 3 a 6 checks).
+
 ## [2.9.0] - 2026-08-23
 
 ### Added

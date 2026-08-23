@@ -128,20 +128,67 @@ def summary(skills):
               f"gates={len(s['gates'])} owns={len(s['owns'])} scripts={len(s['scripts'])}{cond}{deps}")
 
 
+PHASE_ORDER = ["-1", "0", "1", "2", "3", "4", "5", "6", "7", "transversal"]
+
+
+def routing(skills, sin_ui=False, sin_datos=False, sin_procesos=False):
+    """Routing orgánico derivado del manifiesto (v2.10): fases -> roles activos.
+
+    Las capacidades condicionales se EXCLUYEN cuando la condición no aplica:
+      --sin-ui        -> spec/ux/ del ux-designer (prototipo gobernado)
+      --sin-datos     -> sdlc-data-engineer completa (skill condicional)
+      --sin-procesos  -> process-definition.md (PDD) del business-analyst
+    """
+    excluir_skill = lambda s: sin_datos and s["name"] == "sdlc-data-engineer"
+    def caps_excluidas(s):
+        ex = []
+        c = s["conditional"]
+        if sin_ui and "UI" in c:
+            ex.append(c)
+        if sin_procesos and "process-definition" in c:
+            ex.append("process-definition.md (PDD)")
+        return ex
+    print("Routing derivado del manifiesto"
+          + (" [sin UI]" if sin_ui else "") + (" [sin datos]" if sin_datos else "")
+          + (" [sin procesos]" if sin_procesos else "") + ":\n")
+    for fase in PHASE_ORDER:
+        grupo = [s for s in skills if fase in s["phases"] and not excluir_skill(s)]
+        if not grupo:
+            continue
+        print(f"FASE {fase}")
+        for s in grupo:
+            extra = f" — gates: {', '.join(s['gates'])}" if s["gates"] else ""
+            cond = f" — condicional: {s['conditional']}" if s["conditional"] and fase == "2" or \
+                   (s["conditional"] and s["name"] == "sdlc-enterprise-architect") else ""
+            print(f"  {s['role']}{extra}{cond}")
+            for cap in caps_excluidas(s):
+                print(f"    ✗ EXCLUIDA: {cap} (la condición no aplica a esta iniciativa)")
+    if sin_datos:
+        print("\n  ✗ sdlc-data-engineer excluida por completo (sin datos significativos)")
+
+
 def main():
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--write", action="store_true")
     g.add_argument("--check", action="store_true")
     g.add_argument("--summary", action="store_true")
+    g.add_argument("--routing", action="store_true",
+                   help="routing por fases derivado del manifiesto (v2.10)")
+    ap.add_argument("--sin-ui", action="store_true", help="la iniciativa no tiene UI")
+    ap.add_argument("--sin-datos", action="store_true", help="sin datos significativos")
+    ap.add_argument("--sin-procesos", action="store_true", help="no automatiza/rediseña procesos")
     ap.add_argument("--skills-dir", default=SKILLS_DIR)
     a = ap.parse_args()
 
-    global SKILLS_DIR_
     skills = derive(os.path.abspath(a.skills_dir))
 
     if a.summary:
         summary(skills)
+        sys.exit(0)
+
+    if a.routing:
+        routing(skills, a.sin_ui, a.sin_datos, a.sin_procesos)
         sys.exit(0)
 
     problems = cross_validate(skills)

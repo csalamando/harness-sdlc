@@ -183,9 +183,14 @@ El arnés deja de describirse a sí mismo con prosa y números quemados. La fuen
 ```bash
 python3 manifest_check.py --summary   # vista legible: 21 skills, roles, fases, gates, owns, scripts
 python3 manifest_check.py --check     # exit 1 si hay drift o inconsistencias (corre en self-test y CI)
+python3 manifest_check.py --routing --sin-ui --sin-datos   # routing por fases derivado (v2.10)
 ```
 
-`manifest_check.py --check` cruza las tres fuentes y falla si divergen: gates declarados vs los que `gate_checker.py` soporta, artefactos `owns` vs la matriz de autoridad, scripts declarados vs disco. `harness_doctor.py` lee sus expectativas del manifiesto — **añadir una skill o un script ya no requiere actualizar listas quemadas en tres archivos** (la clase de bug que motivó v2.8.1 queda cerrada estructuralmente). *Inspiración: "Everything is a plugin" / capability seams de DeepSeek Harness (§10) — traducida a nuestro estándar Markdown agnóstico de agente.*
+`manifest_check.py --check` cruza las tres fuentes y falla si divergen: gates declarados vs los que `gate_checker.py` soporta, artefactos `owns` vs la matriz de autoridad, scripts declarados vs disco. `harness_doctor.py` lee sus expectativas del manifiesto — **añadir una skill o un script ya no requiere actualizar listas quemadas en tres archivos** (la clase de bug que motivó v2.8.1 queda cerrada estructuralmente).
+
+**Routing derivado (v2.10):** al iniciar una iniciativa, el orquestador ejecuta `--routing` con los flags de condición (`--sin-ui`, `--sin-datos`, `--sin-procesos`) y obtiene los roles por fase que aplican — las capacidades condicionales que no aplican quedan **auto-excluidas** (sin UI no hay prototipo `spec/ux/`; sin proceso que automatizar no hay PDD; sin datos significativos `sdlc-data-engineer` no participa). Añadir una skill al routing = su frontmatter, sin tocar al orquestador.
+
+*Inspiración: "Everything is a plugin" / capability seams de DeepSeek Harness (§10) — traducida a nuestro estándar Markdown agnóstico de agente. Las capas con rank (proyecto > usuario > bundled) se evaluaron y **se difirieron** ([ADR-001](docs/decisions/ADR-001-skills-por-capas-rank.md)): requieren madurez alta en estas herramientas y preferimos centralizar esas decisiones para que los equipos maduren sin asumir riesgos.*
 
 ---
 
@@ -348,7 +353,7 @@ Este arnés es diseño e implementación propios, pero se apoya explícitamente 
 | **Advice Process, Tech Radar, Principios, arquitectura conversacional** | [Martin Fowler / Andrew Harmel-Law — *Scaling Architecture Conversationally*](https://martinfowler.com/articles/scaling-architecture-conversationally.html) | Paso 5 (advice no vinculante pero obligatorio de registrar), Tech Radar con cuadrantes, gobernanza por excepción del Enterprise Architect |
 | **Tech Radar (formato ADOPT/TRIAL/ASSESS/HOLD)** | ThoughtWorks | Estructura de `spec/tech-radar.yaml` y reglas de gate |
 | **Architecture Decision Records** | Michael Nygard | Plantillas de ADR y ciclo de vida (Proposed → Adopted → Superseded) |
-| **"Everything is a plugin" / capability seams** | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Implementado en v2.9 como **manifiesto dinámico**: metadatos en el frontmatter de cada SKILL.md + manifiesto derivado con detección de drift (`manifest_check.py`). Trabajo futuro: skills por capas con rank (proyecto > usuario > bundled), análogo a los scopes de memoria |
+| **"Everything is a plugin" / capability seams** | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Implementado en v2.9/v2.10 como **manifiesto dinámico + routing derivado**: metadatos en el frontmatter de cada SKILL.md, manifiesto derivado con detección de drift y routing por fases con capacidades condicionales auto-excluidas (`manifest_check.py`). Diferido: skills por capas con rank — [ADR-001](docs/decisions/ADR-001-skills-por-capas-rank.md) |
 | **Patrones de trabajo con agentes, memoria entre agentes, receipts** | [Gentleman-Programming — gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) y [Engram](https://github.com/Gentleman-Programming/engram) | **Inspiración, no adopción**: estudiamos su forma de trabajar y reimplementamos a nuestra medida — memoria Git-nativa con scopes/gobierno (diferencial sobre Engram, por decisión explícita del usuario) y recibos SHA-256 |
 | **Code intelligence para agentes (grafo de símbolos, blast radius, menos tokens)** | [Gortex — zzet/gortex](https://github.com/zzet/gortex) (Apache 2.0) | **Inspiración, no adopción**: reimplementado como `code_intel.py` en Python stdlib, sin daemon, con extracción por niveles (ast/patrones) e índice SQLite derivable |
 | **Diseño UX open-source (prototipos, tokens, estándares web)** | [Penpot](https://penpot.app) (MPL-2.0) | Herramienta estándar de `sdlc-ux-designer` para prototipos gobernados en `spec/ux/` — archivo versionable en Git, sin lock-in propietario |
