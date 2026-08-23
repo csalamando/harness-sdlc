@@ -1,6 +1,6 @@
 ---
 name: sdlc-orchestrator
-description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol, consultar el código por símbolos (blast radius, tests candidatos) con code_intel, generar el digest de la spec, medir el aporte y la disciplina de las skills (skill_metrics) y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés, blast radius, qué tests correr, reducir contexto del agente."
+description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol, consultar el código por símbolos (blast radius, tests candidatos) con code_intel, generar el digest de la spec, medir el aporte y la disciplina de las skills (skill_metrics), emitir el sprint review de cierre y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés, blast radius, qué tests correr, reducir contexto del agente, sprint review."
 ---
 
 
@@ -17,7 +17,7 @@ FASE -1 Setup (DevOps + detect_stack)
 → FASE 3 Spec consolidada [GATE 1 humano] → FASE 4 Dev Back ∥ Dev Front (TDD)
 → FASE 5 QA + Security DAST [GATE 2/2.5] → FASE 6 DevOps + Cloud [GATE 3] → PROD
 → FASE 7 SRE opera + Product Analyst mide → realimenta backlog del PO
-→ FASE 8 Archivo: merge de delta-specs + cierre del ciclo
+→ FASE 8 Archivo: merge de delta-specs + sprint review + cierre del ciclo
 ```
 
 ## Routing orgánico: elegir la ruta mínima adecuada
@@ -87,10 +87,10 @@ Al completarse y verificarse un sprint/incremento:
 2. Fusionar los cambios de spec aprobados durante el sprint (delta-specs) en la spec maestra; la versión anterior queda como histórico.
 3. Marcar memorias superseded según corresponda; resolver conflictos pendientes.
 4. `traceability_matrix.py` final en verde + `receipt.py status` en `spec/receipts/`.
-5. Generar `spec/METRICS.md` con `skill_metrics.py report` (aporte, cobertura y señales por skill) y guardar una memoria `tipo: learning` con las señales relevantes (skills con rechazos de gate, tokens altos, freestyle detectado) — la retroalimentación de mejora de las skills queda institucionalizada.
+5. Generar el **Sprint Review** con `sprint_review.py --sprint <N>` (snapshot versionado en `spec/reports/sprint-review-NN.md`: avance, desempeño del arnés con las métricas de skills, lead times, tendencia vs sprint anterior y aprendizajes) y guardar una memoria `tipo: learning` con las señales relevantes (skills con rechazos de gate, tokens altos, freestyle detectado) — la retroalimentación de mejora queda institucionalizada. `METRICS.md` queda como tablero vivo entre sprints; el sprint review es el registro histórico.
 6. Cerrar sesión de memoria con resumen del sprint. El ciclo queda cerrado y la próxima iteración arranca desde una spec consolidada.
 
-## Telemetría de skills (v2.4)
+## Telemetría de skills (v2.4) y Sprint Review (v2.5)
 
 La disciplina no se narra, se mide — sin meter telemetría en el contexto del agente (escritura por CLI en comandos que ya existen; lectura bajo demanda). `spec/METRICS.md` responde:
 
@@ -98,7 +98,7 @@ La disciplina no se narra, se mide — sin meter telemetría en el contexto del 
 2. **Cobertura (freestyle detector)**: cruza fases con las activaciones en `spec/metrics/usage.jsonl`. Un rol con artefactos pero sin activación registrada = **trabajo fuera de la skill**; una activación sin artefactos = skill de adorno. Es la evidencia de que el agente trabaja *a través* del arnés y no por fuera de él.
 3. **Señales**: candidatas accionables para mejorar skills (rechazos de gate repetidos, costo por artefacto alto, skills sin uso).
 
-Regla: `METRICS.md` nunca se inyecta en paquetes de contexto; se consulta en Fase 8 o cuando el humano lo pida.
+Regla: `METRICS.md` nunca se inyecta en paquetes de contexto; se consulta en Fase 8 o cuando el humano lo pida. Al cerrar el sprint, `sprint_review.py` lo embebe como sección 3 del **Sprint Review** versionado en `spec/reports/`, junto con avance, lead times, tendencia vs sprint anterior y aprendizajes.
 
 ## Contexto mínimo e inteligencia de código (v2.3)
 
@@ -116,7 +116,8 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 
 - `gate_checker.py <artefacto> --tipo <tipo>`: valida checklist de salida de un artefacto. Exit 0 = pasa gate.
 - `receipt.py emit|verify|status|revoke`: recibos de aprobación vinculados al SHA-256 del artefacto. `emit` acepta telemetría opcional: `--tokens-in/-out --tokens-src reportado|estimado --attempts K`.
-- `skill_metrics.py use|report`: telemetría de skills — `use` registra la activación de un rol (append-only en `spec/metrics/usage.jsonl`); `report` genera `spec/METRICS.md` con aporte, cobertura (freestyle detector) y señales.
+- `skill_metrics.py use|report`: telemetría de skills — `use` registra la activación de un rol (append-only en `spec/metrics/usage.jsonl`); `report` genera `spec/METRICS.md` (tablero vivo) con aporte, cobertura (freestyle detector) y señales.
+- `sprint_review.py --sprint <N>`: genera `spec/reports/sprint-review-NN.md` al cerrar el sprint — snapshot versionado con avance, desempeño del arnés, lead times por gate, tendencia vs sprint anterior y aprendizajes.
 - `context_packager.py --rol <rol> --spec-dir spec/`: lista mínima de archivos que ese rol necesita.
 - `spec_diff_impact.py --cambiado <artefacto> [--relation supersedes|conflicts_with]`: impacto downstream de un cambio.
 - `traceability_matrix.py --spec-dir spec/ --tests-dir tests/ --src-dir src/`: matriz historia → test → código; detecta brechas.
