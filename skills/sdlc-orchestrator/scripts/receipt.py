@@ -8,10 +8,15 @@ y la aprobacion queda invalidada automaticamente.
 
 Uso:
   python3 receipt.py emit <artefacto> --gate <gate> [--tipo <tipo>] [--role <rol>]
+      [--tokens-in N --tokens-out M --tokens-src reportado|estimado] [--attempts K]
       Emite spec/receipts/<artefacto>.receipt.json tras validar con gate_checker.
       Si existe spec/authority-matrix.yaml y el artefacto tiene owner declarado,
       --role es OBLIGATORIO y debe coincidir con el owner (un dev no puede emitir
       el recibo de un ADR; un arquitecto no puede emitir el de user-stories).
+      Telemetria (v2.4, opcional): tokens reportados por la plataforma del agente
+      (--tokens-src reportado) o estimados por chars/4 del artefacto
+      (--tokens-src estimado sin valores -> el script los calcula). --attempts
+      registra en que intento de gate se aprobo (1 = a la primera).
   python3 receipt.py verify <artefacto>
       Exit 0 si el recibo existe y el hash coincide. Exit 1 si falta o esta invalidado.
   python3 receipt.py status [--spec-dir spec/]
@@ -59,6 +64,10 @@ def cmd_emit(a):
         print(r.stdout.strip())
         if r.returncode != 0:
             print("Gate no pasado: no se emite recibo."); sys.exit(1)
+    # Telemetria v2.4: tokens estimados por chars/4 si se pidio y no se dieron valores
+    t_in, t_out = a.tokens_in, a.tokens_out
+    if a.tokens_src == "estimado" and not t_in and not t_out:
+        t_out = max(1, os.path.getsize(a.artefacto) // 4)
     rec = {
         "artefacto": os.path.abspath(a.artefacto),
         "sha256": sha256(a.artefacto),
@@ -68,6 +77,14 @@ def cmd_emit(a):
         "emitido": datetime.datetime.now().isoformat(timespec="seconds"),
         "estado": "vigente",
     }
+    if a.tokens_src:
+        rec["tokens_src"] = a.tokens_src
+        if t_in:
+            rec["tokens_in"] = int(t_in)
+        if t_out:
+            rec["tokens_out"] = int(t_out)
+    if a.attempts and int(a.attempts) > 1:
+        rec["attempts"] = int(a.attempts)
     p = receipt_path(a.spec_dir, a.artefacto)
     open(p, "w", encoding="utf-8").write(json.dumps(rec, indent=2, ensure_ascii=False))
     print(f"RECIBO EMITIDO ({a.gate}): {a.artefacto}\n  sha256: {rec['sha256'][:16]}...  -> {p}")
@@ -131,6 +148,9 @@ def main():
     ap.add_argument("--spec-dir", default="spec/")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("emit"); p.add_argument("artefacto"); p.add_argument("--gate", required=True); p.add_argument("--tipo", default=""); p.add_argument("--role", default="")
+    p.add_argument("--tokens-in", type=int, default=0); p.add_argument("--tokens-out", type=int, default=0)
+    p.add_argument("--tokens-src", choices=["reportado", "estimado"], default="")
+    p.add_argument("--attempts", type=int, default=1)
     p = sub.add_parser("verify"); p.add_argument("artefacto")
     sub.add_parser("status")
     p = sub.add_parser("revoke"); p.add_argument("artefacto")

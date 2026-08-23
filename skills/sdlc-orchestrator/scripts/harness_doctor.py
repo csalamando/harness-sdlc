@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """harness_doctor.py — Health check read-only del arnes SDLC instalado.
 
-Verifica: skills instaladas (21 roles + memoria), plantillas assets presentes,
-scripts del orquestador ejecutables, estructura spec/ del proyecto, indice
-code_intel.
+Verifica: skills instaladas (15 roles + memoria), plantillas assets presentes,
+scripts del orquestador ejecutables, estructura spec/ del proyecto.
 
 Uso: python3 harness_doctor.py [--skills-dir <ruta>] [--project-dir <ruta>]
 Exit 0 si todo OK; 1 si hay problemas.
@@ -22,7 +21,7 @@ EXPECTED_SKILLS = [
 ORCH_SCRIPTS = ["gate_checker.py", "context_packager.py", "spec_diff_impact.py",
                 "decision_sizing.py", "advisor.py", "arch_signoff.py",
                 "traceability_matrix.py", "receipt.py", "detect_stack.py", "authority_check.py",
-                "code_intel.py", "spec_index.py"]
+                "code_intel.py", "spec_index.py", "skill_metrics.py"]
 MEM_SCRIPTS = ["mem.py", "mem_mcp.py"]
 
 def check(ok_list, label, ok, detail=""):
