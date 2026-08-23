@@ -1,6 +1,6 @@
-# Arnés SDLC — SDD + TDD con gobernanza de decisiones
+# Arnés SDLC — SDD + TDD + RDD con gobernanza de decisiones
 
-**Un arnés para agentes de IA** que gobierna el ciclo de vida completo del software (**SDLC**) combinando **Spec-Driven Development (SDD)** y **Test-Driven Development (TDD)**. Está implementado como un conjunto de **21 skills** que siguen el estándar abierto **Agent Skills** (SKILL.md + assets/references/scripts) — no es un framework de agentes propio, sino la capa de gobierno que convierte a cualquier agente compatible en un equipo de desarrollo con roles, gates y evidencia auditable. Ejecutable en Kimi, Claude Code, Antigravity, Codex, Cursor, Copilot, VS Code, Open WebUI y LiteLLM.
+**Un arnés para agentes de IA** que gobierna el ciclo de vida completo del software (**SDLC**) combinando **Spec-Driven Development (SDD)**, **Test-Driven Development (TDD)** y **Receipt-Driven Development (RDD)**: la spec versionada manda (SDD), los tests preceden al código (TDD) y toda aprobación es un recibo criptográfico verificable, no la narración del agente (RDD). Está implementado como un conjunto de **21 skills** que siguen el estándar abierto **Agent Skills** (SKILL.md + assets/references/scripts) — no es un framework de agentes propio, sino la capa de gobierno que convierte a cualquier agente compatible en un equipo de desarrollo con roles, gates y evidencia auditable. Ejecutable en Kimi, Claude Code, Antigravity, Codex, Cursor, Copilot, VS Code, Open WebUI y LiteLLM.
 
 > **Principio rector:** la fuente de verdad es `spec/` versionada en Git. Si una decisión, aprobación o aprendizaje no está versionada, no existe.
 
@@ -11,12 +11,13 @@
 1. [Visión general](#1-visión-general)
 2. [Las 21 skills](#2-las-21-skills)
 3. [El pipeline y los gates](#3-el-pipeline-y-los-gates)
-4. [Routing orgánico](#4-routing-orgánico)
+4. [Capacidades de gobierno](#4-capacidades-de-gobierno)
+   - [Routing orgánico](#4a-routing-orgánico)
    - [Autoridad por rol](#4b-autoridad-por-rol-quién-puede-emitir-qué)
    - [Contexto mínimo e inteligencia de código](#4c-contexto-mínimo-e-inteligencia-de-código-v23)
-   - [Telemetría de skills](#4d-telemetría-de-skills-v24)
+   - [Telemetría de skills y Sprint Review](#4d-telemetría-de-skills-y-sprint-review-v24--v25)
    - [Diagramas como mecanismo de aceptación](#4e-diagramas-como-mecanismo-de-aceptación-de-cambios-v26)
-5. [Receipts: confiar en evidencia, no en narración](#5-receipts-confiar-en-evidencia-no-en-narración)
+5. [Receipts (RDD): confiar en evidencia, no en narración](#5-receipts-rdd-confiar-en-evidencia-no-en-narración)
 6. [El sistema de memoria](#6-el-sistema-de-memoria)
 7. [Gobernanza de decisiones (v2.0)](#7-gobernanza-de-decisiones-v20)
 8. [Gestión de cambios de spec](#8-gestión-de-cambios-de-spec)
@@ -34,6 +35,14 @@ El arnés convierte a un agente de propósito general en un **equipo de desarrol
 - produce **evidencia auditable** (recibos criptográficos, memorias, trazabilidad),
 - y no puede avanzar sin que los **gates** estén en verde.
 
+Las tres disciplinas que combina, y por qué ninguna alcanza sola:
+
+| Disciplina | Qué garantiza | Qué NO garantiza sola |
+|---|---|---|
+| **SDD** (Spec-Driven) | Todo nace de una spec versionada; sin spec no hay código | Que la spec aprobada siga siendo la que se ejecuta |
+| **TDD** (Test-Driven) | Los tests preceden al código; todo bug vuelve con su test | Que los tests que "pasaron" lo hayan hecho de verdad |
+| **RDD** (Receipt-Driven) | Toda aprobación es un recibo SHA-256 vinculado al contenido exacto; si cambia un byte, se invalida solo | — es la capa que hace verificables a las otras dos |
+
 Tres ideas lo diferencian de un pipeline de prompts:
 
 1. **RDD (Receipt-Driven Development):** las aprobaciones no son narración del agente ("ya está revisado"), sino recibos SHA-256 vinculados al contenido exacto aprobado. Si el artefacto cambia un byte, el recibo se invalida solo.
@@ -44,9 +53,11 @@ Tres ideas lo diferencian de un pipeline de prompts:
 
 ## 2. Las 21 skills
 
+Ordenadas por fase del pipeline (las transversales al final):
+
 | Skill | Rol | Fase |
 |---|---|---|
-| `sdlc-orchestrator` | Orquestador del pipeline + 16 herramientas CLI | Todas |
+| `sdlc-devops-engineer` | Setup + CI/CD + IaC + rollback | -1, 6 |
 | `sdlc-product-owner` | Visión, épicas, backlog priorizado (el QUÉ y el CUÁNDO) | 0 |
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, escribe historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina (Fase 6) | 0, 6 |
@@ -60,13 +71,13 @@ Tres ideas lo diferencian de un pipeline de prompts:
 | `sdlc-backend-dev-tdd` | Backend con TDD estricto | 4 |
 | `sdlc-frontend-dev-tdd` | Frontend con TDD + mocks desde OpenAPI | 4 |
 | `sdlc-qa-automation` | E2E desde Gherkin + regresión + carga (GATE 2) | 5 |
-| `sdlc-devops-engineer` | Setup + CI/CD + IaC + rollback | -1, 6 |
 | `sdlc-cloud-engineer` | Infraestructura cloud + observabilidad | 6 |
 | `sdlc-sre` | SLOs + incidentes + postmortems | 7 |
 | `sdlc-product-analyst` | Medición de impacto → realimenta backlog | 7 |
 | `sdlc-technical-writer` | Documentación doc-as-code (Wiki / Pages / Confluence) | 4-6 |
-| `sdlc-memory` | Memoria persistente con scopes y gobierno (transversal) | Todas |
-| `sdlc-diagrams` | Diagramas C4, cloud (AWS/Azure/GCP), secuencia, BPMN, Gantt, GitFlow vía drawio MCP + derivación desde IaC/workflows con aprobación por recibo | 1, 2, 6 |
+| `sdlc-orchestrator` | Orquestador del pipeline + 16 herramientas CLI | Transversal |
+| `sdlc-memory` | Memoria persistente con scopes y gobierno | Transversal |
+| `sdlc-diagrams` | Diagramas C4, cloud (AWS/Azure/GCP), secuencia, BPMN, Gantt, GitFlow vía drawio MCP + derivación desde IaC/workflows con aprobación por recibo | Transversal |
 
 Separación de autoridad: **el PO nunca aprueba decisiones técnicas; el Arquitecto de Software es el único rol que firma ADRs.**
 
@@ -99,7 +110,11 @@ Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**
 
 ---
 
-## 4. Routing orgánico
+## 4. Capacidades de gobierno
+
+Cinco mecanismos transversales mantienen al agente dentro de los carriles, en cualquier ruta y fase.
+
+### 4a. Routing orgánico
 
 No todo trabajo merece el pipeline completo. El orquestador elige la **ruta mínima** antes de empezar:
 
@@ -114,9 +129,7 @@ No todo trabajo merece el pipeline completo. El orquestador elige la **ruta mín
 
 Los gates de entrega (2, 2.5, 3) aplican **siempre**, sin importar la ruta.
 
----
-
-## 4b. Autoridad por rol: quién puede emitir qué
+### 4b. Autoridad por rol: quién puede emitir qué
 
 Un dev puede *opinar* sobre un ADR (de hecho debe: Paso 5 del Advice Process), pero no puede *emitirlo*. La **matriz de autoridad** (`spec/authority-matrix.yaml`) declara un único rol dueño por artefacto, y el arnés la hace cumplir en tres niveles:
 
@@ -126,9 +139,7 @@ Un dev puede *opinar* sobre un ADR (de hecho debe: Paso 5 del Advice Process), p
 
 Cambiar la matriz es un cambio de gobierno: requiere PR y queda auditado en el historial.
 
----
-
-## 4c. Contexto mínimo e inteligencia de código (v2.3)
+### 4c. Contexto mínimo e inteligencia de código (v2.3)
 
 El contexto del agente es un recurso gobernado. Tres mecanismos para que el agente **lea solo lo que necesita**:
 
@@ -138,9 +149,7 @@ El contexto del agente es un recurso gobernado. Tres mecanismos para que el agen
 
 En change-request, el impacto total = `spec_diff_impact.py` (spec) + `code_intel.py impact` (código).
 
----
-
-## 4d. Telemetría de skills (v2.4)
+### 4d. Telemetría de skills y Sprint Review (v2.4 · v2.5)
 
 La disciplina no se narra, se mide — y **sin meter telemetría en el contexto del agente** (la escritura es un flag en comandos que ya existen; la lectura es bajo demanda):
 
@@ -151,9 +160,7 @@ La disciplina no se narra, se mide — y **sin meter telemetría en el contexto 
 
 En Fase 8 el orquestador genera `METRICS.md` y guarda las señales como memoria `learning` — la mejora de las skills se retroalimenta sola. `METRICS.md` nunca se inyecta en paquetes de contexto.
 
----
-
-## 4e. Diagramas como mecanismo de aceptación de cambios (v2.6)
+### 4e. Diagramas como mecanismo de aceptación de cambios (v2.6)
 
 Los diagramas no son solo documentación: son un **punto de control**. Ningún diagrama cuenta sin recibo de aprobación del rol dueño sobre su contenido:
 
@@ -163,7 +170,7 @@ Los diagramas no son solo documentación: son un **punto de control**. Ningún d
 
 ---
 
-## 5. Receipts: confiar en evidencia, no en narración
+## 5. Receipts (RDD): confiar en evidencia, no en narración
 
 ### El problema
 
