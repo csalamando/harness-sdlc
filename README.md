@@ -62,7 +62,7 @@ Ordenadas por fase del pipeline (las transversales al final):
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, escribe historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina (Fase 6) | 0, 6 |
 | `sdlc-business-analyst` | Historias de usuario + Gherkin + reglas de negocio + catálogo de roles gobernado + PDD (AS-IS, condicional a automatización de procesos) | 1 |
-| `sdlc-ux-designer` | Flujos UX + design system + tokens | 2 |
+| `sdlc-ux-designer` | Flujos UX + design system + tokens + prototipo de pantallas gobernado (Penpot, condicional a UI) | 2 |
 | `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + test-plan. **Decision Owner técnico (el CÓMO)** | 2-3 |
 | `sdlc-decision-engine` | Motor de decisiones: 8 pasos, scorecard, Decision Packages | 2 |
 | `sdlc-enterprise-architect` | Tech Radar, Principios, excepciones, Paved Roads | 2 (Tier 1) |
@@ -101,7 +101,7 @@ FASE -1 Setup (DevOps + detect_stack)
 | Gate | Qué exige |
 |---|---|
 | **GATE 0** (humano) | Aprobación de la iniciativa: propuesta de arquitectura con ≥2 opciones + recomendación justificada (scorecard con costo como criterio), historias técnicas registradas y estimación **CAPEX/OPEX/TCO vigente** (AWS/Azure, 3 escenarios). Sin caso de negocio aprobado, no hay pipeline de construcción. |
-| **GATE 1** (humano) | Spec consolidada aprobada + sin `conflicts_with` de memoria pendientes + `policy check` en verde (toda política org mandatory attestada o con desviación aprobada vigente) + **cada ADR Tier 1-2 con 8 pasos validados, Advice Log registrado, Tech Radar cruzado y firma vigente**. Sin esto, cero código. |
+| **GATE 1** (humano) | Spec consolidada aprobada + sin `conflicts_with` de memoria pendientes + `policy check` en verde (toda política org mandatory attestada o con desviación aprobada vigente) + **cada ADR Tier 1-2 con 8 pasos validados, Advice Log registrado, Tech Radar cruzado y firma vigente** + **si la iniciativa tiene UI: inventario de pantallas con recibo vigente (sin prototipo aprobado, el Dev Front no implementa)**. Sin esto, cero código. |
 | **GATE 2** | Todas las historias verificadas E2E. Bug crítico → se devuelve al dev **con el test que lo reproduce** (una corrección acotada; si falla, escala a humano). |
 | **GATE 2.5** | Ninguna vulnerabilidad crítica/alta abierta. |
 | **GATE 3** | Staging validado + rollback probado + diagramas derivados regenerados desde su fuente (IaC/workflows) con recibo vigente. |
@@ -140,6 +140,8 @@ Un dev puede *opinar* sobre un ADR (de hecho debe: Paso 5 del Advice Process), p
 Cambiar la matriz es un cambio de gobierno: requiere PR y queda auditado en el historial.
 
 **Roles gobernados (v2.7):** el "Como <rol>" de las historias no es una palabra libre — referencia `spec/roles.md`, el catálogo del BA donde cada rol es nombre + acciones que habilita + contexto/condiciones + reglas que lo restringen. El gate valida que los ROL-xx citados existan. Para iniciativas que automatizan o rediseñan procesos, el PDD (`spec/process-definition.md`) captura el AS-IS con excepciones, volúmenes y SLA, y exige firma del Process Owner (recibo) antes del diseño TO-BE.
+
+**Prototipos de pantalla gobernados (v2.8):** las pantallas con sus flujos de interacción son el contrato visual del sprint — negocio las ve y las navega *antes* de escribir código, sin sorpresas en la demo. Estándar del arnés: **Penpot** (open-source, formato web abierto, self-hostable, MCP oficial): el archivo de diseño se versiona en `spec/ux/` junto al inventario `PANT-xx` y los renders, con recibo del `ux-designer`. GATE 1 exige el inventario aprobado para las pantallas del sprint; sin prototipo aprobado, el Dev Front no implementa. Un cambio de HU/flujo/rol revoca el recibo y las pantallas se re-aprueban. Si la organización usa Figma, el artefacto gobernado sigue siendo el export versionado — nunca la nube.
 
 ### 4c. Contexto mínimo e inteligencia de código (v2.3)
 
@@ -315,7 +317,7 @@ En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias super
 
 ## 9. Herramientas compartidas y propias
 
-- **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`).
+- **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`), Penpot MCP (`sdlc-ux-designer`, prototipos de pantalla gobernados).
 - **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado). **`sdlc-diagrams/scripts/`:** `iac_to_diagram.py` (despliegue derivado del IaC + drift), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless SVG/PNG).
 - **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
@@ -334,6 +336,7 @@ Este arnés es diseño e implementación propios, pero se apoya explícitamente 
 | **"Everything is a plugin" / capability seams** | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Inspiración para skills descubribles y Decision Packages extensibles (el manifiesto dinámico quedó como trabajo futuro) |
 | **Patrones de trabajo con agentes, memoria entre agentes, receipts** | [Gentleman-Programming — gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) y [Engram](https://github.com/Gentleman-Programming/engram) | **Inspiración, no adopción**: estudiamos su forma de trabajar y reimplementamos a nuestra medida — memoria Git-nativa con scopes/gobierno (diferencial sobre Engram, por decisión explícita del usuario) y recibos SHA-256 |
 | **Code intelligence para agentes (grafo de símbolos, blast radius, menos tokens)** | [Gortex — zzet/gortex](https://github.com/zzet/gortex) (Apache 2.0) | **Inspiración, no adopción**: reimplementado como `code_intel.py` en Python stdlib, sin daemon, con extracción por niveles (ast/patrones) e índice SQLite derivable |
+| **Diseño UX open-source (prototipos, tokens, estándares web)** | [Penpot](https://penpot.app) (MPL-2.0) | Herramienta estándar de `sdlc-ux-designer` para prototipos gobernados en `spec/ux/` — archivo versionable en Git, sin lock-in propietario |
 | **Estándar Agent Skills** | Formato abierto SKILL.md (Anthropic y ecosistema) | Packaging, progressive disclosure (SKILL.md → references → scripts) |
 | **Doc-as-code (Wiki/Pages/Confluence)** | GitHub Wiki, MkDocs Material, markdown-confluence | Publicación de `sdlc-technical-writer` |
 

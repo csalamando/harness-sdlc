@@ -7,6 +7,15 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.8.0] - 2026-08-23
+
+### Added
+- **Prototipos de pantalla gobernados** (`spec/ux/`, owner `ux-designer`, condicional a iniciativas con UI): las pantallas con sus flujos de interacción pasan a ser un artefacto de validación temprana — negocio navega el prototipo antes de escribir código y su aprobación es el contrato visual del sprint. Estándar del arnés: **Penpot** (open-source MPL-2.0, diseños en estándares web SVG/CSS/JSON, design tokens nativos sincronizables con `spec/tokens.json`, prototipado interactivo, self-hostable, servidor MCP oficial para que el agente cree y modifique pantallas). El archivo de diseño se versiona en Git junto a la spec — fuente de verdad auditable, no un enlace a una nube propietaria.
+- **Estructura gobernada**: `spec/ux/screen-inventory.md` (inventario PANT-xx: HU que cubre, ROL que la opera, estados loading/empty/error/success, interacciones con destino — plantilla `assets/screen-inventory-template.md`), `spec/ux/prototipo.penpot` (archivo versionado) y `spec/ux/exports/` (renders PNG/SVG para revisión en GATE 1 sin abrir la herramienta).
+- **Gobierno**: GATE 1 exige inventario con recibo vigente para las pantallas del sprint — sin prototipo aprobado, el Dev Front no implementa esas pantallas. Cambios en HU/flujos/roles revocan el recibo de `spec/ux/` vía `spec_diff_impact.py` y las pantallas impactadas se re-aprueban. Sin MCP de Penpot disponible, el inventario y wireframes se entregan igualmente (degradación elegante). Alternativa Figma documentada: el artefacto gobernado es el export versionado, nunca el archivo vivo en la nube.
+- `gate_checker.py`: tipo nuevo `screen-inventory` (9 checks) con validación cruzada — las HU-xx citadas en el inventario deben existir en `user-stories.md`.
+- Matriz de autoridad: `spec/ux/` → `ux-designer`.
+
 ## [2.7.0] - 2026-08-23
 
 ### Added
@@ -100,7 +109,7 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 ### Added
 - **`sdlc-decision-engine`**: framework de decisiones de 8 pasos (Natanzon) con `decision_engine.py` (validación + Decision Packages) y `scorecard_calculator.py`.
 - **`sdlc-enterprise-architect`**: Tech Radar (ADOPT/TRIAL/ASSESS/HOLD), Principios Arquitectónicos, gobernanza por excepción, Paved Roads.
-- **Risk Tiering** (`decision_sizing.py`): Tier 1/2/3 con gobernanza proporcional al riesgo.
+- **Risk Tiering** (`decision_sizing.py`): clasifica el Risk Tier (1/2/3) y fija el nivel de gobernanza.
 - **Advice Process** (`advisor.py`): stakeholders por impacto; el consejo no es vinculante pero omitirlo bloquea GATE 1.
 - **Firma arquitectónica** (`arch_signoff.py`): recibo `ARCH-xxx.json` con hash compuesto ADR + artefactos de diseño.
 - `gate_checker.py --tipo adr`: validación semántica de los 8 pasos, Tech Radar y firma vigente.
@@ -109,12 +118,3 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 
 ### Added
 - **Receipts** (`receipt.py`): recibos SHA-256 emit/verify/status/revoke; invalidación automática al cambiar el artefacto.
-- **Routing orgánico**: rutas directo / exploración delegada / hotfix / full-pipeline / change-request.
-- **Fase 8 — Archivo**: merge de delta-specs, cierre del ciclo.
-- `harness_doctor.py` (health check) y `detect_stack.py` (TDD en pausa sin test runner).
-- Perfiles de modelo por fase (`references/model-profiles.md`).
-
-## [1.0.0] - 2026-08-01
-
-### Added
-- Versión inicial: 15 skills de roles + `sdlc-memory` (Git-nativa, 3 scopes, políticas y desviaciones, MCP), pipeline Fases -1 a 7, gates 1/2/2.5/3, SDD + TDD.
