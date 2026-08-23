@@ -20,7 +20,7 @@ import argparse, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from manifest_check import derive, SKILLS_DIR
+from manifest_check import derive, SKILLS_DIR, harness_version
 from spec_diff_impact import DEPENDS_ON
 
 OUT_HTML = os.path.normpath(os.path.join(HERE, "..", "..", "..", "docs", "graph.html"))
@@ -93,7 +93,9 @@ def render_html(nodes, transversal, total_skills):
                        "transversal": [{"id": s["name"], "name": ROLE_NAMES.get(s["name"], s["role"]),
                                         "gates": s["gates"]} for s in transversal]},
                       ensure_ascii=False)
-    return TEMPLATE.replace("/*__DATA__*/null", data).replace("__TOTAL__", str(total_skills))
+    return (TEMPLATE.replace("/*__DATA__*/null", data)
+            .replace("__TOTAL__", str(total_skills))
+            .replace("__VERSION__", harness_version() or "?"))
 
 
 TEMPLATE = """<!DOCTYPE html>
@@ -134,7 +136,7 @@ TEMPLATE = """<!DOCTYPE html>
 <div class="canvas" id="canvas"><svg class="edges" id="edges"></svg></div>
 <div id="panel"></div>
 <div class="trans" id="trans"></div>
-<footer>Artefacto derivado — regenerar con <code>manifest_check/harness_graph.py --write</code>. No editar a mano (el drift lo detecta el self-test y el CI).</footer>
+<footer>Artefacto derivado (arnés v__VERSION__) — regenerar con <code>manifest_check/harness_graph.py --write</code>. No editar a mano (el drift lo detecta el self-test y el CI).</footer>
 <script>
 const DATA = /*__DATA__*/null;
 const canvas = document.getElementById('canvas'), svg = document.getElementById('edges');
@@ -360,6 +362,7 @@ def derive_project(project_dir):
     nombre = os.path.basename(os.path.abspath(project_dir))
     return {
         "proyecto": nombre,
+        "harness_version": harness_version() or "sin-declarar",
         "generado": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
         "gate_status": gate_status, "fase_actual": current,
         "loops_activos": {f"{f}->{t}": n for (f, t), n in sorted(active.items())},
@@ -518,7 +521,7 @@ def render_dashboard_html(model, state_json=""):
 <title>Dashboard — {esc(model["proyecto"])}</title>
 <style>{DASH_CSS}</style></head><body>
 <h1>📊 Dashboard — {esc(model["proyecto"])}</h1>
-<div class="sub">Generado: {model["generado"]} · spec/dashboard.html (artefacto derivado — no editar a mano)</div>
+<div class="sub">Generado: {model["generado"]} · arnés v{esc(model.get("harness_version", "?"))} · spec/dashboard.html (artefacto derivado — no editar a mano)</div>
 
 <div class="panel"><h2>Pipeline — estado actual</h2>
 {_dash_graph_svg(model)}

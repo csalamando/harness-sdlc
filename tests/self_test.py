@@ -182,6 +182,19 @@ check("routing --sin-ui excluye el prototipo spec/ux/",
 code2, out2 = run("manifest_check.py", "--routing")
 check("routing sin flags incluye a data-engineer en fase 2",
       code2 == 0 and "data-engineer" in out2)
+# Versión del arnés (v2.12.1): frontmatter del orquestador = última entrada del CHANGELOG
+sys.path.insert(0, ORCH)
+from manifest_check import harness_version  # noqa: E402
+_hv = harness_version()
+_cl = open(os.path.join(ROOT, "CHANGELOG.md"), encoding="utf-8").read()
+_latest = re.search(r"## \[(\d+\.\d+\.\d+)\]", _cl)
+check("harness-version declarada y coincide con el CHANGELOG",
+      bool(_hv) and bool(_latest) and _hv == _latest.group(1),
+      f"declarada={_hv} changelog={_latest.group(1) if _latest else '?'}")
+# receipt.py estampa la versión en los recibos nuevos
+_receipt_src = open(os.path.join(ORCH, "receipt.py"), encoding="utf-8").read()
+check("receipt.py estampa harness_version", 'rec["harness_version"]' in _receipt_src)
+
 # Grafo interactivo derivado (v2.11): docs/graph.html no puede quedar desactualizado
 code, out = run("harness_graph.py", "--check")
 check("grafo interactivo docs/graph.html sin drift", code == 0,

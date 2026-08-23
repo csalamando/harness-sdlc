@@ -7,6 +7,14 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.12.1] - 2026-08-23
+
+### Added
+- **Versión del arnés visible y estampada**: el orquestador declara `harness-version` en su frontmatter (fuente única); el manifiesto derivado la registra; los **recibos nuevos la estampan** (`harness_version`) — la evidencia queda autodescriptiva (la lección de CATI: gates `fase2` de una versión vieja se descubrieron por accidente); `harness_doctor.py` muestra la versión instalada y **alerta si el proyecto operó con una versión anterior**; el dashboard del proyecto y el grafo del arnés la muestran en su encabezado/pie. El self-test cruza que la versión declarada coincida con la última entrada del CHANGELOG — olvidar el bump rompe el build. Decisión: versión única del arnés (no por skill) mientras las skills se distribuyan juntas.
+
+### Fixed
+- **Dashboard con proyectos reales (lecciones de CATI)**: `norm_gate()` normaliza alias históricos de gates en recibos (`fase2` → `GATE 2`) — proyectos adoptados en versiones viejas ya no aparecen "sin recibos". El conteo de HU cerradas escanea múltiples layouts (`src/`, `backend/src`, `frontend/src`, `e2e/`, …) en vez de asumir `src/` + `tests/`, y ya no resta por id (bug que marcaba 0 HU cerradas en proyectos con tests correctos).
+
 ## [2.12.0] - 2026-08-23
 
 ### Added

@@ -26,6 +26,17 @@ Uso:
 """
 import os, sys, json, hashlib, argparse, datetime, subprocess
 
+def harness_version():
+    """Versión del arnés instalado (frontmatter del orquestador); None si no se puede leer."""
+    md = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SKILL.md")
+    if not os.path.isfile(md):
+        return None
+    import re as _re
+    m = _re.search(r'^harness-version:\s*"?([^"\n]+)"?\s*$',
+                   open(md, encoding="utf-8", errors="replace").read(), _re.M)
+    return m.group(1).strip() if m else None
+
+
 def receipts_dir(spec_dir):
     d = os.path.join(spec_dir, "receipts")
     os.makedirs(d, exist_ok=True)
@@ -77,6 +88,9 @@ def cmd_emit(a):
         "emitido": datetime.datetime.now().isoformat(timespec="seconds"),
         "estado": "vigente",
     }
+    hv = harness_version()
+    if hv:
+        rec["harness_version"] = hv
     if a.tokens_src:
         rec["tokens_src"] = a.tokens_src
         if t_in:

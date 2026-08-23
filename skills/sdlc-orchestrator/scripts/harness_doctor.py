@@ -120,6 +120,35 @@ def main():
           os.path.isfile(ci_db),
           "" if os.path.isfile(ci_db) else "(correr: code_intel.py --root <proyecto> index)")
 
+    # Versión del arnés: instalada vs. la última vista en los recibos del proyecto (v2.12.1)
+    import json as _json
+    hv = None
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from manifest_check import harness_version
+        hv = harness_version(skills_dir)
+    except Exception:
+        pass
+    print(f"\nVersión del arnés instalado: {hv or 'no declarada (anterior a v2.12.1)'}")
+    rdir = os.path.join(spec, "receipts")
+    if os.path.isdir(rdir):
+        versions = set()
+        for f in sorted(os.listdir(rdir)):
+            if f.endswith(".receipt.json"):
+                try:
+                    v = _json.load(open(os.path.join(rdir, f), encoding="utf-8")).get("harness_version")
+                    if v:
+                        versions.add(v)
+                except (OSError, ValueError):
+                    pass
+        if hv and versions and hv not in versions and max(versions) < hv:
+            print(f"  ⚠ el proyecto operó con arnés {sorted(versions)} y tienes instalado {hv}"
+                  " — considera actualizar la adopción (nuevos gates, herramientas y plantillas)")
+        elif versions:
+            print(f"  Recibos del proyecto emitidos con arnés: {', '.join(sorted(versions))}")
+        else:
+            print("  Recibos sin harness_version (emitidos con arnés anterior a v2.12.1)")
+
     n_fail = results.count(False)
     print(f"\nEstado: {'OK' if n_fail == 0 else f'REVISAR — {n_fail} problema(s)'}")
     sys.exit(0 if n_fail == 0 else 1)

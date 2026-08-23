@@ -583,8 +583,9 @@ El arnés gobierna con recibos y gates a quienes lo usan; esta es la red de segu
    python tests/self_test.py   # exit 0 = verde; exit 1 = lista los fallos
    ```
 
-2. **CHANGELOG** con la entrada de la versión (regla SemVer del repo: MAJOR rompe gates/recibos/spec, MINOR añade skills/gates, PATCH corrige scripts/plantillas/docs).
-3. **Tag + release**: el ZIP de skills se construye con `git archive <tag> skills` — por eso `tests/` y cualquier herramienta de mantenimiento quedan automáticamente fuera del paquete que descargan los usuarios.
+2. **Versión**: actualiza `harness-version` en el frontmatter de `skills/sdlc-orchestrator/SKILL.md` a la nueva versión y regenera (`manifest_check.py --write` + `harness_graph.py --write`). El self-test falla si no coincide con la última entrada del CHANGELOG — es imposible olvidarlo.
+3. **CHANGELOG** con la entrada de la versión (regla SemVer del repo: MAJOR rompe gates/recibos/spec, MINOR añade skills/gates, PATCH corrige scripts/plantillas/docs).
+4. **Tag + release**: el ZIP de skills se construye con `git archive <tag> skills` — por eso `tests/` y cualquier herramienta de mantenimiento quedan automáticamente fuera del paquete que descargan los usuarios.
 
 ### Regla de oro para contribuir
 

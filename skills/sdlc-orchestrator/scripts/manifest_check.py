@@ -31,6 +31,17 @@ def parse_list(v):
     return [x.strip() for x in v.split(",") if x.strip()]
 
 
+def harness_version(skills_dir=None):
+    """Versión del arnés, declarada en el frontmatter del orquestador (fuente única)."""
+    d = skills_dir or SKILLS_DIR
+    md = os.path.join(d, "sdlc-orchestrator", "SKILL.md")
+    if not os.path.isfile(md):
+        return None
+    text = open(md, encoding="utf-8").read()
+    fm = dict(FM_RE.findall(text.split("---", 2)[1] if "---" in text else ""))
+    return fm.get("version") or None
+
+
 def derive(skills_dir):
     """Escanea skills/*/SKILL.md y deriva el manifiesto como lista de dicts."""
     skills = []
@@ -56,12 +67,13 @@ def derive(skills_dir):
     return skills
 
 
-def render(skills):
+def render(skills, skills_dir=None):
     """Serializa el manifiesto a YAML (subconjunto plano, stdlib puro)."""
     out = ["# Manifiesto del arnés SDLC — GENERADO por manifest_check.py --write",
            "# NO editar a mano: la fuente de verdad es el frontmatter harness-* de cada SKILL.md,",
            "# y la lista de scripts se deriva del disco. Drift = fallo en self_test y en CI.",
-           "manifest-version: 1", f"skill-count: {len(skills)}", "skills:"]
+           "manifest-version: 1", f'harness-version: "{harness_version(skills_dir) or "sin-declarar"}"',
+           f"skill-count: {len(skills)}", "skills:"]
     def lst(xs):
         return "[" + ", ".join(xs) + "]"
     for s in skills:
@@ -192,7 +204,7 @@ def main():
         sys.exit(0)
 
     problems = cross_validate(skills)
-    text = render(skills)
+    text = render(skills, os.path.abspath(a.skills_dir))
     manifest_path = os.path.normpath(MANIFEST)
 
     if a.write:
