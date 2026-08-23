@@ -11,6 +11,8 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 
 ### Docs
 - **README con diagramas Mermaid** (render nativo de GitHub, sin imágenes que mantener): el pipeline completo con gates coloreados por tipo (humanos vs automáticos, §3), el ciclo de vida de un recibo RDD como diagrama de estados (ACTIVE → INVALIDATED/REVOKED → re-gate, §5) y las tres capas de memoria con precedencia y promoción (§6). Dogfooding: la propia skill `sdlc-diagrams` predica doc-as-code con Mermaid.
+- **Quick start de 2 minutos** al inicio del README (descargar ZIP → descomprimir `.skill` → "usa el orquestador SDLC"), antes solo en la guía.
+- **Tabla de las 21 skills colapsable** (`<details>`) — la portada ya no la sufre quien no la necesita.
 
 ## [2.10.0] - 2026-08-23
 

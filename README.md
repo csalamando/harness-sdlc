@@ -10,6 +10,20 @@
 
 ---
 
+## ⚡ Quick start (2 minutos)
+
+```bash
+# 1. Descarga el ZIP de la última release:
+#    https://github.com/csalamando/harness-sdlc/releases/latest
+# 2. Descomprime cada <nombre>.skill en el directorio de skills de tu agente:
+#    Kimi → Skills · Claude Code → .claude/skills/ · Cursor → .cursor/skills/ · Codex → ~/.codex/skills/
+```
+3. En tu proyecto, dile al agente: **"usa el orquestador SDLC para <tu iniciativa>"**
+
+Eso es todo — el orquestador elige la ruta mínima, activa los roles y exige los gates. Guía completa por agente/IDE en [docs/guia-de-uso-arnes-sdlc.md](docs/guia-de-uso-arnes-sdlc.md).
+
+---
+
 ## Tabla de contenidos
 
 1. [Visión general](#1-visión-general)
@@ -59,6 +73,9 @@ Tres ideas lo diferencian de un pipeline de prompts:
 
 Ordenadas por fase del pipeline (las transversales al final):
 
+<details>
+<summary><b>Ver la tabla completa de las 21 skills</b> (clic para desplegar)</summary>
+
 | Skill | Rol | Fase |
 |---|---|---|
 | `sdlc-devops-engineer` | Setup + CI/CD + IaC + rollback | -1, 6 |
@@ -82,6 +99,8 @@ Ordenadas por fase del pipeline (las transversales al final):
 | `sdlc-orchestrator` | Orquestador del pipeline + 16 herramientas CLI | Transversal |
 | `sdlc-memory` | Memoria persistente con scopes y gobierno | Transversal |
 | `sdlc-diagrams` | Diagramas C4, cloud (AWS/Azure/GCP), secuencia, BPMN, Gantt, GitFlow vía drawio MCP + derivación desde IaC/workflows con aprobación por recibo | Transversal |
+
+</details>
 
 Separación de autoridad: **el PO nunca aprueba decisiones técnicas; el Arquitecto de Software es el único rol que firma ADRs.**
 
