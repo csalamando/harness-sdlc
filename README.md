@@ -14,6 +14,7 @@
 4. [Routing orgánico](#4-routing-orgánico)
    - [Autoridad por rol](#4b-autoridad-por-rol-quién-puede-emitir-qué)
    - [Contexto mínimo e inteligencia de código](#4c-contexto-mínimo-e-inteligencia-de-código-v23)
+   - [Telemetría de skills](#4d-telemetría-de-skills-v24)
 5. [Receipts: confiar en evidencia, no en narración](#5-receipts-confiar-en-evidencia-no-en-narración)
 6. [El sistema de memoria](#6-el-sistema-de-memoria)
 7. [Gobernanza de decisiones (v2.0)](#7-gobernanza-de-decisiones-v20)
@@ -44,7 +45,7 @@ Tres ideas lo diferencian de un pipeline de prompts:
 
 | Skill | Rol | Fase |
 |---|---|---|
-| `sdlc-orchestrator` | Orquestador del pipeline + 14 herramientas CLI | Todas |
+| `sdlc-orchestrator` | Orquestador del pipeline + 15 herramientas CLI | Todas |
 | `sdlc-product-owner` | Visión, épicas, backlog priorizado (el QUÉ y el CUÁNDO) | 0 |
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, escribe historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina (Fase 6) | 0, 6 |
@@ -89,7 +90,7 @@ FASE -1 Setup (DevOps + detect_stack)
 |---|---|
 | **GATE 0** (humano) | Aprobación de la iniciativa: propuesta de arquitectura con ≥2 opciones + recomendación justificada (scorecard con costo como criterio), historias técnicas registradas y estimación **CAPEX/OPEX/TCO vigente** (AWS/Azure, 3 escenarios). Sin caso de negocio aprobado, no hay pipeline de construcción. |
 | **GATE 1** (humano) | Spec consolidada aprobada + sin `conflicts_with` de memoria pendientes + `policy check` en verde (toda política org mandatory attestada o con desviación aprobada vigente) + **cada ADR Tier 1-2 con 8 pasos validados, Advice Log registrado, Tech Radar cruzado y firma vigente**. Sin esto, cero código. |
-| **GATE 2** | Todas las historias verificadas E2E. Si hay índice `code_intel`, los tests corridos cubren lo reportado por `code_intel.py tests`. Bug crítico → se devuelve al dev **con el test que lo reproduce** (una corrección acotada; si falla, escala a humano). |
+| **GATE 2** | Todas las historias verificadas E2E. Bug crítico → se devuelve al dev **con el test que lo reproduce** (una corrección acotada; si falla, escala a humano). |
 | **GATE 2.5** | Ninguna vulnerabilidad crítica/alta abierta. |
 | **GATE 3** | Staging validado + rollback probado. |
 
@@ -135,6 +136,18 @@ El contexto del agente es un recurso gobernado. Tres mecanismos para que el agen
 3. **`mem.py search --brief`**: una línea por memoria; se abre con `get` solo la relevante.
 
 En change-request, el impacto total = `spec_diff_impact.py` (spec) + `code_intel.py impact` (código).
+
+---
+
+## 4d. Telemetría de skills (v2.4)
+
+La disciplina no se narra, se mide — y **sin meter telemetría en el contexto del agente** (la escritura es un flag en comandos que ya existen; la lectura es bajo demanda):
+
+1. **`skill_metrics.py use --skill <rol> --fase <N>`**: el orquestador registra cada activación (append-only en `spec/metrics/usage.jsonl`).
+2. **`receipt.py emit --tokens-src reportado|estimado --attempts K`**: tokens por artefacto — exactos si la plataforma del agente los expone, estimados por chars/4 si no (nunca depende de que el agente "se acuerde").
+3. **`skill_metrics.py report` → `spec/METRICS.md`**: tres vistas — **aporte** (artefactos, % de gates al primer intento, tokens por skill), **cobertura** (detector de *freestyle*: un rol con artefactos pero sin activación registrada está trabajando por fuera de la skill; una activación sin artefactos es skill de adorno) y **señales** accionables para mejorar skills.
+
+En Fase 8 el orquestador genera `METRICS.md` y guarda las señales como memoria `learning` — la mejora de las skills se retroalimenta sola. `METRICS.md` nunca se inyecta en paquetes de contexto.
 
 ---
 
@@ -198,7 +211,6 @@ Al ser Git-nativa, la memoria tiene **historial, diff, code review y resolución
 ```bash
 # Consultar la memoria
 python3 mem.py search "autenticación oauth"   # búsqueda federada en los 3 scopes
-python3 mem.py search "oauth" --brief         # una línea por memoria (ahorra contexto)
 python3 mem.py get MEM-2026-0001
 python3 mem.py timeline
 # O directo sobre el índice:
@@ -272,7 +284,7 @@ Basada en el **framework de 8 pasos de Sonya Natanzon**, el **Advice Process** y
 ## 8. Gestión de cambios de spec
 
 1. Declarar la relación del cambio: **supersedes** (reemplaza — flujo normal) o **conflicts_with** (contradice — requiere resolución humana, bloquea GATE 1).
-2. `spec_diff_impact.py --cambiado <artefacto> --relation <rel>` lista el downstream invalidado (grafo de dependencias de la spec); `code_intel.py impact` calcula el blast radius en el código.
+2. `spec_diff_impact.py --cambiado <artefacto> --relation <rel>` lista el downstream invalidado (grafo de dependencias de la spec).
 3. `receipt.py revoke` sobre cada artefacto impactado; re-ejecutar **solo** las fases afectadas.
 4. Nueva versión + entrada en CHANGELOG.
 
@@ -283,7 +295,7 @@ En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias super
 ## 9. Herramientas compartidas y propias
 
 - **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`).
-- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec).
+- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills).
 - **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
 ---

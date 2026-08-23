@@ -7,6 +7,19 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.4.0] - 2026-08-23
+
+### Added
+- **Telemetría de skills** (`skill_metrics.py`, script 15 del orquestador): medición del aporte y la disciplina de las skills sin meter telemetría en el contexto del agente (escritura por CLI en comandos existentes; lectura bajo demanda).
+  - `use --skill <rol> --fase <N>`: registro append-only de activaciones en `spec/metrics/usage.jsonl`.
+  - `report` → `spec/METRICS.md` con tres vistas: **aporte** (artefactos con recibo, % gates al primer intento, tokens por skill), **cobertura** (detector de *freestyle*: rol con artefactos sin activación registrada = trabajo fuera de la skill; activación sin artefactos = skill de adorno) y **señales** accionables para mejorar skills.
+- `receipt.py emit`: telemetría opcional `--tokens-in/-out --tokens-src reportado|estimado --attempts K`. Tokens exactos cuando la plataforma del agente los expone; estimación chars/4 calculada por el script cuando no — nunca depende de la narración del agente.
+- Fase 8: el orquestador genera `METRICS.md` y guarda las señales como memoria `learning` (mejora continua de las skills).
+
+### Changed
+- `harness_doctor.py`: 13 scripts del orquestador (antes 12).
+- README §4d y Guía §5f documentan la versión.
+
 ## [2.3.1] - 2026-08-23
 
 ### Added
@@ -20,7 +33,7 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 ### Added
 - **`code_intel.py`** (orquestador): mini motor de inteligencia de código propio (inspirado en Gortex, reimplementado a medida). Grafo de símbolos en SQLite derivable (`.codeintel/index.db`, gitignored, incremental por SHA-256), Python stdlib puro, sin daemon. Extracción por niveles: `ast` para Python (fidelidad total) + patrones para 15 lenguajes más. Comandos: `index`, `symbol`, `context` (cuerpo exacto del símbolo o esqueleto del archivo), `impact` (blast radius BFS con razón por arista), `tests` (tests candidatos, evidencia para GATE 2), `search` (FTS5 sobre firmas/docstrings), `map`, `stats`.
 - **`spec_index.py`** (orquestador): genera `spec/INDEX.md`, digest de una página con sha256, tamaño y resumen por artefacto — el agente se orienta leyendo un archivo y solo abre lo que necesita (verificando recibo).
-- **`context_packager.py`**: antepone `spec/INDEX.md` al paquete y, para roles de desarrollo con índice disponible, instruye consultar símbolos vía `code_intel.py` en vez de leer archivos de código completos (`--code-root`).
+- **`context_packager.py`**: antepone `spec/INDEX.md` al paquete y, para roles de desarrollo con índice disponible, instruye consultar símbolos vía `code_intel.py` en vez de leer archivos completos (`--code-root`).
 - **`mem.py search --brief`**: una línea por memoria (id + título); abrir con `mem.py get` solo la relevante.
 - Orquestador: sección "Contexto mínimo e inteligencia de código"; GATE 2 acepta `code_intel.py tests` como evidencia de cobertura de tests; change-request combina `spec_diff_impact.py` (spec) + `code_intel.py impact` (código).
 
