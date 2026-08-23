@@ -8,7 +8,7 @@ Esta guía explica cómo instalar y usar las 21 skills del arnés SDLC en cualqu
 
 | Skill | Rol | Fase |
 |---|---|---|
-| `sdlc-orchestrator` | Orquestador del pipeline + 15 herramientas CLI | Todas |
+| `sdlc-orchestrator` | Orquestador del pipeline + 16 herramientas CLI | Todas |
 | `sdlc-product-owner` | Visión y backlog priorizado | 0 |
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina | 0, 6 |
@@ -237,7 +237,7 @@ y genera las historias de usuario con Gherkin del sprint 1."
 
 ### Requisitos de las herramientas CLI del orquestador
 
-Los scripts (`gate_checker.py`, `receipt.py`, `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `code_intel.py`, `skill_metrics.py`, etc.) solo necesitan **Python 3** (sin dependencias externas). El agente los ejecuta directamente; en entornos sandbox asegúrate de que el agente tenga permiso de ejecutar Python.
+Los scripts (`gate_checker.py`, `receipt.py`, `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `code_intel.py`, etc.) solo necesitan **Python 3** (sin dependencias externas). El agente los ejecuta directamente; en entornos sandbox asegúrate de que el agente tenga permiso de ejecutar Python.
 
 ---
 
@@ -429,7 +429,7 @@ El contexto del agente pasa a ser un recurso gobernado: el objetivo es que el ag
   python3 scripts/code_intel.py map                       # mapa por directorio + símbolos más llamados
   ```
   Regla para roles de desarrollo: **no leer archivos de código completos** — consultar símbolos. Si el índice no existe, el arnés degrada a lectura normal (capacidad opcional, como drawio sin MCP).
-- **`spec_index.py`** (nuevo, orquestador): genera `spec/INDEX.md`, digest de una página con sha256 + tamaño + resumen de cada artefacto. El agente lee el digest para orientarse y abre solo el artefacto que necesita, verificando recibo. Regenerar al abrir sesión y tras cada aprobación (es barato). El encabezado incluye el bloque "Cómo leer este repo": las 4 reglas de gobierno para cualquier agente que aterrice en el proyecto, con o sin el arnés instalado.
+- **`spec_index.py`** (nuevo, orquestador): genera `spec/INDEX.md`, digest de una página con sha256 + tamaño + resumen de cada artefacto. El agente lee el digest para orientarse y abre solo el artefacto que necesita, verificando recibo. Regenerar al abrir sesión y tras cada aprobación (es barato).
 - **`context_packager.py`**: antepone `spec/INDEX.md` al paquete; para `backend-dev`/`frontend-dev`/`qa`/`sre` con índice disponible, incluye las instrucciones de `code_intel` (`--code-root`).
 - **`mem.py search --brief`**: una línea por memoria (id + tipo + título); abrir con `mem.py get <id>` solo la relevante.
 - **Change-request con impacto total**: `spec_diff_impact.py` (impacto en spec) + `code_intel.py impact` (impacto en código) — la revocación de recibos cubre ambos grafos.
@@ -451,6 +451,24 @@ Mide el aporte real de cada skill y **audita que el agente trabaje a través de 
 - **Cierre del loop**: en Fase 8 el orquestador genera `METRICS.md` y guarda las señales como memoria `tipo: learning` — la mejora de las skills queda institucionalizada.
 - **Anti-inflación de contexto**: `METRICS.md` nunca se inyecta en paquetes de contexto; se consulta en Fase 8 o cuando el humano lo pida.
 - `harness_doctor.py`: 13 scripts del orquestador.
+
+---
+
+## 5g. Novedades v2.5 (Sprint Review)
+
+El reporte gerencial del arnés crece: además del `impact-report.md` del Product Analyst (impacto de **negocio**, Fase 7) existe ahora el **Sprint Review** (desempeño del **equipo y del arnés**, Fase 8) — y es **obligatorio al cerrar cada sprint**.
+
+- **`sprint_review.py --sprint <N>`** genera `spec/reports/sprint-review-NN.md`: un archivo versionado **por sprint** (no se sobrescribe), lo que habilita serie histórica y tendencias.
+- **Secciones** (todo derivado de fuentes gobernadas, cero narración del agente):
+  1. **Resumen ejecutivo**: artefactos aprobados, % gates al primer intento, trabajo rehecho, tokens, memorias learning.
+  2. **Avance del proyecto**: recibos vigentes y rehechos por gate — un "rehecho" creciente indica gates débiles o change-requests frecuentes.
+  3. **Desempeño del arnés**: embebe las métricas de skills de v2.4 (aporte, cobertura/freestyle, señales).
+  4. **Tiempos del pipeline**: lead time por gate según timestamps de los recibos.
+  5. **Tendencia vs sprint anterior**: KPIs embebidos como comentarios HTML que el propio script relee para comparar (`sprint-review-01` vs `02` vs ...).
+  6. **Aprendizajes y acciones**: memorias `learning` del período + acciones derivadas de las señales.
+- **Relación de artefactos**: `METRICS.md` = tablero vivo entre sprints (se sobrescribe); `sprint-review-NN.md` = snapshot histórico; `impact-report.md` = impacto de negocio — se enlaza, no se duplica.
+- Nota: las cifras son acumuladas al cierre del sprint (los recibos no llevan etiqueta de sprint); la tendencia compara esos snapshots.
+- `harness_doctor.py`: 14 scripts del orquestador.
 
 ---
 
