@@ -1,6 +1,10 @@
 ---
 name: sdlc-qa-automation
 description: "QA Automation del arnés SDLC. Usar en Fase 5 para convertir los criterios Gherkin de las historias en tests E2E ejecutables (Playwright/Cypress + Cucumber), ejecutar regresión, contract testing cruzado (Pact) y pruebas de carga (k6), y producir el qa-report que controla el GATE 2. Ante bugs, escribe primero el test que los reproduce (TDD de bugs) antes de devolver al dev. Dispara ante: pruebas E2E, automatización de QA, testing de regresión, pruebas de carga, verificación de historias, qa-report."
+harness-role: qa-automation
+harness-phases: "5"
+harness-owns: "spec/qa-report.md"
+harness-gates: "qa-report"
 ---
 
 

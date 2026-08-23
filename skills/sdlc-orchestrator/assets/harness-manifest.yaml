@@ -1,0 +1,157 @@
+# Manifiesto del arnés SDLC — GENERADO por manifest_check.py --write
+# NO editar a mano: la fuente de verdad es el frontmatter harness-* de cada SKILL.md,
+# y la lista de scripts se deriva del disco. Drift = fallo en self_test y en CI.
+manifest-version: 1
+skill-count: 21
+skills:
+  - name: sdlc-backend-dev-tdd
+    role: backend-dev
+    phases: [4]
+    owns: []
+    gates: []
+    optional-deps: []
+    scripts: []
+  - name: sdlc-business-analyst
+    role: business-analyst
+    phases: [1]
+    owns: [spec/user-stories.md, spec/business-rules.md, spec/glossary.md, spec/roles.md, spec/process-definition.md]
+    gates: [user-stories, roles, process-definition]
+    conditional: "process-definition.md: iniciativas que automatizan/redisenan procesos"
+    optional-deps: []
+    scripts: []
+  - name: sdlc-cloud-engineer
+    role: cloud-engineer
+    phases: [6]
+    owns: [spec/cloud-costs.md, spec/diagrams/despliegue.drawio]
+    gates: []
+    optional-deps: []
+    scripts: []
+  - name: sdlc-cloud-pricing
+    role: cloud-pricing
+    phases: [0, 6]
+    owns: [spec/cost-assumptions.yaml, spec/cost-estimation.md]
+    gates: [cost-estimation]
+    optional-deps: []
+    scripts: [cost_estimator.py, unit_prices.py]
+  - name: sdlc-data-engineer
+    role: data-engineer
+    phases: [2]
+    owns: [spec/data-governance.md]
+    gates: []
+    conditional: "producto con datos significativos"
+    optional-deps: []
+    scripts: []
+  - name: sdlc-decision-engine
+    role: decision-engine
+    phases: [2]
+    owns: []
+    gates: []
+    optional-deps: []
+    scripts: [decision_engine.py, scorecard_calculator.py]
+  - name: sdlc-devops-engineer
+    role: devops-engineer
+    phases: [-1, 6]
+    owns: [spec/diagrams/pipeline-cicd.md]
+    gates: []
+    optional-deps: []
+    scripts: []
+  - name: sdlc-diagrams
+    role: diagrams
+    phases: [transversal]
+    owns: []
+    gates: []
+    optional-deps: [drawio-mcp, drawio-desktop, mmdc]
+    scripts: [diagram_render.py, iac_to_diagram.py, pipeline_diagram.py]
+  - name: sdlc-enterprise-architect
+    role: enterprise-architect
+    phases: [2]
+    owns: [spec/tech-radar.yaml, spec/architectural-principles.yaml, spec/exception-log.md]
+    gates: []
+    conditional: "Tier 1 y excepciones al radar"
+    optional-deps: []
+    scripts: []
+  - name: sdlc-frontend-dev-tdd
+    role: frontend-dev
+    phases: [4]
+    owns: []
+    gates: []
+    optional-deps: []
+    scripts: []
+  - name: sdlc-memory
+    role: memory
+    phases: [transversal]
+    owns: []
+    gates: []
+    optional-deps: []
+    scripts: [mem.py, mem_mcp.py]
+  - name: sdlc-orchestrator
+    role: orchestrator
+    phases: [transversal]
+    owns: [spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml]
+    gates: []
+    optional-deps: []
+    scripts: [advisor.py, arch_signoff.py, authority_check.py, code_intel.py, context_packager.py, decision_sizing.py, detect_stack.py, gate_checker.py, harness_doctor.py, manifest_check.py, receipt.py, skill_metrics.py, spec_diff_impact.py, spec_index.py, sprint_review.py, traceability_matrix.py]
+  - name: sdlc-product-analyst
+    role: product-analyst
+    phases: [7]
+    owns: [spec/impact-report.md]
+    gates: []
+    optional-deps: []
+    scripts: []
+  - name: sdlc-product-owner
+    role: product-owner
+    phases: [0]
+    owns: [spec/vision.md, spec/epics.md, spec/backlog.md]
+    gates: [vision, backlog]
+    optional-deps: []
+    scripts: []
+  - name: sdlc-qa-automation
+    role: qa-automation
+    phases: [5]
+    owns: [spec/qa-report.md]
+    gates: [qa-report]
+    optional-deps: []
+    scripts: []
+  - name: sdlc-security-engineer
+    role: security-engineer
+    phases: [2, 4, 5]
+    owns: [spec/threat-model.md, spec/security-requirements.md]
+    gates: [threat-model]
+    optional-deps: []
+    scripts: []
+  - name: sdlc-software-architect
+    role: software-architect
+    phases: [2, 3]
+    owns: [spec/architecture.md, spec/api-contract.yaml, spec/data-model.md, spec/adr/, spec/test-plan.md, spec/tech-debt.md]
+    gates: [architecture, api-contract, test-plan, adr]
+    optional-deps: []
+    scripts: []
+  - name: sdlc-solution-architect
+    role: solution-architect
+    phases: [0, 1, 2]
+    owns: [spec/architecture-proposal.md, spec/technical-stories.md]
+    gates: [architecture-proposal, technical-stories]
+    optional-deps: []
+    scripts: []
+  - name: sdlc-sre
+    role: sre
+    phases: [7]
+    owns: [spec/slo.md]
+    gates: [slo]
+    optional-deps: []
+    scripts: []
+  - name: sdlc-technical-writer
+    role: technical-writer
+    phases: [4, 5, 6]
+    owns: []
+    gates: []
+    optional-deps: []
+    scripts: []
+  - name: sdlc-ux-designer
+    role: ux-designer
+    phases: [2]
+    owns: [spec/ux-flows.md, spec/design-system.md, spec/tokens.json, spec/ux/]
+    gates: [ux-flows, design-system, screen-inventory]
+    conditional: "spec/ux/: iniciativas con UI"
+    optional-deps: [penpot-mcp]
+    scripts: []

@@ -1,6 +1,10 @@
 ---
 name: sdlc-software-architect
 description: "Arquitecto de Software del arnés SDLC. Usar en Fase 2-3 para definir arquitectura de componentes/capas, modelo de datos, contratos de API en OpenAPI, decisiones técnicas con ADRs, requisitos no funcionales y el test-plan. También consolida la spec maestra para el GATE 1 y mantiene el registro de deuda técnica. Dispara ante: diseñar arquitectura, definir APIs, OpenAPI, ADR, modelo de datos, requisitos no funcionales, consolidar especificación."
+harness-role: software-architect
+harness-phases: "2, 3"
+harness-owns: "spec/architecture.md, spec/api-contract.yaml, spec/data-model.md, spec/adr/, spec/test-plan.md, spec/tech-debt.md"
+harness-gates: "architecture, api-contract, test-plan, adr"
 ---
 
 

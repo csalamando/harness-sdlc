@@ -1,6 +1,9 @@
 ---
 name: sdlc-product-analyst
 description: "Product Analyst del arnés SDLC (Fase 7). Usar tras el lanzamiento para instrumentar analítica de uso, medir si las métricas de éxito definidas por el Product Owner en vision.md se cumplieron realmente, y producir impact-reports que repriorizan el backlog. Dispara ante: analítica de producto, medición de métricas, impact report, análisis de uso, embudos, KPIs de producto."
+harness-role: product-analyst
+harness-phases: "7"
+harness-owns: "spec/impact-report.md"
 ---
 
 

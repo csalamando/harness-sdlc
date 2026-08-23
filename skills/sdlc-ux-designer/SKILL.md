@@ -1,6 +1,12 @@
 ---
 name: sdlc-ux-designer
 description: "Diseñador UI/UX del arnés SDLC. Usar en Fase 2 para diseñar flujos de usuario, wireframes y sistema de diseño (tokens de color, tipografía, espaciado, componentes) cubriendo obligatoriamente estados loading/empty/error. Exporta tokens consumibles por el Dev Frontend. Gobierna además los prototipos de pantalla interactivos en Penpot (condicional a iniciativas con UI): pantallas PANT-xx con sus flujos de interacción, versionados en spec/ux/ como mecanismo de validación temprana con negocio. Dispara ante: diseñar flujos UX, wireframes, design system, tokens de diseño, estados de UI, experiencia de usuario, prototipo de pantallas, mockup, Penpot, Figma, validar UI con negocio."
+harness-role: ux-designer
+harness-phases: "2"
+harness-owns: "spec/ux-flows.md, spec/design-system.md, spec/tokens.json, spec/ux/"
+harness-gates: "ux-flows, design-system, screen-inventory"
+harness-conditional: "spec/ux/: iniciativas con UI"
+harness-optional-deps: "penpot-mcp"
 ---
 
 

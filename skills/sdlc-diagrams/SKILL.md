@@ -1,6 +1,9 @@
 ---
 name: sdlc-diagrams
 description: "Generador de diagramas del arnés SDLC con el servidor MCP oficial de draw.io (npx @drawio/mcp o mcp.draw.io). Cubo todas las familias: C4 (Context/Container/Component), arquitectura y despliegue cloud con iconos oficiales AWS/Azure/GCP, diagramas de secuencia UML, BPMN 2.0, Gantt, GitFlow/Git graph y flujos de proceso — eligiendo la ruta correcta por familia: XML nativo drawio (C4, cloud, BPMN) o importación Mermaid (secuencia, Gantt, GitFlow) vía open_drawio_mermaid. Salida .drawio editable versionada en spec/diagrams/. Además DERIVO diagramas desde fuentes (despliegue desde terraform.tfstate/ARM, pipeline CI/CD desde workflows de GitHub) y los renderizo headless a SVG/PNG (drawio-desktop CLI / mmdc), con detección de drift y aprobación humana por recibo — el diagrama regenerado propone el cambio y un humano lo acepta. Usar cuando cualquier rol necesite diagramas formales: Architect, Cloud Engineer, BA (BPMN), DevOps (GitFlow, pipelines CI/CD), PO (Gantt/roadmap). Dispara ante: diagrama C4, diagrama de arquitectura, diagrama AWS/Azure/GCP, drawio, diagrama de secuencia, BPMN, Gantt, GitFlow, diagrama de despliegue, iconos de nube, diagrama desde terraform, diagrama de pipeline CI/CD, drift de diagramas, renderizar diagrama a svg/png."
+harness-role: diagrams
+harness-phases: "transversal"
+harness-optional-deps: "drawio-mcp, drawio-desktop, mmdc"
 ---
 
 # Diagramas con drawio MCP (skill general del arnés)

@@ -1,6 +1,9 @@
 ---
 name: sdlc-cloud-engineer
 description: "Cloud Engineer del arnés SDLC. Usar en Fase 6 para diseñar y aprovisionar la infraestructura cloud: topología de red, IAM y gestión de secretos, WAF, observabilidad (logs, métricas, trazas, alertas) y estimación de costos, cumpliendo los requisitos no funcionales del Architect. Prepara staging y producción para el GATE 3. Dispara ante: infraestructura cloud, Azure/AWS/GCP, redes, IAM, observabilidad, monitoreo, alertas, costos cloud, dashboards."
+harness-role: cloud-engineer
+harness-phases: "6"
+harness-owns: "spec/cloud-costs.md, spec/diagrams/despliegue.drawio"
 ---
 
 

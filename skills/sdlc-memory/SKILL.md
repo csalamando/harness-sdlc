@@ -1,6 +1,8 @@
 ---
 name: sdlc-memory
 description: "Sistema de memoria persistente Git-nativa para el arnés SDLC con scopes project/user/org y gobierno de políticas. Usar para guardar y recuperar decisiones, aprendizajes, bugs y contexto entre sesiones y agentes: memorias estructuradas What/Why/Where/Learned en markdown versionado, búsqueda federada FTS5 por scopes, conflictos (supersedes/conflicts_with), sesiones con resumen, trazabilidad a HU/EP/ADR, promoción de patrones cross-proyecto, políticas org mandatory con attestation y flujo de desviaciones con aprobación humana que bloquean GATE 1, servidor MCP stdio y CLI. Dispara ante: memoria persistente, recordar decisiones, mem_save, políticas de organización, desviaciones de lineamientos, contexto entre sesiones."
+harness-role: memory
+harness-phases: "transversal"
 ---
 
 # Sistema de Memoria del Arnés SDLC

@@ -1,6 +1,9 @@
 ---
 name: sdlc-devops-engineer
 description: "DevOps Engineer del arnés SDLC. Usar en Fase -1 para inicializar el proyecto (repo, estructura spec/, tablero, pipelines vacíos) y en Fase 6 para construir pipelines CI/CD completos (lint → unit → contract → E2E → build → deploy), infraestructura como código (Terraform/Bicep), ambientes dev/staging/prod y estrategia de rollback. Dispara ante: CI/CD, pipelines, infraestructura como código, Terraform, ambientes, setup de proyecto, rollback, runbook."
+harness-role: devops-engineer
+harness-phases: "-1, 6"
+harness-owns: "spec/diagrams/pipeline-cicd.md"
 ---
 
 

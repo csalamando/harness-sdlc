@@ -7,6 +7,17 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.9.0] - 2026-08-23
+
+### Added
+- **Manifiesto dinámico del arnés** (implementa la inspiración pendiente de DeepSeek Harness — "Everything is a plugin" / capability seams — adaptada a un estándar Markdown agnóstico de agente): cada skill declara sus metadatos en el frontmatter de su propio `SKILL.md` (`harness-role`, `harness-phases`, `harness-owns`, `harness-gates`, `harness-conditional`, `harness-optional-deps`) y el manifiesto pasa a ser un **artefacto derivado**, nunca editado a mano.
+- **`manifest_check.py`** (orquestador, herramienta CLI 17): `--write` regenera `assets/harness-manifest.yaml` escaneando skills (metadatos + scripts en disco); `--check` falla (exit 1) ante drift o inconsistencias cruzadas — gate declarado que `gate_checker.py` no soporta, artefacto `owns` ausente de la matriz de autoridad, artefacto de la matriz sin skill que lo declare; `--summary` imprime la vista legible de las 21 skills.
+- **`harness_doctor.py` consume el manifiesto**: las expectativas (qué skills y scripts deben existir) se leen de `harness-manifest.yaml` en vez de listas quemadas en el código — añadir una skill o script ya no requiere tocar el doctor (con fallback a listas mínimas históricas si el manifiesto no está instalado: degradación elegante).
+- `self_test.py`: nueva sección [7] — manifiesto sin drift, frontmatter presente, doctor consumiendo el manifiesto.
+
+### Por qué
+Los bugs de v2.8.1 nacieron de listas quemadas en prosa ("espera 14 scripts", "16 herramientas", grafo de impacto literal). Con el manifiesto derivado, esa clase de bug queda cerrada estructuralmente: la próxima vez que una skill declare algo que no existe, el self-test y el CI fallan en rojo antes del release. Trabajo futuro documentado: skills por capas con rank (proyecto > usuario > bundled), análogo a los scopes de memoria.
+
 ## [2.8.2] - 2026-08-23
 
 ### Added

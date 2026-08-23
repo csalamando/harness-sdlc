@@ -1,6 +1,8 @@
 ---
 name: sdlc-decision-engine
 description: "Motor de decisiones arquitectónicas del arnés SDLC basado en el framework de 8 pasos de Sonya Natanzon. Usar en Fase 2 junto al Arquitecto de Software para toda decisión técnica significativa: problem statement sin soluciones prematuras, last responsible moment, criterios ponderados, opciones, advice process, scorecard cuantitativa, decisión y re-evaluation triggers. Soporta Decision Packages pre-aprobados (assets/decision-packages/) y Paved Roads del Tech Radar. Dispara ante: decisión arquitectónica, ADR, scorecard, trade-off analysis, decision package, build vs buy, selección de tecnología."
+harness-role: decision-engine
+harness-phases: "2"
 ---
 
 # Decision Engine — Framework de 8 Pasos (Natanzon)

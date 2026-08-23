@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """harness_doctor.py — Health check read-only del arnes SDLC instalado.
 
-Verifica: skills instaladas (15 roles + memoria), plantillas assets presentes,
-scripts del orquestador ejecutables, estructura spec/ del proyecto.
+Verifica: skills instaladas, plantillas assets presentes, scripts ejecutables,
+estructura spec/ del proyecto.
+
+Desde v2.9 las expectativas (qué skills y qué scripts deben existir) se leen del
+manifiesto derivado `assets/harness-manifest.yaml` — ya no hay listas quemadas que
+se desactualizan. Si el manifiesto no existe (instalación antigua), degrada a las
+listas mínimas históricas.
 
 Uso: python3 harness_doctor.py [--skills-dir <ruta>] [--project-dir <ruta>]
 Exit 0 si todo OK; 1 si hay problemas.
 """
-import os, sys, json, argparse, subprocess
+import os, sys, json, argparse, subprocess, re
 
+# Fallback histórico (pre-v2.9) si no hay manifiesto instalado.
 EXPECTED_SKILLS = [
     "sdlc-orchestrator", "sdlc-product-owner", "sdlc-business-analyst", "sdlc-ux-designer",
     "sdlc-software-architect", "sdlc-security-engineer", "sdlc-data-engineer",
@@ -21,9 +27,26 @@ EXPECTED_SKILLS = [
 ORCH_SCRIPTS = ["gate_checker.py", "context_packager.py", "spec_diff_impact.py",
                 "decision_sizing.py", "advisor.py", "arch_signoff.py",
                 "traceability_matrix.py", "receipt.py", "detect_stack.py", "authority_check.py",
-                "code_intel.py", "spec_index.py", "skill_metrics.py", "sprint_review.py"]
+                "code_intel.py", "spec_index.py", "skill_metrics.py", "sprint_review.py",
+                "manifest_check.py"]
 MEM_SCRIPTS = ["mem.py", "mem_mcp.py"]
 DIAGRAM_SCRIPTS = ["diagram_render.py", "iac_to_diagram.py", "pipeline_diagram.py"]
+
+
+def load_manifest(skills_dir):
+    """Lee assets/harness-manifest.yaml del orquestador (formato plano generado).
+    Devuelve {skill: [scripts]} o None si no existe."""
+    path = os.path.join(skills_dir, "sdlc-orchestrator", "assets", "harness-manifest.yaml")
+    if not os.path.isfile(path):
+        return None
+    scripts, current = {}, None
+    for line in open(path, encoding="utf-8"):
+        m = re.match(r"  - name: (\S+)", line)
+        if m:
+            current = m.group(1); scripts[current] = []
+        elif line.startswith("    scripts:") and current:
+            scripts[current] = re.findall(r"[\w.-]+\.py", line)
+    return scripts or None
 
 def check(ok_list, label, ok, detail=""):
     ok_list.append(ok)
@@ -38,28 +61,44 @@ def main():
     results = []
 
     print(f"Skills dir: {skills_dir}")
-    for name in EXPECTED_SKILLS:
+    manifest = load_manifest(skills_dir)
+    if manifest:
+        expected_skills = sorted(manifest)
+        print(f"  (expectativas leídas del manifiesto derivado: {len(expected_skills)} skills)")
+    else:
+        expected_skills = EXPECTED_SKILLS
+        print("  (manifiesto no encontrado — usando listas mínimas históricas; "
+              "regenerar con manifest_check.py --write)")
+    for name in expected_skills:
         d = os.path.join(skills_dir, name)
         has_md = os.path.isfile(os.path.join(d, "SKILL.md"))
         check(results, f"skill {name}", os.path.isdir(d) and has_md)
 
-    print("\nScripts del orquestador (compilacion):")
-    for s in ORCH_SCRIPTS:
-        p = os.path.join(skills_dir, "sdlc-orchestrator", "scripts", s)
-        ok = os.path.isfile(p) and subprocess.run(["python3", "-m", "py_compile", p], capture_output=True).returncode == 0
-        check(results, s, ok)
+    if manifest:
+        print("\nScripts por skill (compilacion, según manifiesto):")
+        for skill in expected_skills:
+            for s in manifest[skill]:
+                p = os.path.join(skills_dir, skill, "scripts", s)
+                ok = os.path.isfile(p) and subprocess.run(["python3", "-m", "py_compile", p], capture_output=True).returncode == 0
+                check(results, f"{skill}/{s}", ok)
+    else:
+        print("\nScripts del orquestador (compilacion):")
+        for s in ORCH_SCRIPTS:
+            p = os.path.join(skills_dir, "sdlc-orchestrator", "scripts", s)
+            ok = os.path.isfile(p) and subprocess.run(["python3", "-m", "py_compile", p], capture_output=True).returncode == 0
+            check(results, s, ok)
 
-    print("\nScripts de memoria (compilacion):")
-    for s in MEM_SCRIPTS:
-        p = os.path.join(skills_dir, "sdlc-memory", "scripts", s)
-        ok = os.path.isfile(p) and subprocess.run(["python3", "-m", "py_compile", p], capture_output=True).returncode == 0
-        check(results, s, ok)
+        print("\nScripts de memoria (compilacion):")
+        for s in MEM_SCRIPTS:
+            p = os.path.join(skills_dir, "sdlc-memory", "scripts", s)
+            ok = os.path.isfile(p) and subprocess.run(["python3", "-m", "py_compile", p], capture_output=True).returncode == 0
+            check(results, s, ok)
 
-    print("\nScripts de diagramas (compilacion):")
-    for s in DIAGRAM_SCRIPTS:
-        p = os.path.join(skills_dir, "sdlc-diagrams", "scripts", s)
-        ok = os.path.isfile(p) and subprocess.run(["python3", "-m", "py_compile", p], capture_output=True).returncode == 0
-        check(results, s, ok)
+        print("\nScripts de diagramas (compilacion):")
+        for s in DIAGRAM_SCRIPTS:
+            p = os.path.join(skills_dir, "sdlc-diagrams", "scripts", s)
+            ok = os.path.isfile(p) and subprocess.run(["python3", "-m", "py_compile", p], capture_output=True).returncode == 0
+            check(results, s, ok)
     import shutil as _sh
     print("  Motores de render (opcionales): drawio-desktop="
           + ("OK" if any(_sh.which(c) for c in ("drawio", "drawio-desktop", "draw.io")) else "no")

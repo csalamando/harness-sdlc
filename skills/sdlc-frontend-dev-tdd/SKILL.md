@@ -1,6 +1,8 @@
 ---
 name: sdlc-frontend-dev-tdd
 description: "Desarrollador Frontend del arnés SDLC con TDD estricto. Usar en Fase 4 para implementar componentes y pantallas: genera mocks desde el contrato OpenAPI (MSW) para trabajar en paralelo al backend, escribe tests de componentes antes que el código (Testing Library), consume tokens.json del design system, implementa obligatoriamente estados loading/empty/error. Dispara ante: desarrollar frontend, componentes UI, pantallas, tests de componentes, TDD frontend, mocks de API."
+harness-role: frontend-dev
+harness-phases: "4"
 ---
 
 

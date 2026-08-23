@@ -1,6 +1,10 @@
 ---
 name: sdlc-cloud-pricing
 description: "Estimador de costos cloud del arnés SDLC (AWS y Azure). Usar desde Fase 0 (con sdlc-solution-architect, para el caso de negocio y GATE 0) y en Fase 6 (con sdlc-cloud-engineer, estimación fina de staging/prod). Genera spec/cost-estimation.md con CAPEX (construcción/migración), OPEX mensual/anual por escenario (mínimo viable / crecimiento esperado / pico) y TCO, con supuestos explícitos y fecha de validez de precios. El costo alimenta como criterio ponderado las scorecards del sdlc-decision-engine. Dispara ante: pricing cloud, estimación de costos, CAPEX, OPEX, TCO, caso de negocio cloud, cuánto cuesta en AWS/Azure, comparativa de costos entre nubes."
+harness-role: cloud-pricing
+harness-phases: "0, 6"
+harness-owns: "spec/cost-assumptions.yaml, spec/cost-estimation.md"
+harness-gates: "cost-estimation"
 ---
 
 

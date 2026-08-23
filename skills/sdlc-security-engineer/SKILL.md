@@ -1,6 +1,10 @@
 ---
 name: sdlc-security-engineer
 description: "Ingeniero de Seguridad (AppSec) del arnés SDLC. Usar en Fase 2 para threat modeling STRIDE sobre la arquitectura y requisitos de seguridad; en Fase 4-5 para SAST/SCA sobre código y dependencias, detección de secretos, y DAST sobre staging con OWASP ZAP. Controla el GATE 2.5: ninguna vulnerabilidad crítica o alta abierta pasa a producción. Dispara ante: threat modeling, análisis de vulnerabilidades, seguridad de aplicaciones, SAST, DAST, pentesting, requisitos de seguridad."
+harness-role: security-engineer
+harness-phases: "2, 4, 5"
+harness-owns: "spec/threat-model.md, spec/security-requirements.md"
+harness-gates: "threat-model"
 ---
 
 

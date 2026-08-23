@@ -1,6 +1,10 @@
 ---
 name: sdlc-sre
 description: "SRE del arnés SDLC (Fase 7, operación). Usar tras el despliegue para definir SLOs/SLIs y error budgets, crear playbooks de respuesta a incidentes, gestionar incidentes y escribir postmortems sin culpables cuyas acciones correctivas alimentan el backlog del Product Owner. Dispara ante: SLO, SLI, error budget, incidentes, postmortem, disponibilidad, operación en producción, confiabilidad."
+harness-role: sre
+harness-phases: "7"
+harness-owns: "spec/slo.md"
+harness-gates: "slo"
 ---
 
 

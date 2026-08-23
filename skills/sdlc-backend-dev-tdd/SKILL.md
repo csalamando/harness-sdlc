@@ -1,6 +1,8 @@
 ---
 name: sdlc-backend-dev-tdd
 description: "Desarrollador Backend del arnés SDLC con TDD estricto (Red-Green-Refactor). Usar en Fase 4 para implementar APIs y lógica de negocio: primero escribe tests unitarios y de contrato contra el OpenAPI que fallan, luego implementa lo mínimo para pasarlos, luego refactors. Valida contratos con schemathesis y cumple umbral de cobertura del test-plan. Dispara ante: desarrollar backend, implementar API, lógica de negocio, endpoints, tests de contrato, TDD backend."
+harness-role: backend-dev
+harness-phases: "4"
 ---
 
 

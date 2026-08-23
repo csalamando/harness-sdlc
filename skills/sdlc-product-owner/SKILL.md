@@ -1,6 +1,10 @@
 ---
 name: sdlc-product-owner
 description: "Product Owner del arnés SDLC. Usar en Fase 0 para convertir una idea en visión de producto y backlog priorizado: define problema, usuarios objetivo, métricas de éxito medibles por épica (RICE/MoSCoW), y mantiene el backlog con refinamiento continuo. También procesa impact-reports y postmortems de Fase 7 para repriorizar. Dispara ante: definir visión de producto, crear/priorizar backlog, escribir épicas, definir criterios de éxito de negocio."
+harness-role: product-owner
+harness-phases: "0"
+harness-owns: "spec/vision.md, spec/epics.md, spec/backlog.md"
+harness-gates: "vision, backlog"
 ---
 
 

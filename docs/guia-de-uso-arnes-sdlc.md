@@ -514,8 +514,22 @@ El hueco visual del arnés queda cerrado: las pantallas con sus flujos de intera
 
 ---
 
-## 5k. Desarrollar el propio arnés (solo para mantenedores)
+## 5l. Manifiesto dinámico del arnés (v2.9)
 
+El arnés ya no se describe a sí mismo con números quemados en prosa. Cada skill declara sus metadatos en el frontmatter de su propio `SKILL.md` (`harness-role`, `harness-phases`, `harness-owns`, `harness-gates`, `harness-conditional`, `harness-optional-deps`) y el manifiesto (`sdlc-orchestrator/assets/harness-manifest.yaml`) es un **artefacto derivado**:
+
+```bash
+python3 scripts/manifest_check.py --summary   # vista legible: skills, roles, fases, gates, scripts
+python3 scripts/manifest_check.py --check     # exit 1 si hay drift o inconsistencias cruzadas
+```
+
+`--check` cruza tres fuentes y falla si divergen: gates declarados vs `gate_checker.py`, artefactos `owns` vs la matriz de autoridad, scripts declarados vs disco. `harness_doctor.py` lee sus expectativas del manifiesto — añadir una skill o script ya no requiere actualizar listas quemadas en varios archivos.
+
+**Si modificas una skill** (nuevo gate, nuevo artefacto, nuevo script): edita su frontmatter `harness-*` y regenera con `--write` — el `--check` del self-test y del CI velará porque nada diverja. Las **capas con rank** (que un proyecto u organización sobreescriba una skill del arnés, análogo a los scopes de memoria) quedan documentadas como trabajo futuro.
+
+---
+
+## 5k. Desarrollar el propio arnés (solo para mantenedores)
 > ⚠️ **Esta sección NO es para usar el arnés, es para MODIFICARLO.** Si solo quieres usarlo en tus proyectos, no necesitas nada de lo que sigue — instala las skills (§2) y listo. Lo que aquí se describe vive en el repo fuente del arnés (`tests/`), **nunca entra al ZIP de release** y no es una skill que tu agente deba cargar.
 
 El arnés gobierna con recibos y gates a quienes lo usan; esta es la red de seguridad de quienes lo **modifican**. La lección de v2.7/v2.8: se documentaron features por encima de lo que los scripts hacían (el grafo de impacto no conocía los artefactos nuevos, plantillas que no pasaban su propio gate, huecos en la matriz de autoridad — corregido en v2.8.1). Para que no vuelva a pasar:

@@ -161,6 +161,19 @@ with tempfile.TemporaryDirectory() as tmp:
     check("desde otro cwd detecta HU-077 sin definir", code == 1 and "HU-077" in out,
           out.splitlines()[-1] if code == 0 else "")
 
+# ── 7. Manifiesto dinámico sin drift (v2.9: fuente de verdad en el frontmatter) ─
+print("\n[7] Manifiesto derivado de las skills")
+code, out = run("manifest_check.py", "--check")
+check("manifiesto sin drift y sin inconsistencias cruzadas", code == 0,
+      out.splitlines()[-1] if code else "")
+# Las skills declaran sus metadatos en el frontmatter harness-* (no hay listas quemadas)
+sample = open(os.path.join(ROOT, "skills", "sdlc-ux-designer", "SKILL.md"), encoding="utf-8").read()
+check("frontmatter harness-* presente en las skills",
+      "harness-role:" in sample and "harness-owns:" in sample)
+# El doctor ya no tiene números quemados: lee las expectativas del manifiesto
+doctor_src = open(os.path.join(ORCH, "harness_doctor.py"), encoding="utf-8").read()
+check("harness_doctor consume el manifiesto (load_manifest)", "load_manifest" in doctor_src)
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

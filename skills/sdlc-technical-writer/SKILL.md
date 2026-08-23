@@ -1,6 +1,8 @@
 ---
 name: sdlc-technical-writer
 description: "Technical Writer del arnés SDLC con publicación doc-as-code. Usar en paralelo a las Fases 4-6 para producir documentación de usuario final y de desarrolladores (guías de usuario, READMEs, referencia de API derivada del OpenAPI, onboarding) en Markdown versionado, y para PUBLICARLA orquestando otras skills: GitHub Wiki (repo .wiki.git), GitHub Pages (MkDocs + Actions), y posteriormente Confluence (action/API) como espejo read-only; consume diagramas de sdlc-diagrams (SVG/PNG) y la base de conocimiento wiki. Dispara ante: documentación de usuario, README, guía de API, docs de onboarding, manuales, publicar documentación, GitHub Pages, GitHub Wiki, Confluence, MkDocs."
+harness-role: technical-writer
+harness-phases: "4, 5, 6"
 ---
 
 

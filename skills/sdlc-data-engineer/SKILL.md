@@ -1,6 +1,10 @@
 ---
 name: sdlc-data-engineer
 description: "Data Engineer / DBA del arnés SDLC (rol condicional, activar cuando el producto maneja datos significativos). Usar en Fase 2 para diseño físico de datos, scripts de migración versionados, estrategia de backup y restauración, anonimización de datos para ambientes no productivos y cumplimiento de protección de datos (HABEAS DATA/GDPR). Dispara ante: diseño de base de datos, migraciones, backup, gobierno de datos, anonimización, cumplimiento de datos."
+harness-role: data-engineer
+harness-phases: "2"
+harness-owns: "spec/data-governance.md"
+harness-conditional: "producto con datos significativos"
 ---
 
 

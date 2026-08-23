@@ -176,6 +176,17 @@ Los diagramas no son solo documentación: son un **punto de control**. Ningún d
 2. **De diseño** (C4, secuencia, BPMN, Gantt, GitFlow): edición manual vía drawio MCP, pero si la spec que representan cambia, `spec_diff_impact.py` revoca su recibo → se actualizan y re-aprueban.
 3. **Render headless** (`diagram_render.py`): `.drawio`/Mermaid → SVG/PNG vía drawio-desktop CLI o mmdc (este último renderiza bloques Mermaid dentro de Markdown — doc-as-code). Motores opcionales: sin ellos, el fuente versionado sigue siendo el entregable.
 
+### 4f. Manifiesto dinámico del arnés (v2.9)
+
+El arnés deja de describirse a sí mismo con prosa y números quemados. La fuente de verdad de cada skill vive en **el frontmatter de su propio SKILL.md** (campos `harness-*`: rol, fases, artefactos que posee, gates, condicionalidad, dependencias opcionales), y el **manifiesto es un artefacto derivado**, nunca editado a mano:
+
+```bash
+python3 manifest_check.py --summary   # vista legible: 21 skills, roles, fases, gates, owns, scripts
+python3 manifest_check.py --check     # exit 1 si hay drift o inconsistencias (corre en self-test y CI)
+```
+
+`manifest_check.py --check` cruza las tres fuentes y falla si divergen: gates declarados vs los que `gate_checker.py` soporta, artefactos `owns` vs la matriz de autoridad, scripts declarados vs disco. `harness_doctor.py` lee sus expectativas del manifiesto — **añadir una skill o un script ya no requiere actualizar listas quemadas en tres archivos** (la clase de bug que motivó v2.8.1 queda cerrada estructuralmente). *Inspiración: "Everything is a plugin" / capability seams de DeepSeek Harness (§10) — traducida a nuestro estándar Markdown agnóstico de agente.*
+
 ---
 
 ## 5. Receipts (RDD): confiar en evidencia, no en narración
@@ -322,7 +333,7 @@ En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias super
 ## 9. Herramientas compartidas y propias
 
 - **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`), Penpot MCP (`sdlc-ux-designer`, prototipos de pantalla gobernados).
-- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado). **`sdlc-diagrams/scripts/`:** `iac_to_diagram.py` (despliegue derivado del IaC + drift), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless SVG/PNG).
+- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado), `manifest_check.py` (manifiesto dinámico derivado + drift). **`sdlc-diagrams/scripts/`:** `iac_to_diagram.py` (despliegue derivado del IaC + drift), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless SVG/PNG).
 - **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
 ---
@@ -337,7 +348,7 @@ Este arnés es diseño e implementación propios, pero se apoya explícitamente 
 | **Advice Process, Tech Radar, Principios, arquitectura conversacional** | [Martin Fowler / Andrew Harmel-Law — *Scaling Architecture Conversationally*](https://martinfowler.com/articles/scaling-architecture-conversationally.html) | Paso 5 (advice no vinculante pero obligatorio de registrar), Tech Radar con cuadrantes, gobernanza por excepción del Enterprise Architect |
 | **Tech Radar (formato ADOPT/TRIAL/ASSESS/HOLD)** | ThoughtWorks | Estructura de `spec/tech-radar.yaml` y reglas de gate |
 | **Architecture Decision Records** | Michael Nygard | Plantillas de ADR y ciclo de vida (Proposed → Adopted → Superseded) |
-| **"Everything is a plugin" / capability seams** | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Inspiración para skills descubribles y Decision Packages extensibles (el manifiesto dinámico quedó como trabajo futuro) |
+| **"Everything is a plugin" / capability seams** | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Implementado en v2.9 como **manifiesto dinámico**: metadatos en el frontmatter de cada SKILL.md + manifiesto derivado con detección de drift (`manifest_check.py`). Trabajo futuro: skills por capas con rank (proyecto > usuario > bundled), análogo a los scopes de memoria |
 | **Patrones de trabajo con agentes, memoria entre agentes, receipts** | [Gentleman-Programming — gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) y [Engram](https://github.com/Gentleman-Programming/engram) | **Inspiración, no adopción**: estudiamos su forma de trabajar y reimplementamos a nuestra medida — memoria Git-nativa con scopes/gobierno (diferencial sobre Engram, por decisión explícita del usuario) y recibos SHA-256 |
 | **Code intelligence para agentes (grafo de símbolos, blast radius, menos tokens)** | [Gortex — zzet/gortex](https://github.com/zzet/gortex) (Apache 2.0) | **Inspiración, no adopción**: reimplementado como `code_intel.py` en Python stdlib, sin daemon, con extracción por niveles (ast/patrones) e índice SQLite derivable |
 | **Diseño UX open-source (prototipos, tokens, estándares web)** | [Penpot](https://penpot.app) (MPL-2.0) | Herramienta estándar de `sdlc-ux-designer` para prototipos gobernados en `spec/ux/` — archivo versionable en Git, sin lock-in propietario |
