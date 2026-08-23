@@ -1,6 +1,6 @@
 ---
 name: sdlc-diagrams
-description: "Generador de diagramas del arnés SDLC con el servidor MCP oficial de draw.io (npx @drawio/mcp o mcp.draw.io). Cubo todas las familias: C4 (Context/Container/Component), arquitectura y despliegue cloud con iconos oficiales AWS/Azure/GCP, diagramas de secuencia UML, BPMN 2.0, Gantt, GitFlow/Git graph y flujos de proceso — eligiendo la ruta correcta por familia: XML nativo drawio (C4, cloud, BPMN) o importación Mermaid (secuencia, Gantt, GitFlow) vía open_drawio_mermaid. Salida .drawio editable versionada en spec/diagrams/. Usar cuando cualquier rol necesite diagramas formales: Architect, Cloud Engineer, BA (BPMN), DevOps (GitFlow), PO (Gantt/roadmap). Dispara ante: diagrama C4, diagrama de arquitectura, diagrama AWS/Azure/GCP, drawio, diagrama de secuencia, BPMN, Gantt, GitFlow, diagrama de despliegue, iconos de nube."
+description: "Generador de diagramas del arnés SDLC con el servidor MCP oficial de draw.io (npx @drawio/mcp o mcp.draw.io). Cubo todas las familias: C4 (Context/Container/Component), arquitectura y despliegue cloud con iconos oficiales AWS/Azure/GCP, diagramas de secuencia UML, BPMN 2.0, Gantt, GitFlow/Git graph y flujos de proceso — eligiendo la ruta correcta por familia: XML nativo drawio (C4, cloud, BPMN) o importación Mermaid (secuencia, Gantt, GitFlow) vía open_drawio_mermaid. Salida .drawio editable versionada en spec/diagrams/. Además DERIVO diagramas desde fuentes (despliegue desde terraform.tfstate/ARM, pipeline CI/CD desde workflows de GitHub) y los renderizo headless a SVG/PNG (drawio-desktop CLI / mmdc), con detección de drift y aprobación humana por recibo — el diagrama regenerado propone el cambio y un humano lo acepta. Usar cuando cualquier rol necesite diagramas formales: Architect, Cloud Engineer, BA (BPMN), DevOps (GitFlow, pipelines CI/CD), PO (Gantt/roadmap). Dispara ante: diagrama C4, diagrama de arquitectura, diagrama AWS/Azure/GCP, drawio, diagrama de secuencia, BPMN, Gantt, GitFlow, diagrama de despliegue, iconos de nube, diagrama desde terraform, diagrama de pipeline CI/CD, drift de diagramas, renderizar diagrama a svg/png."
 ---
 
 # Diagramas con drawio MCP (skill general del arnés)
@@ -57,3 +57,27 @@ Si Mermaid cubre el 90% del diagrama pero faltan detalles: importar con `open_dr
 - Los diagramas cloud de despliegue reflejan `infra/` (IaC): si el IaC cambia, el diagrama queda impactado (el orquestador lo marca vía `spec_diff_impact`).
 - Mermaid embebido en los `.md` de la spec sigue válido para bocetos; los `.drawio` son para diagramas formales que requieren edición visual o presentación a stakeholders.
 - `assets/c4-contenedores-ejemplo.drawio`: plantilla C4 Container (Azure) lista para duplicar.
+
+## Dos direcciones y aprobación (v2.6)
+
+Los diagramas son también un **mecanismo de aceptación de cambios**: ningún diagrama cuenta como válido sin recibo de aprobación humana sobre su contenido.
+
+| Dirección | Familias | Cómo se crea | Quién aprueba (recibo con rol) |
+|---|---|---|---|
+| **Diseño** (manual) | C4, secuencia, BPMN, Gantt, GitFlow, flujos | El rol lo dibuja con el MCP drawio / XML / Mermaid | Su rol dueño (C4 → `software-architect`, BPMN → `business-analyst`, Gantt → `product-owner`, GitFlow → `devops-engineer`) |
+| **Derivado** (desde fuente, NUNCA editado a mano) | Despliegue cloud/red, pipeline CI/CD | Script desde `terraform.tfstate`/ARM o `.github/workflows/` | `cloud-engineer` (despliegue), `devops-engineer` (pipeline) — revisan el diff en Git y aprueban con `receipt.py emit` |
+
+Flujo de aceptación de un diagrama derivado:
+
+1. La fuente cambia (apply de Terraform, push que toca workflows).
+2. El script regenera el diagrama → **propuesta de cambio**; el diff en Git muestra exactamente qué cambió.
+3. El humano/rol dueño revisa el contenido y lo acepta con `receipt.py emit --artifact <diagrama> --role <rol>` — sin recibo, el cambio NO está aceptado.
+4. `check` (exit 1 si el diagrama difiere de la fuente) detecta **drift** en CI o en gates: regenerar o investigar.
+
+### Scripts (Python 3 stdlib puro)
+
+- `iac_to_diagram.py generate|check --tfstate terraform.tfstate|--arm template.json --out spec/diagrams/despliegue.drawio`: topología de despliegue desde el estado real de Terraform (lo REALMENTE desplegado) o ARM/Bicep compilado, con iconos oficiales AWS/Azure/GCP y clusters por módulo/resource group. `check` = drift detection.
+- `pipeline_diagram.py generate|validate|check --workflows-dir .github/workflows --out spec/diagrams/pipeline-cicd.md`: flowchart Mermaid por workflow (triggers, jobs, `needs:`) + validación de `needs:` inexistentes y ciclos de dependencias. `validate` exit 1 si el pipeline está roto; `check` = drift detection.
+- `diagram_render.py render <.drawio|.mmd|.md>|render-dir|engines`: render headless a SVG/PNG vía drawio-desktop CLI (el SVG embebe el fuente — la imagen sigue editable) o mmdc (incluye bloques Mermaid dentro de Markdown, reescribiendo las referencias — ideal para doc-as-code). Motores opcionales: sin ellos informa y el fuente versionado sigue siendo el entregable (nunca bloquea).
+
+Los SVG/PNG renderizados son **vistas derivadas**: se regeneran tras cada aprobación y los referencia `sdlc-technical-writer` en la documentación. No reciben recibo propio; el recibo es del fuente.
