@@ -5,7 +5,8 @@ Uso: python3 gate_checker.py <artefacto> --tipo <tipo>
 Tipos: vision, backlog, user-stories, ux-flows, design-system, architecture,
        api-contract, test-plan, threat-model, qa-report, slo,
        technical-stories, architecture-proposal, cost-estimation (GATE 0),
-       roles, process-definition (v2.7 — catálogo de roles y PDD AS-IS)
+       roles, process-definition (v2.7 — catálogo de roles y PDD AS-IS),
+       screen-inventory (v2.8 — inventario de pantallas PANT-xx del prototipo UX)
 Exit 0 = pasa el gate. Exit 1 = falla (imprime checks incumplidos).
 """
 import sys, argparse, re, os
@@ -47,6 +48,10 @@ CHECKS = {
     "process-definition": [r"AS-IS", r"[Dd]isparador", r"[Ee]xcepciones",
                            r"SLA", r"[Aa]plicaciones involucradas",
                            r"[Rr]iesgos", r"[Ss]upuestos", r"[Pp]rocess [Oo]wner"],
+    # v2.8 — inventario de pantallas del prototipo gobernado (spec/ux/)
+    "screen-inventory": [r"PANT-\d+", r"HU-\d+", r"ROL-\d+",
+                         r"loading", r"empty", r"error", r"success",
+                         r"[Ii]nteracciones", r"[Dd]estino"],
 }
 
 TECH_KEYWORDS = [
@@ -145,6 +150,20 @@ def check_roles_refs(roles_path, stories_path):
     return [f"ROL citado en {stories_path} sin definir en el catálogo: {', '.join(unknown)}"] if unknown else []
 
 
+def check_screens_refs(inventory_path, stories_path):
+    """Verifica que las HU-xx citadas en el inventario de pantallas existan en las historias."""
+    try:
+        defined = set(re.findall(r"HU-\d+", open(stories_path, encoding="utf-8").read()))
+    except FileNotFoundError:
+        return []
+    try:
+        cited = set(re.findall(r"HU-\d+", open(inventory_path, encoding="utf-8").read()))
+    except FileNotFoundError:
+        return []
+    unknown = sorted(cited - defined)
+    return [f"HU citada en {inventory_path} sin definir en user-stories: {', '.join(unknown)}"] if unknown else []
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("artefacto")
@@ -171,6 +190,8 @@ def main():
         roles_f = a.artefacto if a.tipo == "roles" else "spec/roles.md"
         stories_f = a.artefacto if a.tipo == "user-stories" else "spec/user-stories.md"
         semantic += check_roles_refs(roles_f, stories_f)
+    if a.tipo == "screen-inventory":
+        semantic += check_screens_refs(a.artefacto, "spec/user-stories.md")
     if missing or semantic:
         print(f"GATE NO PASADO ({a.tipo}):")
         for m in missing: print(f"  - patrón no encontrado: {m}")

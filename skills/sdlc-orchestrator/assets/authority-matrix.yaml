@@ -25,6 +25,7 @@ artifacts:
   # Fase 2 — Diseño
   - path: spec/ux-flows.md                owner: ux-designer
   - path: spec/design-system.md           owner: ux-designer
+  - path: spec/ux/                        owner: ux-designer   # prototipo gobernado (v2.8, condicional a UI): inventario PANT-xx + archivo .penpot + exports
   - path: spec/architecture.md            owner: software-architect
   - path: spec/api-contract.yaml          owner: software-architect
   - path: spec/data-model.md              owner: software-architect
