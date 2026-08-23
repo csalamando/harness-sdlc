@@ -3,6 +3,9 @@ spec/memory/.index/
 **/memory/.index/
 .index/
 
+# Índice derivable de code_intel (se reconstruye con: code_intel.py --root <proyecto> index)
+.codeintel/
+
 # Python
 __pycache__/
 *.pyc

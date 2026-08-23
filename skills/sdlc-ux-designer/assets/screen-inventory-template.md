@@ -10,8 +10,8 @@ owner: ux-designer
 
 ## PANT-01 — <nombre de la pantalla>
 
-- **Historias que cubre:** HU-xxx, HU-xxx
-- **Rol que la opera:** ROL-xx (ver `spec/roles.md`)
+- **Historias que cubre:** HU-001, HU-002
+- **Rol que la opera:** ROL-01 (ver `spec/roles.md`)
 - **Estados diseñados:** loading / empty / error / success
 - **Componentes principales:** <lista: tabla de resultados, formulario de filtros, modal de confirmación…>
 - **Render:** `spec/ux/exports/PANT-01.png`
@@ -26,8 +26,8 @@ owner: ux-designer
 
 ## PANT-02 — <nombre de la pantalla>
 
-- **Historias que cubre:** HU-xxx
-- **Rol que la opera:** ROL-xx
+- **Historias que cubre:** HU-002
+- **Rol que la opera:** ROL-02
 - **Estados diseñados:** loading / empty / error / success
 - **Componentes principales:** <…>
 - **Render:** `spec/ux/exports/PANT-02.png`

@@ -8,14 +8,26 @@ import argparse
 # Grafo de dependencias: artefacto -> artefactos que lo consumen (downstream)
 DEPENDS_ON = {
     "vision.md":            [],
-    "backlog.md":           ["vision.md"],
-    "user-stories.md":      ["vision.md", "backlog.md"],
+    "epics.md":             ["vision.md"],
+    "backlog.md":           ["vision.md", "epics.md"],
+    # GATE 0 — discovery de la iniciativa (v2.1)
+    "architecture-proposal.md": ["vision.md", "backlog.md"],
+    "technical-stories.md": ["architecture-proposal.md"],
+    "cost-estimation.md":   ["architecture-proposal.md"],
+    # Fase 1 — análisis (v2.7: catálogo de roles y PDD)
+    "roles.md":             [],
+    "user-stories.md":      ["vision.md", "backlog.md", "roles.md"],
     "business-rules.md":    ["user-stories.md"],
+    "process-definition.md": ["business-rules.md", "roles.md"],
     "glossary.md":          ["user-stories.md"],
     "ux-flows.md":          ["user-stories.md"],
     "design-system.md":     ["user-stories.md"],
     "tokens.json":          ["design-system.md"],
-    "architecture.md":      ["user-stories.md", "business-rules.md"],
+    # v2.8 — inventario de pantallas del prototipo gobernado (spec/ux/)
+    "screen-inventory.md":  ["user-stories.md", "roles.md", "ux-flows.md"],
+    "architecture.md":      ["user-stories.md", "business-rules.md", "architecture-proposal.md"],
+    "adr":                  ["architecture.md"],
+    "tech-radar.yaml":      [],
     "api-contract.yaml":    ["architecture.md"],
     "data-model.md":        ["business-rules.md", "architecture.md"],
     "threat-model.md":      ["architecture.md", "data-model.md"],
@@ -23,10 +35,11 @@ DEPENDS_ON = {
     "data-governance.md":   ["data-model.md", "security-requirements.md"],
     "test-plan.md":         ["user-stories.md", "api-contract.yaml", "architecture.md"],
     "src-backend":          ["api-contract.yaml", "business-rules.md", "test-plan.md", "security-requirements.md"],
-    "src-frontend":         ["api-contract.yaml", "tokens.json", "ux-flows.md", "design-system.md"],
+    "src-frontend":         ["api-contract.yaml", "tokens.json", "ux-flows.md", "design-system.md", "screen-inventory.md"],
     "tests-e2e":            ["user-stories.md", "test-plan.md"],
     "qa-report.md":         ["tests-e2e"],
     "infra":                ["architecture.md", "security-requirements.md"],
+    "diagrams":             ["infra", "architecture.md"],
     "slo.md":               ["architecture.md"],
     "docs":                 ["api-contract.yaml", "ux-flows.md", "glossary.md"],
 }

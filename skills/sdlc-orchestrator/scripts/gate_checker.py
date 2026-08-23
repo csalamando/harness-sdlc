@@ -136,29 +136,64 @@ def check_signoff(adr_path, receipts_dir):
     return []
 
 
+def resolve_spec_path(path, artefacto):
+    """Resuelve una ruta de spec/ aunque se ejecute fuera de la raíz del proyecto.
+
+    Prueba: (1) tal cual (cwd), (2) subiendo desde el directorio del artefacto
+    hasta encontrar un directorio spec/ que la contenga. Devuelve None si no existe.
+    """
+    if os.path.exists(path):
+        return path
+    d = os.path.dirname(os.path.abspath(artefacto))
+    for _ in range(6):
+        cand = os.path.join(d, path)
+        if os.path.exists(cand):
+            return cand
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return None
+
+
 def check_roles_refs(roles_path, stories_path):
-    """Verifica que los ROL-xx citados en las historias existan en el catálogo."""
+    """Verifica que los ROL-xx citados en las historias existan en el catálogo.
+
+    Si existe el catálogo (v2.7), además exige que TODA HU cite al menos un ROL-xx.
+    """
     try:
         defined = set(re.findall(r"ROL-\d+", open(roles_path, encoding="utf-8").read()))
-    except FileNotFoundError:
+    except (FileNotFoundError, TypeError):
         return []
+    failures = []
     try:
-        cited = set(re.findall(r"ROL-\d+", open(stories_path, encoding="utf-8").read()))
-    except FileNotFoundError:
+        stories = open(stories_path, encoding="utf-8").read()
+    except (FileNotFoundError, TypeError):
         return []
+    cited = set(re.findall(r"ROL-\d+", stories))
     unknown = sorted(cited - defined)
-    return [f"ROL citado en {stories_path} sin definir en el catálogo: {', '.join(unknown)}"] if unknown else []
+    if unknown:
+        failures.append(f"ROL citado en {stories_path} sin definir en el catálogo: {', '.join(unknown)}")
+    # Toda HU debe citar un ROL-xx del catálogo (el "Como <rol>" no es palabra libre)
+    for m in re.finditer(r"(##\s*HU-\d+.*?)(?=\n##\s*HU-\d+|\Z)", stories, re.DOTALL):
+        hu_id = re.search(r"HU-\d+", m.group(1)).group(0)
+        hu_roles = set(re.findall(r"ROL-\d+", m.group(1)))
+        if not hu_roles:
+            failures.append(f"{hu_id} no cita ningún ROL-xx del catálogo (obligatorio cuando existe spec/roles.md)")
+        elif hu_roles - defined:
+            failures.append(f"{hu_id} cita ROL sin definir: {', '.join(sorted(hu_roles - defined))}")
+    return failures
 
 
 def check_screens_refs(inventory_path, stories_path):
     """Verifica que las HU-xx citadas en el inventario de pantallas existan en las historias."""
     try:
         defined = set(re.findall(r"HU-\d+", open(stories_path, encoding="utf-8").read()))
-    except FileNotFoundError:
+    except (FileNotFoundError, TypeError):
         return []
     try:
         cited = set(re.findall(r"HU-\d+", open(inventory_path, encoding="utf-8").read()))
-    except FileNotFoundError:
+    except (FileNotFoundError, TypeError):
         return []
     unknown = sorted(cited - defined)
     return [f"HU citada en {inventory_path} sin definir en user-stories: {', '.join(unknown)}"] if unknown else []
@@ -187,11 +222,11 @@ def main():
         semantic += check_tech_radar(a.artefacto, a.tech_radar)
         semantic += check_signoff(a.artefacto, a.receipts_dir)
     if a.tipo in ("roles", "user-stories"):
-        roles_f = a.artefacto if a.tipo == "roles" else "spec/roles.md"
-        stories_f = a.artefacto if a.tipo == "user-stories" else "spec/user-stories.md"
+        roles_f = a.artefacto if a.tipo == "roles" else resolve_spec_path("spec/roles.md", a.artefacto)
+        stories_f = a.artefacto if a.tipo == "user-stories" else resolve_spec_path("spec/user-stories.md", a.artefacto)
         semantic += check_roles_refs(roles_f, stories_f)
     if a.tipo == "screen-inventory":
-        semantic += check_screens_refs(a.artefacto, "spec/user-stories.md")
+        semantic += check_screens_refs(a.artefacto, resolve_spec_path("spec/user-stories.md", a.artefacto))
     if missing or semantic:
         print(f"GATE NO PASADO ({a.tipo}):")
         for m in missing: print(f"  - patrón no encontrado: {m}")

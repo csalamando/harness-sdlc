@@ -19,12 +19,14 @@ artifacts:
   # Fase 1 — Análisis
   - path: spec/user-stories.md            owner: business-analyst
   - path: spec/business-rules.md          owner: business-analyst
+  - path: spec/glossary.md                owner: business-analyst
   - path: spec/roles.md                   owner: business-analyst   # catálogo de roles gobernado (v2.7): nombre + acciones + contexto + restricciones
   - path: spec/process-definition.md      owner: business-analyst   # PDD AS-IS (v2.7, condicional: automatización/rediseño de procesos)
 
   # Fase 2 — Diseño
   - path: spec/ux-flows.md                owner: ux-designer
   - path: spec/design-system.md           owner: ux-designer
+  - path: spec/tokens.json                owner: ux-designer   # design tokens consumidos por el frontend
   - path: spec/ux/                        owner: ux-designer   # prototipo gobernado (v2.8, condicional a UI): inventario PANT-xx + archivo .penpot + exports
   - path: spec/architecture.md            owner: software-architect
   - path: spec/api-contract.yaml          owner: software-architect
@@ -33,11 +35,15 @@ artifacts:
   - path: spec/test-plan.md               owner: software-architect
   - path: spec/tech-debt.md               owner: software-architect
   - path: spec/threat-model.md            owner: security-engineer
+  - path: spec/security-requirements.md   owner: security-engineer
+  - path: spec/data-governance.md         owner: data-engineer
   - path: spec/tech-radar.yaml            owner: enterprise-architect
   - path: spec/architectural-principles.yaml owner: enterprise-architect
+  - path: spec/exception-log.md           owner: enterprise-architect   # ADRs de excepción al radar
 
   # Fase 5-7 — Entrega y operación
   - path: spec/qa-report.md               owner: qa-automation
+  - path: spec/cloud-costs.md             owner: cloud-engineer
   - path: spec/slo.md                     owner: sre
   - path: spec/impact-report.md           owner: product-analyst
 
@@ -50,3 +56,5 @@ artifacts:
 
   # Gobierno (cambiar la matriz misma)
   - path: spec/authority-matrix.yaml      owner: orchestrator
+  - path: spec/team-roster.yaml           owner: orchestrator
+  - path: spec/risk-tier.yaml             owner: orchestrator

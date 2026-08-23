@@ -63,7 +63,7 @@ NO menciones tecnologías, frameworks ni soluciones.}
 ### Stakeholders Consultados
 | Rol | Nombre | Fecha | Consejo | Aplicado |
 |-----|--------|-------|---------|----------|
-| {Rol} | {Nombre} | {YYYY-MM-DD} | {Resumen del consejo} | {Sí/No} |
+| {Rol} | {Nombre} | 2026-01-15 | {Resumen del consejo} | {Sí/No} |
 
 ### Detalle del Consejo
 #### {Rol} — {Fecha}

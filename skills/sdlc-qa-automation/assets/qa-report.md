@@ -7,10 +7,12 @@ Fecha: <YYYY-MM-DD> | Build: <versión> | Ambiente: staging
 ## Cobertura por historia
 | HU | Escenarios Gherkin | Pasados | Fallados | Notas |
 |---|---|---|---|---|
+| HU-001 | <n> | <n> | <n> | <notas> |
 
 ## Regresión
 | Suite | Total | Pasados | Fallados |
 |---|---|---|---|
+| e2e-critical | <n> | <n> | <n> |
 
 ## Carga (k6) vs NFRs
 | NFR | Meta | Resultado | Cumple |

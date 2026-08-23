@@ -12,8 +12,8 @@ Coordina el pipeline SDLC basado en SDD (spec-driven) y TDD. No produce artefact
 
 ```
 FASE -1 Setup (DevOps + detect_stack)
-→ FASE 0 Discovery: PO + BA + Solution Architect (propuesta + pricing) [GATE 0: aprobación de la iniciativa]
-→ FASE 1 BA → FASE 2 UX + Architect + Security + Data
+→ FASE 0 Visión + Discovery de la iniciativa: PO + Solution Architect (propuesta + pricing) [GATE 0: aprobación de la iniciativa]
+→ FASE 1 BA (historias, reglas, roles, PDD) → FASE 2 UX + Architect + Security + Data
 → FASE 3 Spec consolidada [GATE 1 humano] → FASE 4 Dev Back ∥ Dev Front (TDD)
 → FASE 5 QA + Security DAST [GATE 2/2.5] → FASE 6 DevOps + Cloud [GATE 3] → PROD
 → FASE 7 SRE opera + Product Analyst mide → realimenta backlog del PO

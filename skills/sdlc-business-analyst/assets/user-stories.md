@@ -5,7 +5,7 @@ Versión: 0.1 | Sprint: N | Fuente: backlog.md v<x>
 ## HU-001 — <título>
 **Épica:** EP-<n> | **Prioridad:** <MoSCoW>
 
-Como <rol> quiero <acción> para <valor de negocio>.
+Como ROL-01 (<nombre del rol del catálogo `spec/roles.md`>) quiero <acción> para <valor de negocio>.
 
 ### Criterios de aceptación (Gherkin)
 

@@ -7,6 +7,23 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.8.1] - 2026-08-23
+
+Revisión de calidad profunda sobre v2.8.0: las features de v2.7/v2.8 quedaron documentadas por encima de lo que los scripts realmente hacían. Esta versión cierra esa brecha — todo lo prometido en el CHANGELOG ahora está verificado ejecutando los scripts.
+
+### Fixed
+- **`spec_diff_impact.py`**: el grafo de dependencias quedó congelado en v2.2 y no conocía los artefactos nuevos — cambiar `roles.md` o `screen-inventory.md` devolvía "Artefacto desconocido" y **no revocaba nada**, contradiciendo v2.7 ("cambiar un rol revoca HU, UX, test-plan") y v2.8 (revocación de `spec/ux/`). Añadidos al grafo: `roles.md`, `process-definition.md`, `screen-inventory.md`, `epics.md`, `architecture-proposal.md`, `technical-stories.md`, `cost-estimation.md`, `adr`, `tech-radar.yaml` y `diagrams`, con sus aristas (p. ej. `user-stories.md` depende de `roles.md`; `src-frontend` de `screen-inventory.md`).
+- **`screen-inventory-template.md` no pasaba su propio gate**: placeholders `HU-xxx`/`ROL-xx` no cumplen los patrones `HU-\d+`/`ROL-\d+`. Ahora usa `HU-001`/`HU-002`/`ROL-01`/`ROL-02` (9 checks OK).
+- **Mismo defecto en otras 3 plantillas**: `backlog.md` (sin fila con `EP-\d+`), `qa-report.md` (sin `HU-\d+`) y `adr-template-8steps.md` (Advice Log con fecha placeholder `{YYYY-MM-DD}` que no cumple el patrón de fecha). Las cuatro plantillas de artefactos con gate ahora pasan su propio `gate_checker.py`.
+- **Matriz de autoridad incompleta**: 8 artefactos con skill dueña pero sin owner declarado podían ser aprobados por cualquier rol ("SIN REGLA"). Añadidos: `spec/glossary.md` y `spec/security-requirements.md` (el más delicado: un dev podía aprobar sus propios requisitos de seguridad), `spec/data-governance.md` → data-engineer, `spec/tokens.json` → ux-designer, `spec/cloud-costs.md` → cloud-engineer, `spec/exception-log.md` → enterprise-architect, `spec/team-roster.yaml` y `spec/risk-tier.yaml` → orchestrator.
+- **Doc vs código en roles (v2.7)**: el orquestador decía "si existe `roles.md`, toda HU debe citar ROL-xx definidos" pero el código solo validaba los ROL citados. `gate_checker.py` ahora exige que **toda HU** cite al menos un ROL-xx del catálogo cuando este existe (sin catálogo, degradación elegante: el gate pasa igual). Plantilla `user-stories.md` actualizada: `Como ROL-01 (...)`.
+- **Validación cruzada silenciosa**: `check_roles_refs`/`check_screens_refs` usaban rutas relativas a cwd — ejecutados desde otro directorio se saltaban sin avisar. Nueva función `resolve_spec_path` que localiza `spec/` subiendo desde el artefacto; verificado funcionando desde un cwd ajeno.
+- **Numeración de fases ambigua**: `pipeline.md` ponía Discovery en Fase 1 y el orquestador en Fase 0. Ahora el orquestador alinea: FASE 0 = Visión + Discovery de la iniciativa (PO + Solution Architect, GATE 0), FASE 1 = análisis BA.
+- **`.gitignore`**: faltaba `.codeintel/` (índice derivable de v2.3) — el propio `harness_doctor.py` lo reportaba.
+
+### Verificación
+- 23/23 scripts compilan; 18/18 CLI responden; 13/13 tipos de gate probados contra plantillas; autoridad por rol probada por pares rol-artefacto (autorizado/rechazado); revocación de `roles.md` → 24 artefactos downstream.
+
 ## [2.8.0] - 2026-08-23
 
 ### Added
