@@ -58,3 +58,7 @@ python3 harness_graph.py --proyecto <dir> --check   # exit 1 si quedó atrás (C
 1. Un stakeholder abre `spec/dashboard.html` y en <30 segundos sabe: fase actual, gates faltantes, sprints y releases acumulados, y si el lead time mejora o empeora.
 2. Nadie edita el HTML a mano en 3 sprints consecutivos (el `--check` no habría fallado).
 3. Los `sprint-review-NN.md` siguen generándose idénticos (el dashboard no toca la fuente canónica).
+
+## 6. Plan de implementación
+
+Ver [../v2.12-implementation-plan.md](../v2.12-implementation-plan.md) — 5 pasos, estimación ~1 sesión. Al aprobar este ADR, el plan se ejecuta en orden.
