@@ -182,6 +182,10 @@ check("routing --sin-ui excluye el prototipo spec/ux/",
 code2, out2 = run("manifest_check.py", "--routing")
 check("routing sin flags incluye a data-engineer en fase 2",
       code2 == 0 and "data-engineer" in out2)
+# Grafo interactivo derivado (v2.11): docs/graph.html no puede quedar desactualizado
+code, out = run("harness_graph.py", "--check")
+check("grafo interactivo docs/graph.html sin drift", code == 0,
+      out.splitlines()[-1] if code else "")
 
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")

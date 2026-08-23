@@ -7,6 +7,11 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.11.0] - 2026-08-23
+
+### Added
+- **`harness_graph.py` (herramienta CLI 18)**: grafo interactivo del pipeline en `docs/graph.html`, **derivado del manifiesto** y del grafo de dependencias de `spec_diff_impact.py` — nunca editado a mano. Las 6 macro-fases como nodos, las 21 skills agrupadas por fase (desde el frontmatter `harness-*`), y los loops de realimentación (sprints, TDD, hotfix, delta-spec, impact-report → backlog). HTML self-contained sin dependencias externas, ideal para explicar el arnés sin una pared de texto. Modos `--write` (regenera) y `--check` (exit 1 si el grafo quedó atrás del manifiesto — integrado al self-test, 80 checks).
+
 ## [2.10.1] - 2026-08-23
 
 ### Docs

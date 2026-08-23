@@ -228,6 +228,15 @@ python3 manifest_check.py --routing --sin-ui --sin-datos   # routing por fases d
 
 *Inspiración: "Everything is a plugin" / capability seams de DeepSeek Harness (§10) — traducida a nuestro estándar Markdown agnóstico de agente. Las capas con rank (proyecto > usuario > bundled) se evaluaron y **se difirieron** ([ADR-001](docs/decisions/ADR-001-skills-por-capas-rank.md)): requieren madurez alta en estas herramientas y preferimos centralizar esas decisiones para que los equipos maduren sin asumir riesgos.*
 
+**Grafo interactivo del pipeline (v2.11):** el mismo manifiesto alimenta un mapa visual navegable del arnés — las 6 macro-fases como nodos, las 21 skills agrupadas por fase, y los loops de realimentación (sprints, TDD, hotfix, delta-spec, impact-report → backlog). También es **derivado, nunca editado a mano**:
+
+```bash
+python3 harness_graph.py --write   # regenera docs/graph.html (self-contained, sin dependencias)
+python3 harness_graph.py --check   # exit 1 si el grafo quedó atrás del manifiesto (self-test y CI)
+```
+
+Si añades una skill o cambias sus fases en el frontmatter, el grafo se regenera solo — el `--check` falla en CI si alguien olvida regenerarlo. Abre [`docs/graph.html`](docs/graph.html) en el navegador para explorarlo.
+
 ---
 
 ## 5. Receipts (RDD): confiar en evidencia, no en narración
@@ -403,7 +412,7 @@ En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias super
 ## 9. Herramientas compartidas y propias
 
 - **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`), Penpot MCP (`sdlc-ux-designer`, prototipos de pantalla gobernados).
-- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado), `manifest_check.py` (manifiesto dinámico derivado + drift). **`sdlc-diagrams/scripts/`:** `iac_to_diagram.py` (despliegue derivado del IaC + drift), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless SVG/PNG).
+- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado), `manifest_check.py` (manifiesto dinámico derivado + drift), `harness_graph.py` (grafo interactivo del pipeline derivado del manifiesto + drift). **`sdlc-diagrams/scripts/`:** `iac_to_diagram.py` (despliegue derivado del IaC + drift), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless SVG/PNG).
 - **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
 ---

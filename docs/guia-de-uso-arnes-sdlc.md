@@ -535,6 +535,15 @@ Sin UI no hay prototipo `spec/ux/`; sin proceso que automatizar no hay PDD; sin 
 
 **Si modificas una skill** (nuevo gate, nuevo artefacto, nuevo script): edita su frontmatter `harness-*` y regenera con `--write` — el `--check` del self-test y del CI velará porque nada diverja.
 
+**Grafo interactivo del pipeline (v2.11)**: el manifiesto también alimenta un mapa visual navegable del arnés (`docs/graph.html`, self-contained): las 6 macro-fases como nodos, las skills agrupadas por fase y los loops de realimentación (sprints, TDD, hotfix, delta-spec, impact-report → backlog). Igual que el manifiesto, es **derivado, nunca editado a mano**:
+
+```bash
+python3 scripts/harness_graph.py --write   # regenera docs/graph.html
+python3 scripts/harness_graph.py --check   # exit 1 si quedó atrás del manifiesto (self-test y CI)
+```
+
+Úsalo para explicar el arnés a alguien nuevo sin una pared de texto: abre `docs/graph.html` en el navegador.
+
 ---
 
 ## 5k. Desarrollar el propio arnés (solo para mantenedores)

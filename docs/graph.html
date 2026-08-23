@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arnés SDLC — Grafo del pipeline (generado)</title>
+<style>
+  :root { color-scheme: dark; }
+  body { background:#0b1220; color:#e2e8f0; font-family:system-ui,sans-serif; margin:0; padding:2rem; }
+  h1 { font-size:1.3rem; } .sub { color:#94a3b8; font-size:.85rem; margin-bottom:1.5rem; }
+  .canvas { position:relative; height:340px; background:#0f172a; border:1px solid #1e293b; border-radius:12px; overflow:hidden; }
+  svg.edges { position:absolute; inset:0; width:100%; height:100%; }
+  .node { position:absolute; transform:translate(-50%,-50%); cursor:pointer; text-align:center; width:110px; }
+  .node .dot { width:44px; height:44px; border-radius:50%; margin:0 auto; background:#1e293b; border:2px solid #3b82f6;
+               display:flex; align-items:center; justify-content:center; font-weight:700; transition:.15s; }
+  .node:hover .dot, .node.active .dot { border-color:#f59e0b; transform:scale(1.15); }
+  .node .lbl { font-size:.72rem; margin-top:.4rem; color:#cbd5e1; }
+  .node .cnt { font-size:.62rem; color:#64748b; }
+  .node .gate { position:absolute; top:-14px; left:50%; transform:translateX(-50%); font-size:.55rem;
+                background:#7c2d12; color:#fdba74; border:1px solid #ea580c; border-radius:4px; padding:0 4px; white-space:nowrap; }
+  .loop-tag { font-size:.6rem; fill:#fbbf24; }
+  #panel { margin-top:1.5rem; background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:1.2rem; display:none; }
+  #panel h2 { margin:.2rem 0; font-size:1.1rem; } #panel .desc { color:#94a3b8; font-size:.85rem; max-width:60ch; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:.7rem; margin-top:1rem; }
+  .card { background:#111c33; border:1px solid #1e293b; border-radius:8px; padding:.7rem; font-size:.75rem; }
+  .card b { font-size:.85rem; } .card code { color:#818cf8; font-size:.65rem; }
+  .badge { display:inline-block; font-size:.6rem; border-radius:4px; padding:1px 5px; margin:1px; }
+  .in { background:#0f172a; color:#94a3b8; border:1px solid #334155; }
+  .out { background:#052e1b; color:#6ee7b7; border:1px solid #065f46; }
+  .gate-b { background:#451a03; color:#fdba74; border:1px solid #9a3412; }
+  .cond { color:#fbbf24; font-size:.62rem; }
+  .trans { margin-top:1.5rem; font-size:.8rem; color:#94a3b8; }
+  .trans b { color:#cbd5e1; }
+  footer { margin-top:2rem; font-size:.7rem; color:#475569; }
+</style></head><body>
+<h1>🧭 Arnés SDLC — Grafo del pipeline</h1>
+<div class="sub">21 skills · generado desde el manifiesto (harness-manifest.yaml) — clic en una fase para ver sus skills y flujos</div>
+<div class="canvas" id="canvas"><svg class="edges" id="edges"></svg></div>
+<div id="panel"></div>
+<div class="trans" id="trans"></div>
+<footer>Artefacto derivado — regenerar con <code>manifest_check/harness_graph.py --write</code>. No editar a mano (el drift lo detecta el self-test y el CI).</footer>
+<script>
+const DATA = {"nodes": [{"id": 1, "title": "Setup & Visión", "phases": ["-1", "0"], "x": 9, "gate": "GATE 0", "desc": "Visión, propuesta con opciones, pricing cloud y caso de negocio. Sin GATE 0 aprobado no hay pipeline.", "skills": [{"id": "sdlc-cloud-pricing", "name": "Cloud Pricing", "in": ["architecture-proposal.md"], "out": ["cost-assumptions.yaml", "cost-estimation.md"], "gates": ["cost-estimation"], "conditional": ""}, {"id": "sdlc-devops-engineer", "name": "DevOps Engineer", "in": [], "out": ["pipeline-cicd.md"], "gates": [], "conditional": ""}, {"id": "sdlc-product-owner", "name": "Product Owner", "in": ["epics.md", "vision.md"], "out": ["vision.md", "epics.md", "backlog.md"], "gates": ["vision", "backlog"], "conditional": ""}, {"id": "sdlc-solution-architect", "name": "Solution Architect", "in": ["architecture-proposal.md", "backlog.md", "vision.md"], "out": ["architecture-proposal.md", "technical-stories.md"], "gates": ["architecture-proposal", "technical-stories"], "conditional": ""}]}, {"id": 2, "title": "Discovery", "phases": ["1"], "x": 26, "gate": null, "desc": "Historias Gherkin, reglas de negocio, catálogo de roles gobernado y PDD (AS-IS) si automatiza procesos.", "skills": [{"id": "sdlc-business-analyst", "name": "Business Analyst", "in": ["backlog.md", "business-rules.md", "roles.md", "user-stories.md", "vision.md"], "out": ["user-stories.md", "business-rules.md", "glossary.md", "roles.md", "process-definition.md"], "gates": ["user-stories", "roles", "process-definition"], "conditional": "process-definition.md: iniciativas que automatizan/redisenan procesos"}, {"id": "sdlc-solution-architect", "name": "Solution Architect", "in": ["architecture-proposal.md", "backlog.md", "vision.md"], "out": ["architecture-proposal.md", "technical-stories.md"], "gates": ["architecture-proposal", "technical-stories"], "conditional": ""}]}, {"id": 3, "title": "Arquitectura", "phases": ["2", "3"], "x": 44, "gate": "GATE 1", "desc": "Contratos duros (OpenAPI), ADRs de 8 pasos firmados, threat modeling, prototipo de pantallas. GATE 1 habilita el paralelismo real.", "skills": [{"id": "sdlc-data-engineer", "name": "Data Engineer", "in": ["data-model.md", "security-requirements.md"], "out": ["data-governance.md"], "gates": [], "conditional": "producto con datos significativos"}, {"id": "sdlc-decision-engine", "name": "Decision Engine", "in": [], "out": [], "gates": [], "conditional": ""}, {"id": "sdlc-enterprise-architect", "name": "Enterprise Architect", "in": [], "out": ["tech-radar.yaml", "architectural-principles.yaml", "exception-log.md"], "gates": [], "conditional": "Tier 1 y excepciones al radar"}, {"id": "sdlc-security-engineer", "name": "Security Engineer", "in": ["architecture.md", "data-model.md", "threat-model.md"], "out": ["threat-model.md", "security-requirements.md"], "gates": ["threat-model"], "conditional": ""}, {"id": "sdlc-software-architect", "name": "Software Architect", "in": ["api-contract.yaml", "architecture-proposal.md", "architecture.md", "business-rules.md", "user-stories.md"], "out": ["architecture.md", "api-contract.yaml", "data-model.md", "adr", "test-plan.md", "tech-debt.md"], "gates": ["architecture", "api-contract", "test-plan", "adr"], "conditional": ""}, {"id": "sdlc-solution-architect", "name": "Solution Architect", "in": ["architecture-proposal.md", "backlog.md", "vision.md"], "out": ["architecture-proposal.md", "technical-stories.md"], "gates": ["architecture-proposal", "technical-stories"], "conditional": ""}, {"id": "sdlc-ux-designer", "name": "UX Designer", "in": ["design-system.md", "user-stories.md"], "out": ["ux-flows.md", "design-system.md", "tokens.json", "ux"], "gates": ["ux-flows", "design-system", "screen-inventory"], "conditional": "spec/ux/: iniciativas con UI"}]}, {"id": 4, "title": "Strict TDD", "phases": ["4"], "x": 63, "loop": "sprints", "gate": null, "desc": "Backend y frontend en paralelo consumiendo mocks del contrato. Tests antes que código, siempre.", "skills": [{"id": "sdlc-backend-dev-tdd", "name": "Backend TDD", "in": [], "out": [], "gates": [], "conditional": ""}, {"id": "sdlc-frontend-dev-tdd", "name": "Frontend TDD", "in": [], "out": [], "gates": [], "conditional": ""}, {"id": "sdlc-security-engineer", "name": "Security Engineer", "in": ["architecture.md", "data-model.md", "threat-model.md"], "out": ["threat-model.md", "security-requirements.md"], "gates": ["threat-model"], "conditional": ""}, {"id": "sdlc-technical-writer", "name": "Technical Writer", "in": [], "out": [], "gates": [], "conditional": ""}]}, {"id": 5, "title": "QA & Seguridad", "phases": ["5"], "x": 80, "gate": "GATE 2 / 2.5", "desc": "E2E desde Gherkin, regresión, carga y DAST. Un bug vuelve al dev con el test exacto que lo reproduce.", "skills": [{"id": "sdlc-qa-automation", "name": "QA Automation", "in": ["tests-e2e"], "out": ["qa-report.md"], "gates": ["qa-report"], "conditional": ""}, {"id": "sdlc-security-engineer", "name": "Security Engineer", "in": ["architecture.md", "data-model.md", "threat-model.md"], "out": ["threat-model.md", "security-requirements.md"], "gates": ["threat-model"], "conditional": ""}, {"id": "sdlc-technical-writer", "name": "Technical Writer", "in": [], "out": [], "gates": [], "conditional": ""}]}, {"id": 6, "title": "Release & Operación", "phases": ["6", "7"], "x": 94, "loop": "continuo", "gate": "GATE 3", "desc": "Deploy con rollback probado, diagramas derivados con recibo, SLOs, postmortems y medición de impacto que realimenta el backlog.", "skills": [{"id": "sdlc-cloud-engineer", "name": "Cloud Engineer", "in": [], "out": ["cloud-costs.md", "despliegue.drawio"], "gates": [], "conditional": ""}, {"id": "sdlc-cloud-pricing", "name": "Cloud Pricing", "in": ["architecture-proposal.md"], "out": ["cost-assumptions.yaml", "cost-estimation.md"], "gates": ["cost-estimation"], "conditional": ""}, {"id": "sdlc-devops-engineer", "name": "DevOps Engineer", "in": [], "out": ["pipeline-cicd.md"], "gates": [], "conditional": ""}, {"id": "sdlc-product-analyst", "name": "Product Analyst", "in": [], "out": ["impact-report.md"], "gates": [], "conditional": ""}, {"id": "sdlc-sre", "name": "SRE", "in": ["architecture.md"], "out": ["slo.md"], "gates": ["slo"], "conditional": ""}, {"id": "sdlc-technical-writer", "name": "Technical Writer", "in": [], "out": [], "gates": [], "conditional": ""}]}], "loops": [[4, 4, "sprints (TDD red→green)"], [5, 4, "TDD QA Bug (Red)"], [6, 4, "Hotfix Prod"], [3, 4, "Delta-Spec Replan (spec_diff)"], [6, 1, "impact-report → backlog"]], "transversal": [{"id": "sdlc-diagrams", "name": "Diagramas", "gates": []}, {"id": "sdlc-memory", "name": "Memoria", "gates": []}, {"id": "sdlc-orchestrator", "name": "Orquestador", "gates": []}]};
+const canvas = document.getElementById('canvas'), svg = document.getElementById('edges');
+const panel = document.getElementById('panel');
+function edges() {
+  const W = canvas.clientWidth, H = canvas.clientHeight, y = H/2;
+  let s = '';
+  const X = id => DATA.nodes.find(n=>n.id===id).x/100*W;
+  for (let i=0;i<DATA.nodes.length-1;i++)
+    s += `<line x1="${X(DATA.nodes[i].id)}" y1="${y}" x2="${X(DATA.nodes[i+1].id)}" y2="${y}" stroke="#334155" stroke-width="2" marker-end="url(#a)"/>`;
+  for (const [f,t,lbl] of DATA.loops) {
+    if (f===t) { const x=X(f); s += `<path d="M ${x-18} ${y-22} C ${x-45} ${y-70}, ${x+45} ${y-70}, ${x+18} ${y-22}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3"/>
+      <text class="loop-tag" x="${x}" y="${y-64}" text-anchor="middle">${lbl}</text>`; continue; }
+    const x1=X(f), x2=X(t), my = f>t ? y+80 : y-60;
+    s += `<path d="M ${x1} ${y} Q ${(x1+x2)/2} ${my}, ${x2} ${y}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3"/>
+          <text class="loop-tag" x="${(x1+x2)/2}" y="${my + (f>t?14:-6)}" text-anchor="middle">↺ ${lbl}</text>`;
+  }
+  svg.innerHTML = `<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#334155"/></marker></defs>` + s;
+}
+function nodes() {
+  document.querySelectorAll('.node').forEach(e=>e.remove());
+  for (const n of DATA.nodes) {
+    const d = document.createElement('div');
+    d.className = 'node'; d.style.left = n.x+'%'; d.style.top = '50%';
+    d.innerHTML = `${n.gate?`<span class="gate">⛔ ${n.gate}</span>`:''}
+      <div class="dot">${n.id}</div>
+      <div class="lbl">${n.title}${n.loop?` <span style="color:#f59e0b">↺${n.loop}</span>`:''}</div>
+      <div class="cnt">${n.skills.length} skills</div>`;
+    d.onclick = () => show(n, d);
+    canvas.appendChild(d);
+  }
+}
+function show(n, el) {
+  document.querySelectorAll('.node').forEach(e=>e.classList.remove('active'));
+  el.classList.add('active');
+  panel.style.display = 'block';
+  panel.innerHTML = `<h2>Fase ${n.phase||''} · ${n.title}</h2><div class="desc">${n.desc}</div>
+    <div class="cards">` + n.skills.map(s=>`<div class="card"><b>${s.name}</b> <code>${s.id}</code>
+      ${s.conditional?`<div class="cond">◆ condicional: ${s.conditional}</div>`:''}
+      ${s.gates.length?`<div>${s.gates.map(g=>`<span class="badge gate-b">gate: ${g}</span>`).join('')}</div>`:''}
+      <div style="margin-top:4px">${s.in.map(i=>`<span class="badge in">IN ${i}</span>`).join('')}${s.out.map(o=>`<span class="badge out">OUT ${o}</span>`).join('')}</div>
+    </div>`).join('') + '</div>';
+}
+document.getElementById('trans').innerHTML =
+  '⚙️ <b>Transversales (todas las fases):</b> ' + DATA.transversal.map(s=>s.name).join(' · ');
+edges(); nodes(); addEventListener('resize', edges);
+</script></body></html>
