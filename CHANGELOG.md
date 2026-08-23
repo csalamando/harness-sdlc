@@ -7,6 +7,14 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.7.0] - 2026-08-23
+
+### Added
+- **Catálogo de roles gobernado** (`spec/roles.md`, plantilla `assets/roles-template.md` en `sdlc-business-analyst`): el "Como <rol>" de las historias deja de ser una palabra libre y pasa a ser referencia a un artefacto versionado. Un rol es nombre + acciones que habilita + contexto/condiciones + reglas que lo restringen (BR/SEC). Los conflictos de interés entre roles se declaran y su priorización la firma el PO; el Architect deriva el RBAC del diseño desde este artefacto.
+- **PDD — Process Definition Document** (`spec/process-definition.md`, plantilla `assets/pdd-template.md`): captura del proceso **AS-IS** (disparadores, flujo, excepciones conocidas/desconocidas, volúmenes, SLA, aplicaciones, riesgos y supuestos) para iniciativas que automatizan o rediseñan procesos (RPA/BPM). Sin firma del Process Owner (recibo) no hay diseño TO-BE; una excepción descubierta en piloto re-emite y re-aprueba el PDD.
+- `gate_checker.py`: tipos nuevos `roles` y `process-definition`; validación cruzada — los ROL-xx citados en `user-stories.md` deben existir en el catálogo (aplica también al tipo `user-stories` cuando existe `roles.md`).
+- Matriz de autoridad: `spec/roles.md` y `spec/process-definition.md` → `business-analyst`.
+
 ## [2.6.0] - 2026-08-23
 
 ### Added
