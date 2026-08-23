@@ -61,7 +61,7 @@ Ordenadas por fase del pipeline (las transversales al final):
 | `sdlc-product-owner` | Visión, épicas, backlog priorizado (el QUÉ y el CUÁNDO) | 0 |
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, escribe historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina (Fase 6) | 0, 6 |
-| `sdlc-business-analyst` | Historias de usuario + Gherkin + reglas de negocio | 1 |
+| `sdlc-business-analyst` | Historias de usuario + Gherkin + reglas de negocio + catálogo de roles gobernado + PDD (AS-IS, condicional a automatización de procesos) | 1 |
 | `sdlc-ux-designer` | Flujos UX + design system + tokens | 2 |
 | `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + test-plan. **Decision Owner técnico (el CÓMO)** | 2-3 |
 | `sdlc-decision-engine` | Motor de decisiones: 8 pasos, scorecard, Decision Packages | 2 |
@@ -138,6 +138,8 @@ Un dev puede *opinar* sobre un ADR (de hecho debe: Paso 5 del Advice Process), p
 3. **Git (frontera dura):** plantilla `CODEOWNERS` + branch protection — un PR que toca `spec/adr/` no se mergea sin el Arquitecto.
 
 Cambiar la matriz es un cambio de gobierno: requiere PR y queda auditado en el historial.
+
+**Roles gobernados (v2.7):** el "Como <rol>" de las historias no es una palabra libre — referencia `spec/roles.md`, el catálogo del BA donde cada rol es nombre + acciones que habilita + contexto/condiciones + reglas que lo restringen. El gate valida que los ROL-xx citados existan. Para iniciativas que automatizan o rediseñan procesos, el PDD (`spec/process-definition.md`) captura el AS-IS con excepciones, volúmenes y SLA, y exige firma del Process Owner (recibo) antes del diseño TO-BE.
 
 ### 4c. Contexto mínimo e inteligencia de código (v2.3)
 
