@@ -7,6 +7,21 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.6.0] - 2026-08-23
+
+### Added
+- **Diagramas como mecanismo de aceptación de cambios** (`sdlc-diagrams` gana `scripts/`): ningún diagrama cuenta como válido sin recibo de aprobación del rol dueño sobre su contenido. Dos direcciones con gobierno distinto:
+  - **Derivados de fuente** (se recrean, nunca se editan a mano): la regeneración propone el cambio → el diff en Git se revisa → el rol dueño lo acepta con `receipt.py emit --role <rol>`.
+  - **De diseño** (C4, BPMN, secuencia, Gantt, GitFlow): edición manual, pero si la spec que representan cambia, `spec_diff_impact.py` revoca su recibo y deben re-aprobarse.
+- **`iac_to_diagram.py`** (generate/check): topología de despliegue derivada de `terraform.tfstate` (lo realmente desplegado) o ARM/Bicep compilado, con iconos oficiales AWS/Azure/GCP y clusters por módulo/resource group. Python stdlib puro — no ejecuta Terraform. `check` = drift detection (exit 1 si el diagrama difiere de la fuente).
+- **`pipeline_diagram.py`** (generate/validate/check): flowchart Mermaid por workflow de GitHub Actions (triggers, jobs, `needs:`) + validación de `needs:` inexistentes y ciclos de dependencias sin binarios externos.
+- **`diagram_render.py`** (render/render-dir/engines): render headless a SVG/PNG vía drawio-desktop CLI (el SVG embebe el fuente: la imagen sigue editable) o mmdc (renderiza bloques Mermaid dentro de Markdown y reescribe las referencias — doc-as-code). Motores opcionales con degradación elegante: sin ellos, el fuente versionado sigue siendo el entregable.
+- Matriz de autoridad: `spec/diagrams/despliegue.drawio` → `cloud-engineer`; `spec/diagrams/pipeline-cicd.md` → `devops-engineer`.
+- Orquestador: sección "Diagramas como mecanismo de aceptación"; GATE 3 exige diagramas derivados regenerados y con recibo vigente; Fase 8 verifica drift (`check`) en el cierre.
+
+### Changed
+- `harness_doctor.py`: compila los 3 scripts de `sdlc-diagrams` y reporta motores de render disponibles (informativo, nunca bloquea).
+
 ## [2.5.0] - 2026-08-23
 
 ### Added

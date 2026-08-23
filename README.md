@@ -15,6 +15,7 @@
    - [Autoridad por rol](#4b-autoridad-por-rol-quién-puede-emitir-qué)
    - [Contexto mínimo e inteligencia de código](#4c-contexto-mínimo-e-inteligencia-de-código-v23)
    - [Telemetría de skills](#4d-telemetría-de-skills-v24)
+   - [Diagramas como mecanismo de aceptación](#4e-diagramas-como-mecanismo-de-aceptación-de-cambios-v26)
 5. [Receipts: confiar en evidencia, no en narración](#5-receipts-confiar-en-evidencia-no-en-narración)
 6. [El sistema de memoria](#6-el-sistema-de-memoria)
 7. [Gobernanza de decisiones (v2.0)](#7-gobernanza-de-decisiones-v20)
@@ -65,7 +66,7 @@ Tres ideas lo diferencian de un pipeline de prompts:
 | `sdlc-product-analyst` | Medición de impacto → realimenta backlog | 7 |
 | `sdlc-technical-writer` | Documentación doc-as-code (Wiki / Pages / Confluence) | 4-6 |
 | `sdlc-memory` | Memoria persistente con scopes y gobierno (transversal) | Todas |
-| `sdlc-diagrams` | Diagramas C4, cloud (AWS/Azure/GCP), secuencia, BPMN, Gantt, GitFlow vía drawio MCP | 1, 2, 6 |
+| `sdlc-diagrams` | Diagramas C4, cloud (AWS/Azure/GCP), secuencia, BPMN, Gantt, GitFlow vía drawio MCP + derivación desde IaC/workflows con aprobación por recibo | 1, 2, 6 |
 
 Separación de autoridad: **el PO nunca aprueba decisiones técnicas; el Arquitecto de Software es el único rol que firma ADRs.**
 
@@ -92,7 +93,7 @@ FASE -1 Setup (DevOps + detect_stack)
 | **GATE 1** (humano) | Spec consolidada aprobada + sin `conflicts_with` de memoria pendientes + `policy check` en verde (toda política org mandatory attestada o con desviación aprobada vigente) + **cada ADR Tier 1-2 con 8 pasos validados, Advice Log registrado, Tech Radar cruzado y firma vigente**. Sin esto, cero código. |
 | **GATE 2** | Todas las historias verificadas E2E. Bug crítico → se devuelve al dev **con el test que lo reproduce** (una corrección acotada; si falla, escala a humano). |
 | **GATE 2.5** | Ninguna vulnerabilidad crítica/alta abierta. |
-| **GATE 3** | Staging validado + rollback probado. |
+| **GATE 3** | Staging validado + rollback probado + diagramas derivados regenerados desde su fuente (IaC/workflows) con recibo vigente. |
 
 Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**.
 
@@ -149,6 +150,16 @@ La disciplina no se narra, se mide — y **sin meter telemetría en el contexto 
 4. **`sprint_review.py --sprint <N>` (v2.5) → `spec/reports/sprint-review-NN.md`**: al cerrar cada sprint, snapshot versionado con avance del proyecto, desempeño del arnés, lead times por gate, **tendencia vs el sprint anterior** y aprendizajes — la visibilidad de largo plazo para ajustar basándose en datos.
 
 En Fase 8 el orquestador genera `METRICS.md` y guarda las señales como memoria `learning` — la mejora de las skills se retroalimenta sola. `METRICS.md` nunca se inyecta en paquetes de contexto.
+
+---
+
+## 4e. Diagramas como mecanismo de aceptación de cambios (v2.6)
+
+Los diagramas no son solo documentación: son un **punto de control**. Ningún diagrama cuenta sin recibo de aprobación del rol dueño sobre su contenido:
+
+1. **Derivados de fuente** (nunca se editan a mano): `iac_to_diagram.py` genera la topología de despliegue desde `terraform.tfstate`/ARM (lo *realmente* desplegado, con iconos oficiales y clusters); `pipeline_diagram.py` genera el diagrama del CI/CD desde `.github/workflows/` y valida `needs:` rotos y ciclos. La regeneración **propone** el cambio → el diff en Git se revisa → el rol dueño lo **acepta** con `receipt.py emit --role cloud-engineer|devops-engineer`. Modo `check` = drift detection en CI y Fase 8.
+2. **De diseño** (C4, secuencia, BPMN, Gantt, GitFlow): edición manual vía drawio MCP, pero si la spec que representan cambia, `spec_diff_impact.py` revoca su recibo → se actualizan y re-aprueban.
+3. **Render headless** (`diagram_render.py`): `.drawio`/Mermaid → SVG/PNG vía drawio-desktop CLI o mmdc (este último renderiza bloques Mermaid dentro de Markdown — doc-as-code). Motores opcionales: sin ellos, el fuente versionado sigue siendo el entregable.
 
 ---
 
@@ -296,7 +307,7 @@ En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias super
 ## 9. Herramientas compartidas y propias
 
 - **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`).
-- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado).
+- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado). **`sdlc-diagrams/scripts/`:** `iac_to_diagram.py` (despliegue derivado del IaC + drift), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless SVG/PNG).
 - **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
 ---
