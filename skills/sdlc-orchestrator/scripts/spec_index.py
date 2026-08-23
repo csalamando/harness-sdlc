@@ -16,7 +16,7 @@ import re
 EXTS = (".md", ".yaml", ".yml", ".json")
 SKIP_DIRS = {"memory", "receipts", ".index", ".codeintel"}
 SKIP_FILES = {"INDEX.md"}
-HEADING_RE = re.compile(r"^#{1,3}\s+(.+)$")
+HEADING_RE = re.compile(r"^#{1,3}\s+(.+)$", re.M)
 
 
 def summarize(path):
@@ -73,6 +73,15 @@ def main():
         "Lectura de orientacion: este digest resume cada artefacto. Abre solo el que necesites;",
         "antes de consumirlo downstream verifica su recibo (`receipt.py verify`) — el hash aqui",
         "debe coincidir con el recibo ACTIVE.",
+        "",
+        "Como leer este repo (para cualquier agente, con o sin el arnes instalado):",
+        "- `spec/` es la fuente de verdad: no improvises artefactos fuera de esta estructura.",
+        "- Toda aprobacion es un recibo SHA-256 en `spec/receipts/`; si el hash no coincide,",
+        "  el artefacto cambio y el gate debe re-ejecutarse.",
+        "- Si existe `.codeintel/index.db`, consulta simbolos (`code_intel.py context/impact/tests`)",
+        "  en vez de leer archivos de codigo completos.",
+        "- Las memorias explican el POR QUE de las decisiones; busca con `mem.py search --brief`",
+        "  y abre solo la relevante con `mem.py get <id>`.",
         "",
         "| Artefacto | sha256[:12] | lineas | resumen |",
         "|---|---|---|---|",

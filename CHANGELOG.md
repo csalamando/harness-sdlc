@@ -7,12 +7,20 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.3.1] - 2026-08-23
+
+### Added
+- `spec_index.py`: el `spec/INDEX.md` generado incluye ahora un bloque "Cómo leer este repo" (4 reglas: spec como fuente de verdad, recibos SHA-256, consultar `.codeintel` antes de leer código, memorias con `--brief`) — el proyecto se auto-explica a cualquier agente que aterrice en el repo, sin archivos de instrucciones adicionales (sin AGENTS.md) ni contexto permanente extra.
+
+### Fixed
+- `spec_index.py`: el resumen de artefactos no detectaba encabezados markdown en archivos multilínea (faltaba `re.M` en el patrón) y caía al fallback de primera línea.
+
 ## [2.3.0] - 2026-08-22
 
 ### Added
 - **`code_intel.py`** (orquestador): mini motor de inteligencia de código propio (inspirado en Gortex, reimplementado a medida). Grafo de símbolos en SQLite derivable (`.codeintel/index.db`, gitignored, incremental por SHA-256), Python stdlib puro, sin daemon. Extracción por niveles: `ast` para Python (fidelidad total) + patrones para 15 lenguajes más. Comandos: `index`, `symbol`, `context` (cuerpo exacto del símbolo o esqueleto del archivo), `impact` (blast radius BFS con razón por arista), `tests` (tests candidatos, evidencia para GATE 2), `search` (FTS5 sobre firmas/docstrings), `map`, `stats`.
 - **`spec_index.py`** (orquestador): genera `spec/INDEX.md`, digest de una página con sha256, tamaño y resumen por artefacto — el agente se orienta leyendo un archivo y solo abre lo que necesita (verificando recibo).
-- **`context_packager.py`**: antepone `spec/INDEX.md` al paquete y, para roles de desarrollo con índice disponible, instruye consultar símbolos vía `code_intel.py` en vez de leer archivos completos (`--code-root`).
+- **`context_packager.py`**: antepone `spec/INDEX.md` al paquete y, para roles de desarrollo con índice disponible, instruye consultar símbolos vía `code_intel.py` en vez de leer archivos de código completos (`--code-root`).
 - **`mem.py search --brief`**: una línea por memoria (id + título); abrir con `mem.py get` solo la relevante.
 - Orquestador: sección "Contexto mínimo e inteligencia de código"; GATE 2 acepta `code_intel.py tests` como evidencia de cobertura de tests; change-request combina `spec_diff_impact.py` (spec) + `code_intel.py impact` (código).
 
