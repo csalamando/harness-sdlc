@@ -514,6 +514,29 @@ El hueco visual del arnés queda cerrado: las pantallas con sus flujos de intera
 
 ---
 
+## 5k. Desarrollar el propio arnés (solo para mantenedores)
+
+> ⚠️ **Esta sección NO es para usar el arnés, es para MODIFICARLO.** Si solo quieres usarlo en tus proyectos, no necesitas nada de lo que sigue — instala las skills (§2) y listo. Lo que aquí se describe vive en el repo fuente del arnés (`tests/`), **nunca entra al ZIP de release** y no es una skill que tu agente deba cargar.
+
+El arnés gobierna con recibos y gates a quienes lo usan; esta es la red de seguridad de quienes lo **modifican**. La lección de v2.7/v2.8: se documentaron features por encima de lo que los scripts hacían (el grafo de impacto no conocía los artefactos nuevos, plantillas que no pasaban su propio gate, huecos en la matriz de autoridad — corregido en v2.8.1). Para que no vuelva a pasar:
+
+### Checklist de release del arnés
+
+1. **Self-test en verde** — ejecuta la regresión de consistencia (71 checks: compilan todos los scripts, las 13 plantillas pasan su propio gate, el grafo de impacto conoce los artefactos gobernados, la matriz cubre los artefactos con dueño, roles end-to-end, validación cruzada sin depender del cwd):
+
+   ```bash
+   python tests/self_test.py   # exit 0 = verde; exit 1 = lista los fallos
+   ```
+
+2. **CHANGELOG** con la entrada de la versión (regla SemVer del repo: MAJOR rompe gates/recibos/spec, MINOR añade skills/gates, PATCH corrige scripts/plantillas/docs).
+3. **Tag + release**: el ZIP de skills se construye con `git archive <tag> skills` — por eso `tests/` y cualquier herramienta de mantenimiento quedan automáticamente fuera del paquete que descargan los usuarios.
+
+### Regla de oro para contribuir
+
+Si tu cambio añade un artefacto gobernado (nuevo `spec/*.md`), toca un gate o promete una revocación de recibos, el self-test debe cubrirlo: añade el check correspondiente en `tests/self_test.py` en el mismo commit. **Una feature sin check de consistencia es una deuda de v2.8.1 esperando a repetirse.**
+
+---
+
 ## 6. Uso con LiteLLM
 
 LiteLLM soporta las skills de dos maneras, según lo que necesites:

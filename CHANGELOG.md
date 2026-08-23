@@ -7,6 +7,12 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.8.2] - 2026-08-23
+
+### Added
+- **`tests/self_test.py`** (solo repo fuente — NO entra al ZIP de release ni es una skill): regresión de consistencia del arnés con 71 checks (compilación de scripts, las 13 plantillas pasan su propio gate, grafo de impacto completo, matriz de autoridad, roles end-to-end, validación cruzada sin depender del cwd). Red de seguridad para mantenedores, nacida de la revisión de v2.8.1.
+- Guía de uso §5k: checklist de release para quienes **modifican** el arnés (self-test verde → CHANGELOG → tag → release), claramente separada del flujo de quienes solo lo usan.
+
 ## [2.8.1] - 2026-08-23
 
 Revisión de calidad profunda sobre v2.8.0: las features de v2.7/v2.8 quedaron documentadas por encima de lo que los scripts realmente hacían. Esta versión cierra esa brecha — todo lo prometido en el CHANGELOG ahora está verificado ejecutando los scripts.
