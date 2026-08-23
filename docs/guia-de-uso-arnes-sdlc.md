@@ -13,7 +13,7 @@ Esta guía explica cómo instalar y usar las 21 skills del arnés SDLC en cualqu
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina | 0, 6 |
 | `sdlc-business-analyst` | Historias de usuario + Gherkin + reglas de negocio + catálogo de roles + PDD | 1 |
-| `sdlc-ux-designer` | Flujos UX + design system + tokens.json | 2 |
+| `sdlc-ux-designer` | Flujos UX + design system + tokens.json + prototipo de pantallas gobernado (Penpot, condicional a UI) | 2 |
 | `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + test-plan | 2-3 |
 | `sdlc-security-engineer` | Threat modeling + SAST/DAST (GATE 2.5) | 2, 4, 5 |
 | `sdlc-data-engineer` | Migraciones + gobierno de datos (condicional) | 2 |
@@ -217,7 +217,7 @@ El agente con la skill del orquestador:
 2. Se detiene en **GATE 0** (aprobación humana de la iniciativa): revisas la propuesta con opciones y el caso de negocio con costos antes de comprometer construcción.
 3. Antes de activar cada rol, corre `context_packager.py` para darle solo el contexto mínimo.
 4. Al recibir cada artefacto, corre `gate_checker.py` — si falla, el artefacto se devuelve al rol.
-5. Se detiene en **GATE 1** (aprobación humana de la spec consolidada): aquí tú revisas `spec/` antes de que se escriba código.
+5. Se detiene en **GATE 1** (aprobación humana de la spec consolidada): aquí tú revisas `spec/` antes de que se escriba código. Si la iniciativa tiene UI, este es el momento de revisar los renders / navegar el prototipo de `spec/ux/` — su aprobación es el contrato visual del sprint.
 6. Continúa con build (TDD), QA, seguridad y despliegue, deteniéndose en los gates 2, 2.5 y 3.
 
 ### Modos de operación
@@ -495,6 +495,22 @@ Dos huecos de la Fase 1 quedan cerrados con artefactos versionados y con dueño,
 - **Catálogo de roles gobernado (`spec/roles.md`)**: el "Como <rol>" de las historias deja de ser una palabra libre. Cada rol (`ROL-xx`) declara **acciones que habilita + contexto/condiciones + reglas que lo restringen** (BR/SEC referenciadas). Los conflictos de interés entre roles (uno quiere rapidez, otro control) se declaran en el catálogo y su priorización la firma el PO. El Architect deriva la matriz de permisos/RBAC del diseño desde este artefacto. `gate_checker.py --tipo roles` valida la estructura y que los ROL-xx citados en `user-stories.md` existan en el catálogo (también valida `--tipo user-stories` cuando existe `roles.md`). Cambiar un rol revoca los recibos de lo que dependa de él (HU, UX, test-plan) vía `spec_diff_impact.py`.
 - **PDD — Process Definition Document (`spec/process-definition.md`, condicional)**: para iniciativas que **automatizan o rediseñan un proceso existente** (RPA, BPM, modernización). Captura el proceso **AS-IS**: disparadores, flujo (detalle en BPMN con lanes por ROL-xx vía `sdlc-diagrams`), reglas BR-xxx, **catálogo de excepciones** (conocidas/desconocidas), volúmenes y SLA, aplicaciones involucradas con limitaciones, riesgos y supuestos con plan de validación. **Sin firma del Process Owner (aceptación humana + recibo) no hay diseño TO-BE** — el "process owner firma antes de automatizar" pasa de correo a recibo SHA-256. Una excepción desconocida descubierta en piloto re-emite y re-aprueba el PDD.
 - Matriz de autoridad: `spec/roles.md` y `spec/process-definition.md` → `business-analyst`. Ambos artefactos son condicionales/opt-out: una herramienta interna o un hotfix no los necesita.
+
+---
+
+## 5j. Novedades v2.8 (prototipos de pantalla gobernados)
+
+El hueco visual del arnés queda cerrado: las pantallas con sus flujos de interacción son ahora un **artefacto de validación temprana** — negocio ve y navega el prototipo *antes* de escribir código, y su aprobación es el contrato visual del sprint. Mismo principio que los diagramas en v2.6: sin recibo, el prototipo no cuenta; un cambio visible para el usuario pasa por re-aprobación.
+
+- **Estándar: Penpot** (open-source MPL-2.0, self-hostable). La razón de gobierno es decisiva frente a Figma: los diseños se expresan en **estándares web (SVG/CSS/JSON)** y el archivo es **exportable y versionable en Git** — la fuente de verdad vive en `spec/ux/`, no en una nube propietaria. Además: prototipado interactivo nativo, design tokens sincronizables con `spec/tokens.json` (el prototipo usa los colores/tipografía reales del proyecto) y **servidor MCP oficial** para que el agente cree y modifique pantallas directamente.
+- **Estructura gobernada en `spec/ux/`** (owner `ux-designer`):
+  - `screen-inventory.md`: inventario `PANT-xx` — HU que cubre, ROL que la opera, estados (loading/empty/error/success) e interacciones con destino. Plantilla en `sdlc-ux-designer/assets/`.
+  - `prototipo.penpot`: el archivo de diseño versionado. Nunca un enlace suelto a una nube.
+  - `exports/`: renders PNG/SVG por pantalla — negocio revisa en GATE 1 sin abrir la herramienta.
+- **Flujo**: con el MCP de Penpot, el agente genera las pantallas desde `ux-flows.md` + `tokens.json`, conecta las interacciones del inventario (prototipo navegable) y exporta archivo + renders. Sin MCP, entrega igualmente inventario y wireframes — degradación elegante, nunca bloquea.
+- **Gates**: GATE 1 exige el inventario con recibo vigente para las pantallas del sprint — **sin prototipo aprobado, el Dev Front no implementa esas pantallas**. Si cambian HU/flujos/roles, `spec_diff_impact.py` revoca el recibo de `spec/ux/` y las pantallas impactadas se actualizan y re-aprueban.
+- **`gate_checker.py --tipo screen-inventory`**: valida la estructura del inventario y que las HU-xx citadas existan en `user-stories.md`.
+- **Alternativa Figma**: si la organización ya usa Figma (con su MCP), el flujo es el mismo, pero el artefacto gobernado sigue siendo el export versionado en `spec/ux/` — nunca el archivo vivo en la nube de Figma, que no es auditable ni tiene recibo.
 
 ---
 
