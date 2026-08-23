@@ -7,6 +7,16 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.5.0] - 2026-08-23
+
+### Added
+- **Sprint Review** (`sprint_review.py`, script 16 del orquestador): reporte versionado de cierre de sprint en `spec/reports/sprint-review-NN.md` (un archivo por sprint → serie histórica). Secciones: resumen ejecutivo, avance del proyecto (aprobados por gate + recibos rehechos), desempeño del arnés (embebe las métricas de skills de v2.4), lead time por gate (timestamps de recibos), **tendencia vs sprint anterior** (KPIs embebidos como comentarios que el propio script relee) y aprendizajes/acciones.
+- Relación de artefactos: `METRICS.md` = tablero vivo (se sobrescribe); `sprint-review-NN.md` = snapshot histórico; `impact-report.md` (product-analyst) = impacto de negocio — se enlaza, no se duplica.
+- Fase 8: el paso de métricas ahora genera el Sprint Review (obligatorio al cerrar cada sprint).
+
+### Changed
+- `harness_doctor.py`: 14 scripts del orquestador (antes 13).
+
 ## [2.4.0] - 2026-08-23
 
 ### Added

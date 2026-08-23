@@ -45,7 +45,7 @@ Tres ideas lo diferencian de un pipeline de prompts:
 
 | Skill | Rol | Fase |
 |---|---|---|
-| `sdlc-orchestrator` | Orquestador del pipeline + 15 herramientas CLI | Todas |
+| `sdlc-orchestrator` | Orquestador del pipeline + 16 herramientas CLI | Todas |
 | `sdlc-product-owner` | Visión, épicas, backlog priorizado (el QUÉ y el CUÁNDO) | 0 |
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, escribe historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina (Fase 6) | 0, 6 |
@@ -83,7 +83,7 @@ FASE -1 Setup (DevOps + detect_stack)
 → FASE 5 QA + Security DAST [GATE 2 / 2.5]
 → FASE 6 DevOps + Cloud [GATE 3] → PROD
 → FASE 7 SRE opera + Product Analyst mide → realimenta backlog
-→ FASE 8 Archivo: merge de delta-specs + cierre del ciclo
+→ FASE 8 Archivo: merge de delta-specs + sprint review + cierre del ciclo
 ```
 
 | Gate | Qué exige |
@@ -146,6 +146,7 @@ La disciplina no se narra, se mide — y **sin meter telemetría en el contexto 
 1. **`skill_metrics.py use --skill <rol> --fase <N>`**: el orquestador registra cada activación (append-only en `spec/metrics/usage.jsonl`).
 2. **`receipt.py emit --tokens-src reportado|estimado --attempts K`**: tokens por artefacto — exactos si la plataforma del agente los expone, estimados por chars/4 si no (nunca depende de que el agente "se acuerde").
 3. **`skill_metrics.py report` → `spec/METRICS.md`**: tres vistas — **aporte** (artefactos, % de gates al primer intento, tokens por skill), **cobertura** (detector de *freestyle*: un rol con artefactos pero sin activación registrada está trabajando por fuera de la skill; una activación sin artefactos es skill de adorno) y **señales** accionables para mejorar skills.
+4. **`sprint_review.py --sprint <N>` (v2.5) → `spec/reports/sprint-review-NN.md`**: al cerrar cada sprint, snapshot versionado con avance del proyecto, desempeño del arnés, lead times por gate, **tendencia vs el sprint anterior** y aprendizajes — la visibilidad de largo plazo para ajustar basándose en datos.
 
 En Fase 8 el orquestador genera `METRICS.md` y guarda las señales como memoria `learning` — la mejora de las skills se retroalimenta sola. `METRICS.md` nunca se inyecta en paquetes de contexto.
 
@@ -288,14 +289,14 @@ Basada en el **framework de 8 pasos de Sonya Natanzon**, el **Advice Process** y
 3. `receipt.py revoke` sobre cada artefacto impactado; re-ejecutar **solo** las fases afectadas.
 4. Nueva versión + entrada en CHANGELOG.
 
-En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias superseded, trazabilidad y recibos en verde, sesión cerrada. La próxima iteración arranca desde spec consolidada.
+En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias superseded, trazabilidad y recibos en verde, sprint review generado, sesión cerrada. La próxima iteración arranca desde spec consolidada.
 
 ---
 
 ## 9. Herramientas compartidas y propias
 
 - **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`).
-- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills).
+- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado).
 - **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
 ---
