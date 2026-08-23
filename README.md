@@ -237,6 +237,15 @@ python3 harness_graph.py --check   # exit 1 si el grafo quedó atrás del manifi
 
 Si añades una skill o cambias sus fases en el frontmatter, el grafo se regenera solo — el `--check` falla en CI si alguien olvida regenerarlo. Abre [`docs/graph.html`](docs/graph.html) en el navegador para explorarlo.
 
+**Dashboard vivo del proyecto (v2.12, [ADR-002](docs/decisions/ADR-002-dashboard-html-proyecto.md)):** el mismo motor, alimentado del estado real de tu proyecto — **un solo `spec/dashboard.html`, siempre "el ahora"** (nunca un HTML por sprint; la historia la siguen guardando los `sprint-review-NN.md`, que el dashboard lee para las tendencias):
+
+```bash
+python3 harness_graph.py --proyecto .          # genera/actualiza spec/dashboard.html
+python3 harness_graph.py --proyecto . --check  # exit 1 si quedó atrás (CI)
+```
+
+Muestra el pipeline con los gates pintados según sus recibos (vigente / invalidado / pendiente), la fase actual, los loops de feedback activos (bug, hotfix), contadores acumulados (sprints, releases, HU cerradas, gates al primer intento), tendencias por sprint con **alertas automáticas** cuando un lead time empeora, y las últimas memorias `learning`. Cero narración manual: todo deriva de `receipts/` + `spec/` + `spec/reports/`. **El dashboard es visualización, no evidencia** — la evidencia siguen siendo los recibos; por eso un dashboard desactualizado alerta en CI pero no bloquea gates.
+
 ---
 
 ## 5. Receipts (RDD): confiar en evidencia, no en narración

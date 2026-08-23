@@ -58,3 +58,4 @@ artifacts:
   - path: spec/authority-matrix.yaml      owner: orchestrator
   - path: spec/team-roster.yaml           owner: orchestrator
   - path: spec/risk-tier.yaml             owner: orchestrator
+  - path: spec/dashboard.html             owner: orchestrator   # dashboard vivo (v2.12, ADR-002): derivado de recibos + sprint reviews; nunca editado a mano

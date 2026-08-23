@@ -544,6 +544,30 @@ python3 scripts/harness_graph.py --check   # exit 1 si quedó atrás del manifie
 
 Úsalo para explicar el arnés a alguien nuevo sin una pared de texto: abre `docs/graph.html` en el navegador.
 
+## 5m. Dashboard vivo del proyecto (v2.12)
+
+Cuando tu proyecto ya corre con el arnés (tiene `spec/` con recibos y sprint reviews), genera su tablero de un vistazo:
+
+```bash
+python3 scripts/harness_graph.py --proyecto .          # genera/actualiza spec/dashboard.html
+python3 scripts/harness_graph.py --proyecto . --json   # solo el modelo derivado (debug)
+python3 scripts/harness_graph.py --proyecto . --check  # exit 1 si quedó desactualizado (ponlo en CI)
+```
+
+**Un solo archivo, siempre "el ahora".** No se crea un HTML por sprint: el dashboard se sobrescribe en cada regeneración y las tendencias se leen de los snapshots canónicos (`spec/reports/sprint-review-NN.md`). Se regenera al cerrar sprint, al emitir/invalidar un recibo, o en CI post-merge (tarda milisegundos).
+
+Qué muestra y de dónde sale:
+
+| Sección | Fuente |
+|---|---|
+| Pipeline con gates pintados (verde/ámbar/gris) y fase actual | `spec/receipts/` + artefactos de `spec/` |
+| Loops de feedback activos (bug 5→4, hotfix 6→4) resaltados | recibos invalidados/revocados |
+| Contadores: sprints, releases, HU cerradas, gates al 1er intento | sprint reviews + `traceability_matrix` |
+| Tendencias con alerta automática si un lead time empeora | serie de `sprint-review-NN.md` |
+| Aprendizajes recientes | memorias `learning` de `spec/memory/` |
+
+**Regla de frescura:** si el dashboard queda atrás, el `--check` falla en CI — pero **no bloquea gates**: es visualización, no evidencia (la evidencia son los recibos). Decisión completa en `docs/decisions/ADR-002-dashboard-html-proyecto.md`.
+
 ---
 
 ## 5k. Desarrollar el propio arnés (solo para mantenedores)

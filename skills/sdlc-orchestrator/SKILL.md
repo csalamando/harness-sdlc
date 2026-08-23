@@ -3,7 +3,7 @@ name: sdlc-orchestrator
 description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol, consultar el código por símbolos (blast radius, tests candidatos) con code_intel, generar el digest de la spec, medir el aporte y la disciplina de las skills (skill_metrics), emitir el sprint review de cierre, garantizar la aceptación de cambios vía diagramas derivados con recibo y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés, blast radius, qué tests correr, reducir contexto del agente, sprint review, drift de diagramas, catálogo de roles, PDD, prototipo de pantallas UX."
 harness-role: orchestrator
 harness-phases: "transversal"
-harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml"
+harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html"
 ---
 
 
@@ -93,7 +93,8 @@ Al completarse y verificarse un sprint/incremento:
 3. Marcar memorias superseded según corresponda; resolver conflictos pendientes.
 4. `traceability_matrix.py` final en verde + `receipt.py status` en `spec/receipts/` + drift de diagramas en verde (`iac_to_diagram.py check` y `pipeline_diagram.py check` si existen las fuentes).
 5. Generar el **Sprint Review** con `sprint_review.py --sprint <N>` (snapshot versionado en `spec/reports/sprint-review-NN.md`: avance, desempeño del arnés con las métricas de skills, lead times, tendencia vs sprint anterior y aprendizajes) y guardar una memoria `tipo: learning` con las señales relevantes (skills con rechazos de gate, tokens altos, freestyle detectado) — la retroalimentación de mejora queda institucionalizada. `METRICS.md` queda como tablero vivo entre sprints; el sprint review es el registro histórico.
-6. Cerrar sesión de memoria con resumen del sprint. El ciclo queda cerrado y la próxima iteración arranca desde una spec consolidada.
+6. Regenerar el **dashboard vivo** con `harness_graph.py --proyecto .` (v2.12, ADR-002: UN `spec/dashboard.html` — gates pintados por recibos, fase actual, loops activos, tendencias leídas de los sprint reviews). También se regenera tras emitir/invalidar un recibo; `--check` en CI. Es visualización, no evidencia: no bloquea gates.
+7. Cerrar sesión de memoria con resumen del sprint. El ciclo queda cerrado y la próxima iteración arranca desde una spec consolidada.
 
 ## Telemetría de skills (v2.4) y Sprint Review (v2.5)
 

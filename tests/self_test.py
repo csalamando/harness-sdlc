@@ -12,7 +12,7 @@ Exit 0 = todo verde. Exit 1 = hay fallos (se listan). Stdlib puro, sin deps.
 Historia: nace de la revisión de calidad de v2.8.1, que encontró features
 documentadas por encima de lo que los scripts hacían (ver CHANGELOG [2.8.1]).
 """
-import os, re, subprocess, sys, tempfile
+import os, re, subprocess, sys, tempfile, json
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORCH = os.path.join(ROOT, "skills", "sdlc-orchestrator", "scripts")
@@ -186,6 +186,40 @@ check("routing sin flags incluye a data-engineer en fase 2",
 code, out = run("harness_graph.py", "--check")
 check("grafo interactivo docs/graph.html sin drift", code == 0,
       out.splitlines()[-1] if code else "")
+
+# ── 8. Dashboard vivo del proyecto (v2.12, ADR-002) ─────────────────────────
+print("\n[8] Dashboard del proyecto (--proyecto) con fixture demo")
+FIXTURE = os.path.join(ROOT, "tests", "fixtures", "proyecto-demo")
+if not os.path.isdir(FIXTURE):
+    run_fixture = subprocess.run([sys.executable, os.path.join(ROOT, "tests", "fixtures", "make_fixture.py")],
+                                 capture_output=True, text=True)
+    check("fixture proyecto-demo generado", run_fixture.returncode == 0,
+          (run_fixture.stderr or "").splitlines()[-1] if run_fixture.returncode else "")
+code, out = run("harness_graph.py", "--proyecto", FIXTURE, "--json")
+model = json.loads(out) if code == 0 else {}
+check("derive_project del fixture exit 0 y modelo válido",
+      code == 0 and model.get("fase_actual") == 4
+      and model.get("loops_activos", {}).get("5->4") == 1
+      and model.get("contadores", {}).get("sprints") == 2,
+      out.splitlines()[-1] if code else "")
+code, out = run("harness_graph.py", "--proyecto", FIXTURE)
+check("dashboard del fixture generado", code == 0 and "Dashboard generado" in out,
+      out.splitlines()[-1] if code else "")
+code, out = run("harness_graph.py", "--proyecto", FIXTURE, "--check")
+check("dashboard del fixture sin drift", code == 0,
+      out.splitlines()[-1] if code else "")
+# drift detectable: mutar un recibo del fixture debe romper el check
+_rec = os.path.join(FIXTURE, "spec", "receipts", "release.md.receipt.json")
+_orig = open(_rec, encoding="utf-8").read()
+try:
+    _r = json.loads(_orig); _r["estado"] = "revocado"
+    open(_rec, "w", encoding="utf-8").write(json.dumps(_r, indent=2))
+    code, _ = run("harness_graph.py", "--proyecto", FIXTURE, "--check")
+    check("drift del dashboard detectado al mutar un recibo", code == 1)
+finally:
+    open(_rec, "w", encoding="utf-8").write(_orig)
+code, out = run("harness_graph.py", "--proyecto", FIXTURE, "--check")
+check("fixture restaurado: dashboard sin drift de nuevo", code == 0)
 
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")

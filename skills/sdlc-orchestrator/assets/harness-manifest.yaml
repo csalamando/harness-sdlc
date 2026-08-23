@@ -87,7 +87,7 @@ skills:
   - name: sdlc-orchestrator
     role: orchestrator
     phases: [transversal]
-    owns: [spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml]
+    owns: [spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html]
     gates: []
     optional-deps: []
     scripts: [advisor.py, arch_signoff.py, authority_check.py, code_intel.py, context_packager.py, decision_sizing.py, detect_stack.py, gate_checker.py, harness_doctor.py, harness_graph.py, manifest_check.py, receipt.py, skill_metrics.py, spec_diff_impact.py, spec_index.py, sprint_review.py, traceability_matrix.py]

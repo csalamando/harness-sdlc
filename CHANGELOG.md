@@ -7,6 +7,13 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.12.0] - 2026-08-23
+
+### Added
+- **Dashboard vivo del proyecto** (`harness_graph.py --proyecto <dir>`, [ADR-002](docs/decisions/ADR-002-dashboard-html-proyecto.md)): genera **un solo `spec/dashboard.html`, siempre "el ahora"** — pipeline con gates pintados según sus recibos, fase actual, loops de feedback activos resaltados (bug/hotfix según invalidaciones), contadores acumulados (sprints, releases, HU cerradas, gates al primer intento), tendencias por sprint con **alerta automática** cuando un lead time empeora >15%, y memorias `learning` recientes. Todo derivado de fuentes gobernadas (`receipts/` + `spec/` + `sprint-review-NN.md`); cero narración manual. El estado derivado viaja incrustado en el propio HTML (`<!-- dashboard-state -->`) y `--check` detecta drift sin archivos auxiliares. Regla de frescura: alerta en CI, **no bloquea gates** (visualización, no evidencia).
+- `spec/dashboard.html` registrado en la matriz de autoridad (owner: orchestrator, como los diagramas derivados).
+- Fixture `tests/fixtures/proyecto-demo` (2 sprints, recibos vigentes + 1 invalidado, 1 release, trazabilidad HU) + 5 checks nuevos en el self-test (85 total): modelo derivado, generación, drift y detección de drift al mutar un recibo.
+
 ## [2.11.1] - 2026-08-23
 
 ### Fixed
