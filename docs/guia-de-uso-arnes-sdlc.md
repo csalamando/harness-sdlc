@@ -12,7 +12,7 @@ Esta guía explica cómo instalar y usar las 21 skills del arnés SDLC en cualqu
 | `sdlc-product-owner` | Visión y backlog priorizado | 0 |
 | `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina | 0, 6 |
-| `sdlc-business-analyst` | Historias de usuario + Gherkin + reglas de negocio | 1 |
+| `sdlc-business-analyst` | Historias de usuario + Gherkin + reglas de negocio + catálogo de roles + PDD | 1 |
 | `sdlc-ux-designer` | Flujos UX + design system + tokens.json | 2 |
 | `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + test-plan | 2-3 |
 | `sdlc-security-engineer` | Threat modeling + SAST/DAST (GATE 2.5) | 2, 4, 5 |
@@ -26,7 +26,7 @@ Esta guía explica cómo instalar y usar las 21 skills del arnés SDLC en cualqu
 | `sdlc-product-analyst` | Medición de impacto → realimenta backlog | 7 |
 | `sdlc-technical-writer` | Documentación + publicación doc-as-code (Wiki/Pages/Confluence) | 4-6 |
 | `sdlc-memory` | Memoria persistente entre sesiones (transversal) | Todas |
-| `sdlc-diagrams` | Diagramas C4, cloud, secuencia, BPMN, Gantt, GitFlow vía drawio MCP + derivación desde IaC/workflows con aprobación por recibo | 1, 2, 6 |
+| `sdlc-diagrams` | Diagramas C4, cloud, secuencia, BPMN, Gantt, GitFlow vía drawio MCP | 1, 2, 6 |
 | `sdlc-decision-engine` | Motor de decisiones: 8 pasos de Natanzon, scorecard, Decision Packages | 2 |
 | `sdlc-enterprise-architect` | Tech Radar, Principios Arquitectónicos, excepciones, Paved Roads | 2 (Tier 1) |
 
@@ -485,6 +485,16 @@ Los diagramas dejan de ser solo documentación: son un **punto de control de gob
 - **Matriz de autoridad**: `spec/diagrams/despliegue.drawio` → `cloud-engineer`; `spec/diagrams/pipeline-cicd.md` → `devops-engineer`. Los diagramas de diseño los aprueba el rol dueño del artefacto que representan.
 - **Gates**: GATE 3 exige diagramas derivados regenerados y con recibo vigente; Fase 8 corre los `check` de drift en el cierre del sprint; en CI, un job con `check` falla el PR si hay drift.
 - `harness_doctor.py`: compila los 3 scripts de diagramas y reporta motores de render disponibles (informativo).
+
+---
+
+## 5i. Novedades v2.7 (roles gobernados + PDD)
+
+Dos huecos de la Fase 1 quedan cerrados con artefactos versionados y con dueño, sin skills ni gates nuevos:
+
+- **Catálogo de roles gobernado (`spec/roles.md`)**: el "Como <rol>" de las historias deja de ser una palabra libre. Cada rol (`ROL-xx`) declara **acciones que habilita + contexto/condiciones + reglas que lo restringen** (BR/SEC referenciadas). Los conflictos de interés entre roles (uno quiere rapidez, otro control) se declaran en el catálogo y su priorización la firma el PO. El Architect deriva la matriz de permisos/RBAC del diseño desde este artefacto. `gate_checker.py --tipo roles` valida la estructura y que los ROL-xx citados en `user-stories.md` existan en el catálogo (también valida `--tipo user-stories` cuando existe `roles.md`). Cambiar un rol revoca los recibos de lo que dependa de él (HU, UX, test-plan) vía `spec_diff_impact.py`.
+- **PDD — Process Definition Document (`spec/process-definition.md`, condicional)**: para iniciativas que **automatizan o rediseñan un proceso existente** (RPA, BPM, modernización). Captura el proceso **AS-IS**: disparadores, flujo (detalle en BPMN con lanes por ROL-xx vía `sdlc-diagrams`), reglas BR-xxx, **catálogo de excepciones** (conocidas/desconocidas), volúmenes y SLA, aplicaciones involucradas con limitaciones, riesgos y supuestos con plan de validación. **Sin firma del Process Owner (aceptación humana + recibo) no hay diseño TO-BE** — el "process owner firma antes de automatizar" pasa de correo a recibo SHA-256. Una excepción desconocida descubierta en piloto re-emite y re-aprueba el PDD.
+- Matriz de autoridad: `spec/roles.md` y `spec/process-definition.md` → `business-analyst`. Ambos artefactos son condicionales/opt-out: una herramienta interna o un hotfix no los necesita.
 
 ---
 
