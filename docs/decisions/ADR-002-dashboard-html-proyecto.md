@@ -1,6 +1,8 @@
 # ADR-002: Dashboard HTML vivo del proyecto (`spec/dashboard.html`)
 
-**Estado:** PROPUESTA (pendiente de decisión para v2.12) · **Fecha:** 2026-08-23 · **Risk Tier:** 2
+**Estado:** ACEPTADA (v2.12) · **Fecha:** 2026-08-23 · **Risk Tier:** 2
+
+> Mockup visual aprobado por el dueño el 2026-08-23: [../mockups/dashboard-mockup.html](../mockups/dashboard-mockup.html) (datos ficticios, solo referencia de diseño).
 
 ## 1. Problem Statement
 
