@@ -1,0 +1,24 @@
+name: self-test
+
+# Red de seguridad del arnés (ver CONTRIBUTING.md y Guía de uso §5k).
+# Corre la regresión de consistencia: scripts compilan, plantillas pasan su
+# propio gate, grafo de impacto y matriz de autoridad sin huecos, roles E2E.
+# Vive fuera de skills/ — nunca entra al ZIP de release.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Self-test del arnés (71+ checks)
+        run: python tests/self_test.py
