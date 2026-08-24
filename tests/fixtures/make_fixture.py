@@ -99,6 +99,37 @@ type: learning
 Aprendido en el sprint 1 tras las primeras integraciones.
 """)
 
+# ── ADRs y tech radar (v2.13) ──
+w("spec/adr/ADR-001-postgresql-excepcion.md", """# ADR-001: PostgreSQL como excepción al radar
+
+## Metadata
+- **Status**: Adopted
+- **Risk Tier**: 1
+- **Decision Owner**: Arquitecto del fixture
+- **Date Proposed**: 2026-08-06
+- **Date Adopted**: 2026-08-08
+""")
+w("spec/adr/ADR-002-frontend-spa.md", """# ADR-002: Frontend SPA
+
+## Metadata
+- **Status**: Proposed
+- **Risk Tier**: 3
+- **Decision Owner**: Arquitecto del fixture
+""")
+w("spec/tech-radar.yaml", """version: "2026-Q3"
+quadrants:
+  ADOPT:
+    - technology: "TypeScript"
+      category: "Lenguaje"
+    - technology: "Python"
+      category: "Lenguaje"
+  TRIAL:
+    - technology: "Vitest"
+      category: "Testing"
+  ASSESS: []
+  HOLD: []
+""")
+
 # ── trazabilidad HU -> test -> codigo ──
 w("tests/test_hu.py", '''"""Tests del fixture: HU-001, HU-002, HU-003."""
 def test_login():  # HU-001

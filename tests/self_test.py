@@ -215,6 +215,16 @@ check("derive_project del fixture exit 0 y modelo válido",
       and model.get("loops_activos", {}).get("5->4") == 1
       and model.get("contadores", {}).get("sprints") == 2,
       out.splitlines()[-1] if code else "")
+# v2.13: ADRs, tech radar, artefactos por fase y recorridos históricos de loops
+check("modelo incluye ADRs con estado y tier",
+      len(model.get("adrs", [])) == 2
+      and model["adrs"][0]["status"] == "Adopted" and model["adrs"][0]["tier"] == "1")
+check("modelo incluye tech radar por cuadrante",
+      (model.get("radar") or {}).get("ADOPT") == 2 and model["radar"].get("TRIAL") == 1)
+check("modelo incluye artefactos por fase y recorridos de loops",
+      model.get("artefactos_por_fase", {}).get("1") == ["vision.md"]
+      and model.get("loops_count", {}).get("4->4") == 2
+      and model.get("loops_count", {}).get("5->4") == 1)
 code, out = run("harness_graph.py", "--proyecto", FIXTURE)
 check("dashboard del fixture generado", code == 0 and "Dashboard generado" in out,
       out.splitlines()[-1] if code else "")

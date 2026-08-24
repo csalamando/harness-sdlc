@@ -7,6 +7,18 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.13.0] - 2026-08-24
+
+### Added
+- **Panel "Decisiones gobernadas" en el dashboard del proyecto**: ADRs parseados de `spec/adr/` (o `docs/decisions/`) con **estado** (Adopted/Proposed/Superseded con badges de color) y **Risk Tier** — el diferencial del arnés (decisiones de 8 pasos, excepciones Tier 1) ahora es visible de un vistazo. Conteo del **Tech Radar** por cuadrante (ADOPT/TRIAL/ASSESS/HOLD) desde `spec/tech-radar.yaml` — los paved roads sin abrir el YAML.
+- **"Qué se ha generado por fase"**: nueva sección con los artefactos con recibo vigente agrupados por macro-fase, y contador "N artefactos ✓" bajo cada nodo del grafo.
+- **Recorridos históricos en los loops del grafo**: cada arco muestra "×N" (sprints corridos, bugs devueltos, hotfixes, replans) siempre que N>0, independiente de si está activo ahora — un loop en ×0 queda tenue ("nunca hubo hotfix" también informa).
+- **Banda de progreso** azul sobre la línea principal del pipeline: el tramo completado hasta la fase actual se ve sin leer etiquetas.
+
+### Fixed
+- `parse_radar`: el conteo por cuadrante ya no se "desborda" entre secciones con YAML real (líneas en blanco entre entradas) — verificado contra `spec/tech-radar.yaml` de un proyecto real.
+- `parse_adrs`: archivos índice/consolidado sin número (`ADR-consolidados.md`) ya no rompen el parseo.
+
 ## [2.12.1] - 2026-08-23
 
 ### Added

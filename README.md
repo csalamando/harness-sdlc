@@ -244,7 +244,7 @@ python3 harness_graph.py --proyecto .          # genera/actualiza spec/dashboard
 python3 harness_graph.py --proyecto . --check  # exit 1 si quedó atrás (CI)
 ```
 
-Muestra el pipeline con los gates pintados según sus recibos (vigente / invalidado / pendiente), la fase actual, los loops de feedback activos (bug, hotfix), contadores acumulados (sprints, releases, HU cerradas, gates al primer intento), tendencias por sprint con **alertas automáticas** cuando un lead time empeora, y las últimas memorias `learning`. Cero narración manual: todo deriva de `receipts/` + `spec/` + `spec/reports/`. **El dashboard es visualización, no evidencia** — la evidencia siguen siendo los recibos; por eso un dashboard desactualizado alerta en CI pero no bloquea gates.
+Muestra el pipeline con los gates pintados según sus recibos (vigente / invalidado / pendiente), la fase actual con banda de progreso, los loops de feedback con **recorridos históricos ×N** (y resaltados cuando están activos), los artefactos generados por fase, el panel de **decisiones gobernadas** (ADRs con estado y Risk Tier + Tech Radar por cuadrante), contadores acumulados (sprints, releases, HU cerradas, gates al primer intento), tendencias por sprint con **alertas automáticas** cuando un lead time empeora, y las últimas memorias `learning`. Cero narración manual: todo deriva de `receipts/` + `spec/` + `spec/reports/` + `spec/adr/`. **El dashboard es visualización, no evidencia** — la evidencia siguen siendo los recibos; por eso un dashboard desactualizado alerta en CI pero no bloquea gates.
 
 ---
 

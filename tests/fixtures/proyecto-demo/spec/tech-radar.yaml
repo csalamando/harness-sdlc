@@ -1,0 +1,12 @@
+version: "2026-Q3"
+quadrants:
+  ADOPT:
+    - technology: "TypeScript"
+      category: "Lenguaje"
+    - technology: "Python"
+      category: "Lenguaje"
+  TRIAL:
+    - technology: "Vitest"
+      category: "Testing"
+  ASSESS: []
+  HOLD: []

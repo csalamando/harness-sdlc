@@ -296,6 +296,51 @@ def recent_learnings(spec_dir, limit=4):
     return [t for _, t in sorted(found, reverse=True)[:limit]]
 
 
+def parse_adrs(project_dir):
+    """ADRs con estado y Risk Tier — spec/adr/ (proyectos) o docs/decisions/ (este repo)."""
+    import glob, re
+    for d in (os.path.join(project_dir, "spec", "adr"),
+              os.path.join(project_dir, "docs", "decisions")):
+        if not os.path.isdir(d):
+            continue
+        out = []
+        for p in sorted(glob.glob(os.path.join(d, "ADR-*.md"))):
+            try:
+                text = open(p, encoding="utf-8", errors="replace").read(1500)
+            except OSError:
+                continue
+            title = re.search(r"^#\s+(.+)$", text, re.M)
+            status = re.search(r"\*\*(?:Status|Estado)\*\*[:\s]+([A-Za-zÁÉÍÓÚáéíóú ()]+)", text)
+            tier = re.search(r"\*\*Risk Tier\*\*[:\s]+(\d)", text)
+            aid = re.search(r"ADR-\d+", os.path.basename(p))
+            if not aid:
+                continue  # índices/consolidados no son ADRs
+            out.append({"id": aid.group(0),
+                        "title": (title.group(1).strip() if title else os.path.basename(p)),
+                        "status": (status.group(1).strip() if status else "?"),
+                        "tier": (tier.group(1) if tier else None)})
+        if out:
+            return out
+    return []
+
+
+def parse_radar(spec_dir):
+    """Conteo por cuadrante del tech radar (spec/tech-radar.yaml)."""
+    import re
+    p = os.path.join(spec_dir, "tech-radar.yaml")
+    if not os.path.isfile(p):
+        return None
+    text = open(p, encoding="utf-8", errors="replace").read()
+    counts = {}
+    heads = list(re.finditer(r"^\s{2}(ADOPT|TRIAL|ASSESS|HOLD):\s*\n", text, re.M))
+    for i, h in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
+        counts[h.group(1)] = len(re.findall(r"-\s*technology:", text[h.end():end]))
+    for q in ("ADOPT", "TRIAL", "ASSESS", "HOLD"):
+        counts.setdefault(q, 0)
+    return counts if any(counts.values()) else None
+
+
 def derive_project(project_dir):
     """Modelo del dashboard: todo derivado de receipts/ + spec/ + sprint reviews."""
     import skill_metrics
@@ -340,6 +385,28 @@ def derive_project(project_dir):
     if os.path.isfile(os.path.join(spec_dir, "impact-report.md")):
         active[(6, 1)] = 0
 
+    # Recorridos históricos de cada loop (v2.13): siempre visibles cuando > 0
+    loops_count = {"4->4": len(reviews)}
+    for (f, t), n in sorted(active.items()):
+        if (f, t) != (4, 4):
+            loops_count[f"{f}->{t}"] = n
+    impact_reports = 0
+    rep_dir = os.path.join(spec_dir, "reports")
+    if os.path.isfile(os.path.join(spec_dir, "impact-report.md")):
+        impact_reports = 1
+    elif os.path.isdir(rep_dir):
+        import glob as _g
+        impact_reports = len(_g.glob(os.path.join(rep_dir, "impact-report*.md")))
+    if impact_reports:
+        loops_count["6->1"] = impact_reports
+
+    # Artefactos con recibo vigente por macro-fase (qué se ha generado)
+    artefactos_por_fase = {}
+    for r in vigentes:
+        mac = GATE_MACRO.get(norm_gate(r.get("gate")))
+        if mac:
+            artefactos_por_fase.setdefault(mac, []).append(os.path.basename(r.get("artefacto", "?")))
+
     # HU: historias con test y código (degrada a None si no hay estructura).
     # Los proyectos reales no siempre usan src/ + tests/: se exploran los
     # directorios candidatos que existan (backend/, frontend/, e2e/, etc.).
@@ -366,6 +433,10 @@ def derive_project(project_dir):
         "generado": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
         "gate_status": gate_status, "fase_actual": current,
         "loops_activos": {f"{f}->{t}": n for (f, t), n in sorted(active.items())},
+        "loops_count": loops_count,
+        "artefactos_por_fase": {str(k): sorted(v) for k, v in sorted(artefactos_por_fase.items())},
+        "adrs": parse_adrs(project_dir),
+        "radar": parse_radar(spec_dir),
         "contadores": {
             "sprints": len(reviews),
             "releases": sum(1 for r in vigentes if norm_gate(r.get("gate")) == "GATE 3"),
@@ -404,6 +475,17 @@ DASH_CSS = """
   .warn-line { font-size:.75rem; color:#fbbf24; margin-top:.6rem; }
   .empty { color:#475569; font-size:.82rem; font-style:italic; }
   footer { font-size:.7rem; color:#475569; margin-top:1rem; }
+  .badge { display:inline-block; font-size:.62rem; border-radius:4px; padding:1px 6px; margin:1px; white-space:nowrap; }
+  .st-ok { background:#052e1b; color:#6ee7b7; border:1px solid #065f46; }
+  .st-prop { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; }
+  .st-sup { background:#1c1917; color:#a8a29e; border:1px solid #44403c; }
+  .st-otro { background:#111c33; color:#94a3b8; border:1px solid #334155; }
+  .tier { background:#451a03; color:#fdba74; border:1px solid #9a3412; }
+  .art { background:#0f172a; color:#94a3b8; border:1px solid #334155; }
+  .quad { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.6rem; margin-top:.8rem; }
+  .quad .kpi .v { font-size:1.3rem; }
+  .fase-arts { margin-top:1rem; }
+  .fase-arts h3 { font-size:.78rem; color:#94a3b8; margin:.6rem 0 .2rem; font-weight:600; }
 """
 
 _STATUS_COLOR = {"ok": "#22c55e", "warn": "#f59e0b", "none": "#475569"}
@@ -422,12 +504,21 @@ def _dash_graph_svg(model):
     for i in range(len(MACRO) - 1):
         parts.append(f'<line x1="{X(MACRO[i]):.0f}" y1="{Y}" x2="{X(MACRO[i+1]):.0f}" y2="{Y}" '
                      f'stroke="#334155" stroke-width="2" marker-end="url(#a)"/>')
+    # Banda de progreso: tramo completado del pipeline en azul sobre la línea principal
+    cur_x = X(MACRO[model["fase_actual"] - 1])
+    if model["fase_actual"] == 6 and all(
+            (model["gate_status"].get(str(g)) or {}).get("estado") == "ok" for g in (1, 3, 5, 6)):
+        cur_x = X(MACRO[5]) + 30
+    parts.append(f'<line x1="{X(MACRO[0]):.0f}" y1="{Y}" x2="{cur_x:.0f}" y2="{Y}" '
+                 f'stroke="#3b82f6" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/>')
     active = model["loops_activos"]
+    counts = model.get("loops_count", {})
     for (f, t, lbl) in LOOPS:
         n = active.get(f"{f}->{t}")
+        hist = counts.get(f"{f}->{t}", 0)
         on = n is not None
-        op = '1' if on else '.25'
-        tag = lbl + (f" — ACTIVO: {n}" if on and n else "")
+        op = '1' if on else ('.6' if hist else '.25')
+        tag = lbl + (f" ×{hist}" if hist else "") + (f" — ACTIVO: {n}" if on and n else "")
         if f == t:
             x = X(MACRO[f - 1])
             parts.append(f'<path d="M {x-24:.0f} {Y-28} C {x-60:.0f} {Y-110}, {x+60:.0f} {Y-110}, {x+24:.0f} {Y-28}" '
@@ -459,10 +550,13 @@ def _dash_graph_svg(model):
             gate_txt = (f'<text x="{x:.0f}" y="{Y-58}" text-anchor="middle" font-size="10" fill="{badge_color}">'
                         f'⛔ {st["gate"]} — {_STATUS_TXT[st["estado"]]}</text>')
         here = ' ← estás aquí' if m["id"] == model["fase_actual"] else ""
+        arts = (model.get("artefactos_por_fase") or {}).get(str(m["id"]), [])
+        arts_txt = (f'<text x="{x:.0f}" y="{Y+70}" text-anchor="middle" font-size="10.5" fill="#64748b">'
+                    f'{len(arts)} artefacto{"s" if len(arts) != 1 else ""} ✓</text>') if arts else ""
         parts.append(f'{ring}<circle cx="{x:.0f}" cy="{Y}" r="28" fill="#1e293b" stroke="{color}" stroke-width="3"/>'
                      f'<text x="{x:.0f}" y="{Y+6}" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e8f0">{m["id"]}</text>'
                      f'<text x="{x:.0f}" y="{Y+52}" text-anchor="middle" font-size="13.5" font-weight="600" fill="#cbd5e1">{m["title"]}{here}</text>'
-                     f'{gate_txt}')
+                     f'{gate_txt}{arts_txt}')
     return (f'<svg viewBox="0 0 {W} {H}" style="width:100%;height:auto;display:block">'
             + "".join(parts) + "</svg>")
 
@@ -515,6 +609,50 @@ def render_dashboard_html(model, state_json=""):
     else:
         learns = '<div class="empty">Sin memorias learning registradas.</div>'
 
+    # Artefactos generados por fase (recibos vigentes)
+    fa_html = ""
+    for m in MACRO:
+        arts = (model.get("artefactos_por_fase") or {}).get(str(m["id"]), [])
+        if arts:
+            fa_html += (f'<h3>Fase {m["id"]} · {esc(m["title"])}</h3><div>'
+                        + "".join(f'<span class="badge art">{esc(a)}</span>' for a in arts)
+                        + "</div>")
+    fase_arts = (f'<div class="fase-arts">{fa_html}</div>' if fa_html
+                 else '<div class="empty">Sin artefactos con recibo vigente aún.</div>')
+
+    # Decisiones: ADRs (estado + Risk Tier) y Tech Radar por cuadrante (v2.13)
+    adrs = model.get("adrs") or []
+    if adrs:
+        def st_class(s):
+            s = s.lower()
+            if "adopt" in s or "acept" in s:
+                return "st-ok"
+            if "prop" in s:
+                return "st-prop"
+            if "superseded" in s or "diferid" in s:
+                return "st-sup"
+            return "st-otro"
+        rows = ""
+        for a in adrs:
+            tier_badge = (f'<span class="badge tier">Tier {a["tier"]}</span>'
+                          if a["tier"] else "-")
+            rows += (f'<tr><td><b>{esc(a["id"])}</b></td><td>{esc(a["title"])}</td>'
+                     f'<td><span class="badge {st_class(a["status"])}">{esc(a["status"])}</span></td>'
+                     f'<td>{tier_badge}</td></tr>')
+        adr_html = (f"<table><tr><th>ADR</th><th>Decisión</th><th>Estado</th><th>Risk Tier</th></tr>{rows}</table>")
+    else:
+        adr_html = '<div class="empty">Sin ADRs en <code>spec/adr/</code> — las decisiones de 8 pasos aparecerán aquí.</div>'
+    radar = model.get("radar")
+    radar_html = ""
+    if radar:
+        qcolor = {"ADOPT": "#22c55e", "TRIAL": "#3b82f6", "ASSESS": "#f59e0b", "HOLD": "#ef4444"}
+        radar_html = ('<h3 style="font-size:.78rem;color:#94a3b8;margin:1rem 0 .4rem">Tech Radar (paved roads)</h3>'
+                      '<div class="quad">'
+                      + "".join(f'<div class="kpi"><div class="v" style="color:{qcolor[q]}">{radar[q]}</div>'
+                                f'<div class="k">{q}</div></div>' for q in ("ADOPT", "TRIAL", "ASSESS", "HOLD"))
+                      + "</div>")
+    decisiones = adr_html + radar_html
+
     return f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -527,6 +665,10 @@ def render_dashboard_html(model, state_json=""):
 {_dash_graph_svg(model)}
 <div class="legend"><span class="lg-ok">gate con recibo vigente</span><span class="lg-warn">recibo invalidado / retrabajo</span><span class="lg-none">sin recibo aún</span><span class="lg-cur">fase actual</span></div>
 </div>
+
+<div class="panel"><h2>Qué se ha generado por fase (recibos vigentes)</h2>{fase_arts}</div>
+
+<div class="panel"><h2>Decisiones gobernadas — ADRs y Tech Radar</h2>{decisiones}</div>
 
 <div class="panel"><h2>Acumulado del proyecto</h2><div class="kpis">{kpi_html}</div></div>
 
