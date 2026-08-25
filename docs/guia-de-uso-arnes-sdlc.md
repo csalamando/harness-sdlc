@@ -46,7 +46,7 @@ sdlc-<rol>/
 
 Un archivo `.skill` es un ZIP: para instalarlo manualmente, **descomprímelo y copia la carpeta** (la que contiene `SKILL.md`) al directorio de skills de tu agente.
 
-### Kimi (este asistente)
+### Kimi
 
 1. En una conversación, adjunta los archivos `.skill` que quieras instalar y pide: *"Instala estas skills"*.
 2. Se instalan en tu espacio personal de skills y quedan disponibles en todas tus conversaciones futuras.
