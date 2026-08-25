@@ -258,6 +258,7 @@ def parse_reviews(spec_dir):
             return r.group(1).rstrip("%").replace(",", "") if r else None
 
         r = re.search(r"Trabajo rehecho \(recibos invalidados/revocados\): \*\*(\d+)\*\*", text)
+        fecha = re.search(r"Generado:\s*(\d{4}-\d{2}-\d{2})", text)
         lead = {}
         for row in re.finditer(r"^\| (GATE [\d.]+) \| [^|]+ \| [^|]+ \| \d+ \| ([^|]+) \|$",
                                text, re.M):
@@ -265,6 +266,7 @@ def parse_reviews(spec_dir):
             if mins is not None:
                 lead[row.group(1)] = mins
         out.append({"sprint": int(m.group(1)),
+                    "fecha": fecha.group(1) if fecha else None,
                     "artefactos": int(kpi("Artefactos aprobados") or 0),
                     "gates_1er": int(float(kpi("Gates al primer intento") or 0)),
                     "rehechos": int(r.group(1)) if r else 0,
@@ -315,8 +317,10 @@ def parse_adrs(project_dir):
             aid = re.search(r"ADR-\d+", os.path.basename(p))
             if not aid:
                 continue  # índices/consolidados no son ADRs
+            ttl = (title.group(1).strip() if title else os.path.basename(p))
+            ttl = re.sub(rf"^{re.escape(aid.group(0))}[:\s-]*", "", ttl)  # el ID ya va en su columna
             out.append({"id": aid.group(0),
-                        "title": (title.group(1).strip() if title else os.path.basename(p)),
+                        "title": ttl,
                         "status": (status.group(1).strip() if status else "?"),
                         "tier": (tier.group(1) if tier else None)})
         if out:
@@ -325,20 +329,115 @@ def parse_adrs(project_dir):
 
 
 def parse_radar(spec_dir):
-    """Conteo por cuadrante del tech radar (spec/tech-radar.yaml)."""
+    """Tech radar por cuadrante: conteo y nombres (spec/tech-radar.yaml)."""
     import re
     p = os.path.join(spec_dir, "tech-radar.yaml")
     if not os.path.isfile(p):
         return None
     text = open(p, encoding="utf-8", errors="replace").read()
-    counts = {}
+    counts, techs = {}, {}
     heads = list(re.finditer(r"^\s{2}(ADOPT|TRIAL|ASSESS|HOLD):\s*\n", text, re.M))
     for i, h in enumerate(heads):
         end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
-        counts[h.group(1)] = len(re.findall(r"-\s*technology:", text[h.end():end]))
+        found = re.findall(r'-\s*technology:\s*"?([^"\n]+)"?', text[h.end():end])
+        counts[h.group(1)] = len(found)
+        techs[h.group(1)] = [t.strip() for t in found]
     for q in ("ADOPT", "TRIAL", "ASSESS", "HOLD"):
         counts.setdefault(q, 0)
-    return counts if any(counts.values()) else None
+        techs.setdefault(q, [])
+    if not any(counts.values()):
+        return None
+    return {"counts": counts, "techs": techs}
+
+
+def receipt_timeline(recs):
+    """Serie histórica por fecha derivada de los timestamps de los recibos (v2.14).
+
+    Los recibos no llevan etiqueta de sprint, así que los sprints pasados sin
+    sprint-review no se pueden reconstruir como sprints — pero la serie por
+    FECHA sí: acumulados de aprobados, rehechos y % al primer intento.
+    """
+    import collections
+    eventos = collections.defaultdict(lambda: {"aprob": 0, "rehecho": 0, "intentos": 0})
+    for r in recs:
+        fecha = (r.get("emitido") or "")[:10]
+        if not fecha:
+            continue
+        ev = eventos[fecha]
+        if r.get("estado") == "vigente":
+            ev["aprob"] += 1
+        elif r.get("estado") in ("invalidado", "revocado"):
+            ev["rehecho"] += 1
+        ev["intentos"] += int(r.get("attempts") or 1)
+    out = []
+    aprob = rehecho = intentos = recibos = 0
+    for fecha in sorted(eventos):
+        ev = eventos[fecha]
+        aprob += ev["aprob"]; rehecho += ev["rehecho"]
+        intentos += ev["intentos"]; recibos += ev["aprob"] + ev["rehecho"]
+        out.append({"fecha": fecha, "aprobados": aprob, "rehechos": rehecho,
+                    "gates_1er": round(100 * aprob / max(recibos, 1))})
+    return out
+
+
+def phase_times(recs):
+    """Tiempos por gate/fase derivados de los timestamps de los recibos (v2.14).
+
+    - trabajo: span entre el primer y el último recibo emitido del gate.
+    - cierre_dia: en qué día del proyecto cerró el gate (días desde el primer
+      recibo del proyecto). Permite ver el orden real de cierre — si un gate
+      cierra antes que el anterior (gobernanza retroactiva), se ve tal cual.
+    """
+    from datetime import datetime
+    por_gate = {}
+    t0 = None
+    for r in recs:
+        g = norm_gate(r.get("gate"))
+        ts = (r.get("emitido") or "")[:19]
+        if not ts:
+            continue
+        try:
+            dt = datetime.fromisoformat(ts)
+        except ValueError:
+            continue
+        t0 = dt if t0 is None else min(t0, dt)
+        cur = por_gate.setdefault(g, [dt, dt])
+        cur[0] = min(cur[0], dt); cur[1] = max(cur[1], dt)
+    out = []
+    for g in ("GATE 0", "GATE 1", "GATE 2", "GATE 2.5", "GATE 3"):
+        if g not in por_gate:
+            out.append({"gate": g, "macro": GATE_MACRO[g]})
+            continue
+        ini, fin = por_gate[g]
+        out.append({"gate": g, "macro": GATE_MACRO[g],
+                    "apertura": ini.date().isoformat(), "cierre": fin.date().isoformat(),
+                    "trabajo_min": int((fin - ini).total_seconds() // 60),
+                    "cierre_dia": round((fin - t0).total_seconds() / 86400, 1)})
+    return out
+
+
+def cycle_times(reviews, recs):
+    """Duración de cada sprint/ciclo: días entre cierres de sprint review (v2.14).
+
+    El sprint 1 se mide desde el primer recibo del proyecto (inicio real del
+    trabajo gobernado). Un ciclo = un recorrido del loop 4→4 (sprints).
+    """
+    from datetime import date
+    fechas_rec = sorted((r.get("emitido") or "")[:10] for r in recs if r.get("emitido"))
+    inicio = date.fromisoformat(fechas_rec[0]) if fechas_rec else None
+    out = []
+    prev = inicio
+    for rv in reviews:
+        f = rv.get("fecha")
+        if not f:
+            out.append({"sprint": rv["sprint"]})
+            continue
+        d = date.fromisoformat(f)
+        out.append({"sprint": rv["sprint"], "cierre": f,
+                    "dias": (d - prev).days if prev else None,
+                    "desde": prev.isoformat() if prev else None})
+        prev = d
+    return out
 
 
 def derive_project(project_dir):
@@ -402,10 +501,15 @@ def derive_project(project_dir):
 
     # Artefactos con recibo vigente por macro-fase (qué se ha generado)
     artefactos_por_fase = {}
+    artefactos_href = {}   # basename -> ruta relativa a spec/ (enlace desde el popup)
     for r in vigentes:
+        art = r.get("artefacto", "")
+        b = os.path.basename(art or "?")
+        if art:
+            artefactos_href[b] = os.path.relpath(art, spec_dir).replace(os.sep, "/")
         mac = GATE_MACRO.get(norm_gate(r.get("gate")))
         if mac:
-            artefactos_por_fase.setdefault(mac, []).append(os.path.basename(r.get("artefacto", "?")))
+            artefactos_por_fase.setdefault(mac, []).append(b)
 
     # HU: historias con test y código (degrada a None si no hay estructura).
     # Los proyectos reales no siempre usan src/ + tests/: se exploran los
@@ -427,6 +531,14 @@ def derive_project(project_dir):
             hu = {"total": len(stories), "cerradas": len(stories & tests & code)}
 
     nombre = os.path.basename(os.path.abspath(project_dir))
+    # Detalle por fase para el popup del dashboard: skills con entradas/salidas
+    # derivadas del manifiesto (misma fuente que el grafo del arnés).
+    try:
+        nodes, _tr = build_data(derive(SKILLS_DIR))
+        fases_detalle = [{"id": n["id"], "title": n["title"], "desc": n["desc"],
+                          "gate": n.get("gate"), "skills": n["skills"]} for n in nodes]
+    except Exception:
+        fases_detalle = []
     return {
         "proyecto": nombre,
         "harness_version": harness_version() or "sin-declarar",
@@ -435,6 +547,7 @@ def derive_project(project_dir):
         "loops_activos": {f"{f}->{t}": n for (f, t), n in sorted(active.items())},
         "loops_count": loops_count,
         "artefactos_por_fase": {str(k): sorted(v) for k, v in sorted(artefactos_por_fase.items())},
+        "artefactos_href": artefactos_href,
         "adrs": parse_adrs(project_dir),
         "radar": parse_radar(spec_dir),
         "contadores": {
@@ -445,6 +558,9 @@ def derive_project(project_dir):
             "gates_1er": reviews[-1]["gates_1er"] if reviews else None,
         },
         "tendencias": reviews,
+        "timeline": receipt_timeline(recs),
+        "tiempos": {"fases": phase_times(recs), "ciclos": cycle_times(reviews, recs)},
+        "fases_detalle": fases_detalle,
         "aprendizajes": recent_learnings(spec_dir),
     }
 
@@ -458,6 +574,14 @@ DASH_CSS = """
   .sub { color:#94a3b8; font-size:.85rem; margin-bottom:1.5rem; }
   .panel { background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem; }
   .panel h2 { font-size:1rem; margin:0 0 1rem; color:#cbd5e1; }
+  details.panel { padding:0; }
+  details.panel > summary { cursor:pointer; list-style:none; padding:1.1rem 1.2rem; font-size:1rem; font-weight:600;
+                            color:#cbd5e1; user-select:none; }
+  details.panel > summary::before { content:"▸"; display:inline-block; margin-right:.6rem; color:#3b82f6; transition:.15s; }
+  details.panel[open] > summary::before { transform:rotate(90deg); }
+  details.panel > summary::-webkit-details-marker { display:none; }
+  details.panel > :not(summary) { margin-left:1.2rem; margin-right:1.2rem; }
+  details.panel > :last-child { margin-bottom:1.2rem; }
   .legend { display:flex; gap:1.2rem; font-size:.75rem; color:#94a3b8; margin-top:.6rem; flex-wrap:wrap; }
   .legend span::before { content:"\\25CF"; margin-right:.35rem; }
   .lg-ok::before { color:#22c55e; } .lg-warn::before { color:#f59e0b; } .lg-none::before { color:#475569; }
@@ -475,7 +599,7 @@ DASH_CSS = """
   .warn-line { font-size:.75rem; color:#fbbf24; margin-top:.6rem; }
   .empty { color:#475569; font-size:.82rem; font-style:italic; }
   footer { font-size:.7rem; color:#475569; margin-top:1rem; }
-  .badge { display:inline-block; font-size:.62rem; border-radius:4px; padding:1px 6px; margin:1px; white-space:nowrap; }
+  .badge { display:inline-block; font-size:.72rem; border-radius:4px; padding:2px 7px; margin:2px; white-space:nowrap; }
   .st-ok { background:#052e1b; color:#6ee7b7; border:1px solid #065f46; }
   .st-prop { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; }
   .st-sup { background:#1c1917; color:#a8a29e; border:1px solid #44403c; }
@@ -486,15 +610,61 @@ DASH_CSS = """
   .quad .kpi .v { font-size:1.3rem; }
   .fase-arts { margin-top:1rem; }
   .fase-arts h3 { font-size:.78rem; color:#94a3b8; margin:.6rem 0 .2rem; font-weight:600; }
+  [data-fase]:hover { opacity:.85; }
+  .moverlay { display:none; position:fixed; inset:0; background:rgba(2,6,23,.78); z-index:50;
+              align-items:flex-start; justify-content:center; padding:3rem 1rem; }
+  .moverlay.open { display:flex; }
+  .mbox { background:#0f172a; border:1px solid #334155; border-radius:14px; max-width:920px; width:100%;
+          max-height:82vh; overflow-y:auto; padding:1.6rem 1.8rem; position:relative;
+          box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  .mclose { position:absolute; top:.7rem; right:.9rem; background:none; border:none; color:#64748b;
+            font-size:1.6rem; cursor:pointer; line-height:1; }
+  .mclose:hover { color:#e2e8f0; }
+  .mbox h2 { font-size:1.15rem; margin:0 0 .3rem; color:#e2e8f0; }
+  .mdesc { color:#94a3b8; font-size:.92rem; margin:.2rem 0 .6rem; }
+  .mgate { display:inline-block; font-size:.8rem; font-weight:600; color:#fdba74; background:#451a03;
+           border:1px solid #9a3412; border-radius:6px; padding:2px 10px; margin-bottom:.4rem; }
+  .mbox h3 { font-size:.82rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;
+             margin:1.1rem 0 .5rem; }
+  .sgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:.7rem; }
+  .scard { background:#111c33; border:1px solid #1e293b; border-radius:10px; padding:.7rem .8rem; }
+  .sname { font-weight:700; font-size:.95rem; color:#e2e8f0; }
+  .sid { font-size:.75rem; color:#64748b; margin:.1rem 0 .45rem; }
+  .sio { font-size:.78rem; margin-top:.35rem; }
+  .iol { color:#64748b; font-weight:700; margin-right:.3rem; }
+  .io-in { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; }
+  .io-out { background:#052e1b; color:#6ee7b7; border:1px solid #065f46; }
+  .alink { text-decoration:none; cursor:pointer; font-size:.72rem; padding:3px 8px; }
+  .alink:hover { color:#e2e8f0; border-color:#3b82f6; }
+  .fzctl { position:fixed; bottom:1rem; right:1rem; z-index:40; display:flex; align-items:center; gap:.35rem;
+           background:#0f172a; border:1px solid #334155; border-radius:8px; padding:.3rem .5rem;
+           font-size:.75rem; color:#94a3b8; }
+  .fzctl button { background:#1e293b; border:1px solid #334155; border-radius:6px; color:#e2e8f0;
+                  font-size:.85rem; font-weight:700; padding:.1rem .55rem; cursor:pointer; }
+  .fzctl button:hover { border-color:#3b82f6; }
+  .mfz { position:absolute; top:.8rem; right:2.9rem; display:flex; gap:.3rem; }
+  .mfz button { background:#1e293b; border:1px solid #334155; border-radius:6px; color:#e2e8f0;
+                font-size:.8rem; font-weight:700; padding:.1rem .5rem; cursor:pointer; }
+  .mfz button:hover { border-color:#3b82f6; }
+  .topbtns { display:flex; gap:.6rem; margin:-0.6rem 0 1.4rem; flex-wrap:wrap; }
+  .topbtns button { background:#0f172a; border:1px solid #334155; border-radius:8px; color:#cbd5e1;
+                    font-size:.82rem; font-weight:600; padding:.4rem .9rem; cursor:pointer; }
+  .topbtns button:hover { border-color:#3b82f6; color:#e2e8f0; }
 """
 
 _STATUS_COLOR = {"ok": "#22c55e", "warn": "#f59e0b", "none": "#475569"}
 _STATUS_TXT = {"ok": "recibo vigente", "warn": "recibo invalidado", "none": "sin recibo"}
 
 
+def esc(s):
+    """Escape HTML para etiquetas y tooltips del dashboard."""
+    import html as _html
+    return _html.escape(str(s))
+
+
 def _dash_graph_svg(model):
     """Grafo del pipeline pintado con el estado del proyecto (SVG puro, viewBox fijo)."""
-    W, H, Y = 1140, 420, 210
+    W, H, Y = 1140, 560, 220
     X = lambda m: m["x"] / 100 * W
     parts = ['<defs>'
              '<marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">'
@@ -519,24 +689,30 @@ def _dash_graph_svg(model):
         on = n is not None
         op = '1' if on else ('.6' if hist else '.25')
         tag = lbl + (f" ×{hist}" if hist else "") + (f" — ACTIVO: {n}" if on and n else "")
+        # Loops sin recorrer y sin actividad: arco tenue con tooltip, sin texto
+        # (evita la maraña de etiquetas; el nombre aparece al pasar el cursor).
+        show_txt = on or hist
+        tip = f'<title>{esc("↺ " + lbl)}</title>' if not show_txt else ""
         if f == t:
             x = X(MACRO[f - 1])
             parts.append(f'<path d="M {x-24:.0f} {Y-28} C {x-60:.0f} {Y-110}, {x+60:.0f} {Y-110}, {x+24:.0f} {Y-28}" '
-                         f'fill="none" stroke="#f59e0b" stroke-opacity="{op}" stroke-dasharray="4 3" marker-end="url(#la)"/>')
-            parts.append(f'<text x="{x:.0f}" y="{Y-100}" text-anchor="middle" font-size="12.5" font-weight="600" '
-                         f'fill="#fbbf24" fill-opacity="{op}">{tag}</text>')
+                         f'fill="none" stroke="#f59e0b" stroke-opacity="{op}" stroke-dasharray="4 3" marker-end="url(#la)">{tip}</path>')
+            if show_txt:
+                parts.append(f'<text x="{x:.0f}" y="{Y-122}" text-anchor="middle" font-size="13" font-weight="600" '
+                             f'fill="#fbbf24" fill-opacity="{op}">{tag}</text>')
             continue
         x1, x2 = X(MACRO[f - 1]), X(MACRO[t - 1])
         span = abs(f - t)
-        lift = 80 + 45 * span
+        lift = 90 + 50 * span
         my = Y + lift if f > t else Y - lift
         apex = (Y + my) / 2
         ex = x2 + (34 if f > t else -34)
         w = '2.5' if on else '1.5'
         parts.append(f'<path d="M {x1:.0f} {Y} Q {(x1+x2)/2:.0f} {my}, {ex:.0f} {Y}" fill="none" stroke="#f59e0b" '
-                     f'stroke-opacity="{op}" stroke-width="{w}" stroke-dasharray="4 3" marker-end="url(#la)"/>')
-        parts.append(f'<text x="{(x1+x2)/2:.0f}" y="{apex + (18 if f>t else -8):.0f}" text-anchor="middle" '
-                     f'font-size="12.5" font-weight="600" fill="#fbbf24" fill-opacity="{op}">↺ {tag}</text>')
+                     f'stroke-opacity="{op}" stroke-width="{w}" stroke-dasharray="4 3" marker-end="url(#la)">{tip}</path>')
+        if show_txt:
+            parts.append(f'<text x="{(x1+x2)/2:.0f}" y="{apex + (20 if f>t else -10):.0f}" text-anchor="middle" '
+                         f'font-size="13" font-weight="600" fill="#fbbf24" fill-opacity="{op}">↺ {tag}</text>')
     for m in MACRO:
         st = model["gate_status"].get(str(m["id"])) or model["gate_status"].get(m["id"])
         estado = st["estado"] if st else "none"
@@ -544,21 +720,274 @@ def _dash_graph_svg(model):
         ring = ('<circle cx="{x:.0f}" cy="{y}" r="36" fill="none" stroke="#3b82f6" '
                 'stroke-opacity=".35" stroke-width="6"/>') if m["id"] == model["fase_actual"] else ""
         x = X(m)
+        # anclas: las etiquetas de los nodos de los extremos no se salen del viewBox
+        anchor = "end" if x > W - 130 else ("start" if x < 130 else "middle")
+        tx = x + (-10 if anchor == "end" else (10 if anchor == "start" else 0))
         gate_txt = ""
         if st:
             badge_color = _STATUS_COLOR[st["estado"]]
-            gate_txt = (f'<text x="{x:.0f}" y="{Y-58}" text-anchor="middle" font-size="10" fill="{badge_color}">'
-                        f'⛔ {st["gate"]} — {_STATUS_TXT[st["estado"]]}</text>')
+            mark = "✓" if st["estado"] == "ok" else ("⚠" if st["estado"] == "warn" else "·")
+            gate_txt = (f'<text x="{tx:.0f}" y="{Y-56}" text-anchor="{anchor}" font-size="11.5" '
+                        f'font-weight="600" fill="{badge_color}">'
+                        f'⛔ {st["gate"]} {mark}<title>{esc(st["gate"])} — {esc(_STATUS_TXT[st["estado"]])}'
+                        f' ({st["vigentes"]} vigentes, {st["rehechos"]} rehechos)</title></text>')
         here = ' ← estás aquí' if m["id"] == model["fase_actual"] else ""
         arts = (model.get("artefactos_por_fase") or {}).get(str(m["id"]), [])
-        arts_txt = (f'<text x="{x:.0f}" y="{Y+70}" text-anchor="middle" font-size="10.5" fill="#64748b">'
+        # Filas alternadas (impares arriba, pares abajo): los títulos y conteos
+        # de nodos vecinos nunca comparten la misma línea horizontal.
+        ty_t = Y + 56 + ((m["id"] - 1) % 2) * 40
+        ty_a = ty_t + 20
+        arts_txt = (f'<text x="{tx:.0f}" y="{ty_a}" text-anchor="{anchor}" font-size="11" fill="#64748b">'
                     f'{len(arts)} artefacto{"s" if len(arts) != 1 else ""} ✓</text>') if arts else ""
-        parts.append(f'{ring}<circle cx="{x:.0f}" cy="{Y}" r="28" fill="#1e293b" stroke="{color}" stroke-width="3"/>'
+        parts.append(f'<g data-fase="{m["id"]}" style="cursor:pointer">'
+                     f'<title>Ver skills, entradas y salidas de la fase {m["id"]}</title>'
+                     f'{ring}<circle cx="{x:.0f}" cy="{Y}" r="28" fill="#1e293b" stroke="{color}" stroke-width="3"/>'
                      f'<text x="{x:.0f}" y="{Y+6}" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e8f0">{m["id"]}</text>'
-                     f'<text x="{x:.0f}" y="{Y+52}" text-anchor="middle" font-size="13.5" font-weight="600" fill="#cbd5e1">{m["title"]}{here}</text>'
-                     f'{gate_txt}{arts_txt}')
+                     f'<text x="{tx:.0f}" y="{ty_t}" text-anchor="{anchor}" font-size="14.5" font-weight="600" fill="#cbd5e1">{m["title"]}{here}</text>'
+                     f'{gate_txt}{arts_txt}</g>')
     return (f'<svg viewBox="0 0 {W} {H}" style="width:100%;height:auto;display:block">'
             + "".join(parts) + "</svg>")
+
+
+def _svg_line_chart(series_list, xlabels, fmt, w=520, h=190):
+    """Gráfica de líneas SVG (self-contained) — series_list: [(nombre, [valores]), ...]."""
+    colors = ["#3b82f6", "#f59e0b", "#22c55e", "#a78bfa"]
+    series_list = [(n, vs) for n, vs in series_list if any(v is not None for v in vs)]
+    if not series_list:
+        return '<div class="empty">Sin datos de este indicador en los sprint reviews.</div>'
+    pad_l, pad_b, pad_t, pad_r = 46, 30, 26, 52
+    vals = [v for _, vs in series_list for v in vs if v is not None]
+    vmax = max(vals) or 1
+    n = len(xlabels)
+    Xp = lambda i: pad_l + (w - pad_l - pad_r) * (i / max(n - 1, 1))
+    Yp = lambda v: pad_t + (h - pad_b - pad_t) * (1 - v / vmax)
+    parts = []
+    for frac in (0, 0.5, 1):
+        y = Yp(vmax * frac)
+        parts.append(f'<line x1="{pad_l}" y1="{y:.0f}" x2="{w-pad_r+10}" y2="{y:.0f}" stroke="#1e293b"/>'
+                     f'<text x="{pad_l-6}" y="{y+4:.0f}" text-anchor="end" font-size="10" fill="#64748b">{fmt(vmax*frac)}</text>')
+    for i, lab in enumerate(xlabels):
+        parts.append(f'<text x="{Xp(i):.0f}" y="{h-10}" text-anchor="middle" font-size="10" fill="#64748b">{lab}</text>')
+    legend = ""
+    for si, (name, vs) in enumerate(series_list):
+        color = colors[si % len(colors)]
+        pts = [(Xp(i), Yp(v)) for i, v in enumerate(vs) if v is not None]
+        if len(pts) > 1:
+            parts.append(f'<polyline points="{" ".join(f"{x:.0f},{y:.0f}" for x, y in pts)}" '
+                         f'fill="none" stroke="{color}" stroke-width="2.5"/>')
+        for x, y in pts:
+            parts.append(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="3.5" fill="{color}"/>')
+        last = next((v for v in reversed(vs) if v is not None), None)
+        if pts and last is not None:
+            x, y = pts[-1]
+            parts.append(f'<text x="{min(x+7, w-pad_r+14):.0f}" y="{y+4:.0f}" font-size="10.5" font-weight="600" fill="{color}">{fmt(last)}</text>')
+        legend += (f'<span style="color:{color};margin-right:.4rem">●</span>'
+                   f'<span style="color:#94a3b8;margin-right:1rem">{name}</span>')
+    return (f'<svg viewBox="0 0 {w} {h}" style="width:100%;height:auto;display:block">{"".join(parts)}</svg>'
+            f'<div style="font-size:.72rem;margin-top:.2rem">{legend}</div>')
+
+
+def _svg_barh(items, fmt, color="#3b82f6", row_h=30, label_w=110, w=520):
+    """Barras horizontales SVG — items: [(etiqueta, valor_minutos_o_unidades), ...].
+
+    Los valores None se omiten. El valor formateado va al final de cada barra.
+    """
+    items = [(lab, v) for lab, v in items if v is not None]
+    if not items:
+        return ""
+    vmax = max(v for _, v in items) or 1
+    h = row_h * len(items) + 8
+    parts = []
+    for i, (lab, v) in enumerate(items):
+        y = 4 + i * row_h
+        bw = max(2, (w - label_w - 60) * v / vmax)
+        parts.append(f'<text x="{label_w-8}" y="{y+row_h/2+4:.0f}" text-anchor="end" font-size="11" fill="#94a3b8">{lab}</text>'
+                     f'<rect x="{label_w}" y="{y+4}" width="{bw:.0f}" height="{row_h-10}" rx="4" fill="{color}" opacity=".85">'
+                     f'<title>{lab}: {fmt(v)}</title></rect>'
+                     f'<text x="{label_w+bw+7:.0f}" y="{y+row_h/2+4:.0f}" font-size="11" font-weight="600" fill="#e2e8f0">{fmt(v)}</text>')
+    return f'<svg viewBox="0 0 {w} {h}" style="width:100%;max-width:640px;height:auto;display:block">{"".join(parts)}</svg>'
+
+
+def _delta_card(titulo, prev, cur, fmt, invertir=False):
+    """Tarjeta valor + Δ vs sprint anterior (para <3 sprints, cuando la línea aún no informa)."""
+    if cur is None:
+        return ""
+    if prev is None or prev == cur:
+        delta = '<span style="color:#64748b">= sin cambio</span>' if prev is not None else ""
+    else:
+        up = cur > prev
+        peor = up if not invertir else not up
+        arrow = "▲" if up else "▼"
+        color = "#fca5a5" if peor else "#6ee7b7"
+        delta = f'<span style="color:{color}">{arrow} {fmt(abs(cur - prev))} vs sprint anterior</span>'
+    return (f'<div class="kpi"><div class="k">{titulo}</div><div class="v">{fmt(cur)}</div>'
+            f'<div style="font-size:.72rem;margin-top:.3rem">{delta}</div></div>')
+
+
+def _radar_chart_svg(techs):
+    """Tech Radar como gráfica de cuadrantes 2×2 con blips por tecnología."""
+    qcolor = {"ADOPT": "#22c55e", "TRIAL": "#3b82f6", "ASSESS": "#f59e0b", "HOLD": "#ef4444"}
+    maxn = max((len(v) for v in techs.values()), default=0)
+    cell_w = 300
+    cell_h = max(300, 70 + maxn * 26)          # crece si un cuadrante tiene muchas tecnologías
+    qpos = {"TRIAL": (0, 0), "ADOPT": (cell_w, 0), "ASSESS": (0, cell_h), "HOLD": (cell_w, cell_h)}
+    W, H = cell_w * 2, cell_h * 2
+    parts = [f'<rect x="0" y="0" width="{W}" height="{H}" fill="#0b1220" rx="12"/>',
+             f'<line x1="{cell_w}" y1="10" x2="{cell_w}" y2="{H-10}" stroke="#1e293b" stroke-width="2"/>',
+             f'<line x1="10" y1="{cell_h}" x2="{W-10}" y2="{cell_h}" stroke="#1e293b" stroke-width="2"/>']
+    for q, (qx, qy) in qpos.items():
+        parts.append(f'<text x="{qx+18}" y="{qy+30}" font-size="13" font-weight="700" fill="{qcolor[q]}">{q}</text>')
+        for i, t in enumerate(techs.get(q, [])):
+            bx, by = qx + 26, qy + 52 + i * 26
+            label = t if len(t) <= 38 else t[:36] + "…"
+            # <title> = tooltip con el nombre completo al pasar el mouse
+            parts.append(f'<g><title>{t}</title><circle cx="{bx}" cy="{by}" r="4.5" fill="{qcolor[q]}"/>'
+                         f'<text x="{bx+10}" y="{by+4}" font-size="11" fill="#cbd5e1">{label}</text></g>')
+    return (f'<svg viewBox="0 0 {W} {H}" style="width:100%;max-width:600px;height:auto;display:block;margin-inline:auto">'
+            + "".join(parts) + "</svg>")
+
+
+GLOSARIO = [
+    ("Gate (⛔)", "Punto de control del pipeline. Un artefacto no avanza de fase sin pasar su gate con evidencia."),
+    ("Recibo (RDD)", "Registro firmado (sha256) de que un artefacto pasó su gate. Si el artefacto cambia, el recibo se invalida solo — confiar en evidencia, no en narración."),
+    ("Recibo vigente / invalidado", "Vigente: el artefacto no cambió desde su aprobación. Invalidado: cambió y la aprobación debe repetirse (retrabajo)."),
+    ("Risk Tier", "Clasificación de riesgo de una decisión: Tier 1 = alto riesgo (firma arquitectónica / board), Tier 2 = medio (ADR de 8 pasos), Tier 3 = bajo (decisión local documentada)."),
+    ("ADR", "Architecture Decision Record: decisión tomada con el framework de 8 pasos, versionada en spec/adr/ con estado y Risk Tier."),
+    ("Tech Radar / paved roads", "Catálogo de tecnologías por cuadrante. ADOPT = pre-aprobadas (camino pavimentado, sin fricción); TRIAL = requieren justificación; ASSESS/HOLD = exigen ADR de excepción."),
+    ("Lead time", "Tiempo entre el primer y el último recibo de un gate. Si empeora entre sprints, el dashboard alerta."),
+    ("Retrabajo", "Recibos invalidados o revocados en el periodo: aprobaciones que hubo que repetir. Creciente = gates débiles o cambios frecuentes de spec."),
+    ("HU", "Historia de usuario. 'Cerrada' = tiene Gherkin en la spec + test + código (trazabilidad completa)."),
+    ("Loop / arco de feedback", "Recorrido de retorno en el pipeline: bug de QA a TDD (5→4), hotfix de producción (6→4), replan de spec (3→4), sprints (4→4). ×N = cuántas veces se ha recorrido."),
+    ("Drift", "Cuando un artefacto derivado (manifiesto, grafo, dashboard) queda desactualizado respecto a su fuente. El --check falla en CI hasta regenerarlo."),
+    ("Sprint review", "Snapshot versionado del cierre de sprint (spec/reports/sprint-review-NN.md). La serie de snapshots alimenta las tendencias de este dashboard."),
+    ("Cierre (día del proyecto)", "En qué día cerró cada gate, contado desde el primer recibo del proyecto. Muestra el orden real de cierre: si un gate cierra antes que el anterior (gobernanza retroactiva sobre una PoC), se ve tal cual."),
+    ("Ciclo (sprint)", "Un recorrido del loop 4→4 (Strict TDD). Su duración son los días entre cierres de sprint review; el sprint 1 se mide desde el primer recibo del proyecto."),
+]
+
+
+# Popup por fase (v2.14): clic en un nodo del grafo o del stepper. Los datos
+# (skills, entradas, salidas, artefactos generados) viajan incrustados como JSON.
+MODAL_HTML = """
+<div id="fmodal" class="moverlay">
+  <div class="mbox"><div class="mfz"><button onclick="fz(-1)" title="Reducir fuente">A&minus;</button><button onclick="fz(1)" title="Aumentar fuente">A+</button></div><button class="mclose" onclick="closeF()" title="Cerrar">&times;</button>
+  <div id="fbody"></div></div>
+</div>
+<div class="fzctl" title="Tamaño de fuente del dashboard">
+  <button onclick="fz(-1)">A&minus;</button><span id="fz-label">16px</span><button onclick="fz(1)">A+</button>
+</div>
+"""
+
+MODAL_JS = """
+document.querySelectorAll('[data-fase]').forEach(function(el){
+  el.addEventListener('click',function(){openF(+el.getAttribute('data-fase'));});
+});
+var _fmodal=document.getElementById('fmodal');
+_fmodal.addEventListener('click',function(e){if(e.target===_fmodal)closeF();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeF();});
+function _e(s){var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+var _curF=null;
+function _chip(name,cls){
+  if(HREFS[name])return '<a class="badge '+cls+' alink" href="'+_e(HREFS[name])+'" target="_blank" rel="noopener" title="Abrir '+_e(name)+' en otra pestaña">'+_e(name)+' &#8599;</a>';
+  return '<span class="badge '+cls+'">'+_e(name)+'</span>';
+}
+function openF(id){
+  var f=null;for(var i=0;i<FASES.length;i++){if(FASES[i].id===id){f=FASES[i];break;}}
+  if(!f)return;
+  _curF=id;
+  var h='<h2>Fase '+f.id+' &middot; '+_e(f.title)+'</h2><p class="mdesc">'+_e(f.desc||'')+'</p>';
+  if(f.gate)h+='<div class="mgate">&#x26D4; '+_e(f.gate)+'</div>';
+  var arts=ARTS[String(id)]||[];
+  if(arts.length){
+    h+='<h3>Generado en este proyecto ('+arts.length+') &mdash; clic para abrirlo en otra pestaña</h3><div>';
+    for(var j=0;j<arts.length;j++)h+=_chip(arts[j],'art');
+    h+='</div>';
+  }
+  h+='<h3>'+f.skills.length+' skills en esta fase &mdash; qué leen (IN) y qué generan (OUT)</h3><div class="sgrid">';
+  for(var k=0;k<f.skills.length;k++){var s=f.skills[k];
+    h+='<div class="scard"><div class="sname">'+_e(s.name)+'</div>'
+      +'<div class="sid">'+_e(s.id)+(s.conditional?' &middot; condicional':'')+'</div>';
+    if(s.in&&s.in.length){h+='<div class="sio"><span class="iol">IN</span>';
+      for(var a=0;a<s.in.length;a++)h+=_chip(s.in[a],'io-in');h+='</div>';}
+    if(s.out&&s.out.length){h+='<div class="sio"><span class="iol">OUT</span>';
+      for(var b=0;b<s.out.length;b++)h+=_chip(s.out[b],'io-out');h+='</div>';}
+    h+='</div>';
+  }
+  h+='</div>';
+  document.getElementById('fbody').innerHTML=h;
+  _fmodal.classList.add('open');
+}
+function closeF(){_fmodal.classList.remove('open');}
+/* Popups de cabecera: aprendizajes y glosario (contenido pre-renderizado oculto) */
+function openBox(title,srcId){
+  document.getElementById('fbody').innerHTML='<h2>'+title+'</h2>'+document.getElementById(srcId).innerHTML;
+  _fmodal.classList.add('open');
+}
+/* Zoom de fuente (A− / A+): escala la raíz, persiste en localStorage */
+var _fz=parseInt(localStorage.getItem('dash-fz')||'16',10);
+function _applyFz(){_fz=Math.min(24,Math.max(12,_fz));
+  document.documentElement.style.fontSize=_fz+'px';
+  localStorage.setItem('dash-fz',String(_fz));
+  var l=document.getElementById('fz-label');if(l)l.textContent=_fz+'px';}
+function fz(d){_fz+=d;_applyFz();}
+_applyFz();
+"""
+
+
+def _stepper_html(model):
+    """Stepper superior: fase actual, % de progreso por HU y checks de gates (v2.14).
+
+    El progreso se mide en historias cerradas/abiertas (no en gates): soporta
+    alcances que crecen y productos en evolución continua — el backlog es la
+    verdad del avance; los gates muestran el estado del proceso, no el progreso.
+    """
+    import html as _html
+    esc = _html.escape
+    hu = model["contadores"].get("hu")
+    if hu and hu["total"]:
+        pct = round(100 * hu["cerradas"] / hu["total"])
+        pct_label = f'{hu["cerradas"]}/{hu["total"]} HU'
+    else:
+        gates_ok = sum(1 for g in (1, 3, 5, 6)
+                       if (model["gate_status"].get(str(g)) or {}).get("estado") == "ok")
+        pct = round(100 * gates_ok / 4)
+        pct_label = f"{gates_ok}/4 gates"
+    cur = model["fase_actual"]
+    cur_title = next(m["title"] for m in MACRO if m["id"] == cur)
+    steps = ""
+    for m in MACRO:
+        st = (model["gate_status"].get(str(m["id"])) or {}).get("estado")
+        done = st == "ok" if st else m["id"] < cur
+        is_cur = m["id"] == cur
+        dot_style = ("background:#22c55e;border-color:#22c55e;color:#052e1b" if done and not is_cur
+                     else "background:#1e293b;border-color:#3b82f6;box-shadow:0 0 0 5px rgba(59,130,246,.25)" if is_cur
+                     else "background:#1e293b;border-color:#475569")
+        mark = "✓" if done and not is_cur else str(m["id"])
+        steps += (f'<div data-fase="{m["id"]}" title="Ver skills, entradas y salidas de la fase" '
+                  f'style="flex:1;text-align:center;position:relative;cursor:pointer">'
+                  f'<div style="width:30px;height:30px;border-radius:50%;margin:0 auto;border:2px solid #475569;'
+                  f'display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;{dot_style}">{mark}</div>'
+                  f'<div style="font-size:.68rem;color:#94a3b8;margin-top:.3rem">{esc(m["title"])}</div></div>')
+    # Ciclos ejecutados (recorridos históricos de cada loop del pipeline)
+    loop_names = {"4->4": "sprints", "5->4": "bugs QA→TDD", "6->4": "hotfixes",
+                  "3->4": "replans", "6->1": "impact-reports"}
+    counts = model.get("loops_count", {})
+    chips = "".join(
+        f'<span class="badge {"st-ok" if counts.get(k) else "st-otro"}">{v} ×{counts.get(k, 0)}</span>'
+        for k, v in loop_names.items())
+    return f"""
+<div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.8rem">
+  <div><span style="font-size:1.25rem;font-weight:700">Fase {cur}: {esc(cur_title)}</span>
+       <span style="color:#94a3b8;font-size:.8rem;margin-left:.6rem">estás aquí</span></div>
+  <div style="font-size:.85rem;color:#94a3b8">PROGRESO (HU cerradas):
+       <span style="font-size:1.15rem;font-weight:700;color:#22c55e">{pct}%</span>
+       <span style="font-size:.75rem;color:#64748b"> · {esc(pct_label)}</span></div>
+</div>
+<div style="background:#1e293b;border-radius:6px;height:8px;margin-bottom:.6rem">
+  <div style="background:linear-gradient(90deg,#3b82f6,#22c55e);height:8px;border-radius:6px;width:{pct}%"></div>
+</div>
+<div style="font-size:.72rem;color:#94a3b8;margin-bottom:1rem">Ciclos ejecutados: {chips}</div>
+<div style="display:flex;gap:.2rem">{steps}</div>
+"""
 
 
 def render_dashboard_html(model, state_json=""):
@@ -566,15 +995,40 @@ def render_dashboard_html(model, state_json=""):
     esc = _html.escape
     c = model["contadores"]
 
+    adrs_count = model.get("adrs") or []
+    adr_adopted = sum(1 for a in adrs_count
+                      if "adopt" in a["status"].lower() or "acept" in a["status"].lower())
+    radar_model = model.get("radar")
+    radar_total = sum(radar_model["counts"].values()) if radar_model else None
     kpis = [("Sprints completados", c["sprints"]),
             ("Releases (GATE 3)", c["releases"]),
             ("HU cerradas", f'{c["hu"]["cerradas"]}/{c["hu"]["total"]}' if c["hu"] else None),
             ("Recibos vigentes", c["recibos_vigentes"]),
-            ("Recibos rehechos", c["recibos_rehechos"]),
-            ("Gates al primer intento", f'{c["gates_1er"]}%' if c["gates_1er"] is not None else None)]
+            ("Recibos invalidados", c["recibos_rehechos"]),
+            ("Gates al primer intento", f'{c["gates_1er"]}%' if c["gates_1er"] is not None else None),
+            ("ADRs (adoptadas)", f"{adr_adopted}/{len(adrs_count)}" if adrs_count else None),
+            ("Tecnologías en radar", radar_total)]
     kpi_html = "".join(
         f'<div class="kpi"><div class="v">{esc(str(v))}</div><div class="k">{esc(k)}</div></div>'
         for k, v in kpis if v is not None) or '<div class="empty">Sin datos aún — el dashboard se llena con los primeros recibos.</div>'
+
+    # Histórico completo por fecha (timestamps de recibos): cubre los sprints
+    # anteriores al primer sprint-review — los recibos no mienten sobre cuándo pasó algo.
+    timeline = model.get("timeline") or []
+    hist_html = ""
+    if len(timeline) >= 2:
+        step = max(1, len(timeline) // 8)          # máximo ~8 etiquetas en el eje X
+        xl = [t["fecha"][5:] if i % step == 0 or i == len(timeline) - 1 else ""
+              for i, t in enumerate(timeline)]
+        hist_html = ('<h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">'
+                     'Histórico completo por fecha (derivado de los recibos — incluye los sprints sin review)</h3>'
+                     + _svg_line_chart(
+                         [("artefactos aprobados (acum)", [t["aprobados"] for t in timeline]),
+                          ("retrabajo (acum)", [t["rehechos"] for t in timeline]),
+                          ("% 1er intento (acum)", [t["gates_1er"] for t in timeline])],
+                         xl, lambda v: f"{v:.0f}")
+                     + '<div style="font-size:.7rem;color:#475569;margin-bottom:1rem">Los recibos no llevan etiqueta '
+                       'de sprint: los puntos anteriores al primer sprint-review son la historia real por fecha, no por sprint.</div>')
 
     # Tendencias: lead time y retrabajo por sprint (serie de sprint-review-NN.md)
     gates_lt = sorted({g for s in model["tendencias"] for g in s["lead"]})
@@ -599,26 +1053,94 @@ def render_dashboard_html(model, state_json=""):
                 alert = ('<div class="warn-line">⚠ Empeora el lead time de '
                          + ", ".join(f"{g} ({_fmt_span(a[g])} → {_fmt_span(b[g])})" for g in peores)
                          + " — candidato a acción del próximo sprint.</div>")
-        trends = (f"<table><tr><th>Sprint</th>{''.join(f'<th>{esc(g)}</th>' for g in gates_lt)}"
-                  f"<th>Retrabajo</th><th>Artefactos vigentes</th><th>Gates 1er intento</th></tr>{rows}</table>{alert}")
+        # Visualización de tendencias: con <3 sprints las líneas no informan —
+        # tarjetas de delta vs sprint anterior; desde el sprint 3, gráficas de línea.
+        if len(model["tendencias"]) < 3:
+            cur, prev = model["tendencias"][-1], (model["tendencias"][-2] if len(model["tendencias"]) > 1 else {})
+            cards = '<div class="kpis">'
+            cards += _delta_card("Gates al primer intento", prev.get("gates_1er"), cur["gates_1er"],
+                                 lambda v: f"{v:.0f}%")
+            cards += _delta_card("Artefactos vigentes", prev.get("artefactos"), cur["artefactos"],
+                                 lambda v: f"{v:.0f}")
+            cards += _delta_card("Retrabajo (rehechos)", prev.get("rehechos"), cur["rehechos"],
+                                 lambda v: f"{v:.0f}", invertir=True)
+            for g in gates_lt:
+                cards += _delta_card(f"Lead time {g}", prev["lead"].get(g), cur["lead"].get(g),
+                                     _fmt_span, invertir=True)
+            charts = (cards + '</div><div class="empty" style="margin-top:.6rem">Las gráficas de línea '
+                              'por fecha aparecen desde el tercer sprint review — con 1-2 puntos no muestran tendencia.</div>')
+        else:
+            xlabels = [(s.get("fecha") or f'S{s["sprint"]}')[5:] for s in model["tendencias"]]
+            charts = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(480px,1fr));gap:1rem;margin-bottom:1rem">'
+            charts += ('<div><h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">Lead time por gate</h3>'
+                       + _svg_line_chart([(g, [s["lead"].get(g) for s in model["tendencias"]]) for g in gates_lt],
+                                         xlabels, _fmt_span) + "</div>")
+            charts += ('<div><h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">Gates al primer intento</h3>'
+                       + _svg_line_chart([("% 1er intento", [s["gates_1er"] for s in model["tendencias"]])],
+                                         xlabels, lambda v: f"{v:.0f}%") + "</div>")
+            charts += ('<div><h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">Retrabajo y artefactos vigentes</h3>'
+                       + _svg_line_chart([("rehechos", [s["rehechos"] for s in model["tendencias"]]),
+                                          ("artefactos vigentes", [s["artefactos"] for s in model["tendencias"]])],
+                                         xlabels, lambda v: f"{v:.0f}") + "</div></div>")
+        trends = (hist_html + charts
+                  + f"<table><tr><th>Sprint</th>{''.join(f'<th>{esc(g)}</th>' for g in gates_lt)}"
+                    f"<th>Retrabajo</th><th>Artefactos vigentes</th><th>Gates 1er intento</th></tr>{rows}</table>{alert}")
     else:
-        trends = '<div class="empty">Sin sprint reviews aún — las tendencias aparecen desde el primer <code>sprint_review.py</code>.</div>'
+        trends = (hist_html
+                  + '<div class="empty">Sin sprint reviews aún — la tabla de tendencias aparece desde el primer <code>sprint_review.py</code>.</div>')
+
+    # Tiempos de fase y de ciclo (v2.14): tabla + barras, todo derivado de
+    # timestamps de recibos y fechas de cierre de los sprint reviews.
+    tiempos = model.get("tiempos") or {}
+    fases_t, ciclos_t = tiempos.get("fases") or [], tiempos.get("ciclos") or []
+    MACRO_TITLE = {m["id"]: m["title"] for m in MACRO}
+    t_html = ""
+    if any("cierre_dia" in f for f in fases_t):
+        rows = ""
+        for f in fases_t:
+            tit = f'Fase {f["macro"]} · {MACRO_TITLE.get(f["macro"], "")}'
+            if "cierre_dia" not in f:
+                rows += (f'<tr><td><b>{esc(f["gate"])}</b></td><td>{esc(tit)}</td>'
+                         f'<td colspan="4" style="color:#64748b">sin recibos aún</td></tr>')
+                continue
+            rows += (f'<tr><td><b>{esc(f["gate"])}</b></td><td>{esc(tit)}</td>'
+                     f'<td>{esc(f["apertura"])}</td><td>{esc(f["cierre"])}</td>'
+                     f'<td>{_fmt_span(f["trabajo_min"])}</td><td><b>día {f["cierre_dia"]:g}</b></td></tr>')
+        t_html += ('<h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">Trabajo dentro de cada gate (primer → último recibo del gate)</h3>'
+                   + _svg_barh([(f["gate"], f.get("trabajo_min")) for f in fases_t], _fmt_span)
+                   + "<table><tr><th>Gate</th><th>Fase</th><th>Apertura</th><th>Cierre</th>"
+                     "<th>Trabajo en el gate</th><th>Cierre (día del proyecto)</th></tr>"
+                   + rows + "</table>")
+    if any(c.get("dias") is not None for c in ciclos_t):
+        rows = ""
+        for c in ciclos_t:
+            if c.get("dias") is None:
+                rows += f'<tr><td><b>Sprint {c["sprint"]}</b></td><td colspan="3" style="color:#64748b">sin fecha de cierre</td></tr>'
+                continue
+            d = c["dias"]
+            rows += (f'<tr><td><b>Sprint {c["sprint"]}</b></td><td>{esc(c.get("desde") or "inicio")} → {esc(c["cierre"])}</td>'
+                     f'<td><b>{d} día{"s" if d != 1 else ""}</b></td></tr>')
+        t_html += ('<h3 style="font-size:.78rem;color:#94a3b8;margin:1.2rem 0 .3rem">Duración de cada ciclo (sprint)</h3>'
+                   + _svg_barh([(f'S{c["sprint"]}', c.get("dias")) for c in ciclos_t],
+                               lambda v: f"{v:.0f} d", color="#22c55e")
+                   + "<table><tr><th>Ciclo</th><th>Periodo</th><th>Duración</th></tr>" + rows + "</table>")
+    if not t_html:
+        t_html = '<div class="empty">Sin datos de tiempo aún — aparecen con los primeros recibos y sprint reviews.</div>'
 
     if model["aprendizajes"]:
         learns = "".join(f'<div class="learn">📚 {esc(t)}</div>' for t in model["aprendizajes"])
     else:
         learns = '<div class="empty">Sin memorias learning registradas.</div>'
 
-    # Artefactos generados por fase (recibos vigentes)
-    fa_html = ""
-    for m in MACRO:
-        arts = (model.get("artefactos_por_fase") or {}).get(str(m["id"]), [])
-        if arts:
-            fa_html += (f'<h3>Fase {m["id"]} · {esc(m["title"])}</h3><div>'
-                        + "".join(f'<span class="badge art">{esc(a)}</span>' for a in arts)
-                        + "</div>")
-    fase_arts = (f'<div class="fase-arts">{fa_html}</div>' if fa_html
-                 else '<div class="empty">Sin artefactos con recibo vigente aún.</div>')
+    # Detalle por fase: ahora vive en el popup (clic en nodos del grafo o del
+    # stepper) — los datos viajan incrustados como JSON para el modal.
+    import json as _json
+    def _js(obj):
+        return _json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
+    modal_data = ("<script>const FASES=" + _js(model.get("fases_detalle") or [])
+                  + ";const ARTS=" + _js(model.get("artefactos_por_fase") or {})
+                  + ";const HREFS=" + _js(model.get("artefactos_href") or {})
+                  + ";</script><script>" + MODAL_JS + "</script>")
 
     # Decisiones: ADRs (estado + Risk Tier) y Tech Radar por cuadrante (v2.13)
     adrs = model.get("adrs") or []
@@ -647,11 +1169,15 @@ def render_dashboard_html(model, state_json=""):
     if radar:
         qcolor = {"ADOPT": "#22c55e", "TRIAL": "#3b82f6", "ASSESS": "#f59e0b", "HOLD": "#ef4444"}
         radar_html = ('<h3 style="font-size:.78rem;color:#94a3b8;margin:1rem 0 .4rem">Tech Radar (paved roads)</h3>'
-                      '<div class="quad">'
-                      + "".join(f'<div class="kpi"><div class="v" style="color:{qcolor[q]}">{radar[q]}</div>'
+                      + _radar_chart_svg(radar["techs"])
+                      + '<div class="quad">'
+                      + "".join(f'<div class="kpi"><div class="v" style="color:{qcolor[q]}">{radar["counts"][q]}</div>'
                                 f'<div class="k">{q}</div></div>' for q in ("ADOPT", "TRIAL", "ASSESS", "HOLD"))
                       + "</div>")
     decisiones = adr_html + radar_html
+
+    gloss = "".join(f'<tr><td style="white-space:nowrap"><b>{esc(t)}</b></td><td>{esc(d)}</td></tr>'
+                    for t, d in GLOSARIO)
 
     return f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
@@ -660,23 +1186,29 @@ def render_dashboard_html(model, state_json=""):
 <style>{DASH_CSS}</style></head><body>
 <h1>📊 Dashboard — {esc(model["proyecto"])}</h1>
 <div class="sub">Generado: {model["generado"]} · arnés v{esc(model.get("harness_version", "?"))} · spec/dashboard.html (artefacto derivado — no editar a mano)</div>
-
-<div class="panel"><h2>Pipeline — estado actual</h2>
-{_dash_graph_svg(model)}
-<div class="legend"><span class="lg-ok">gate con recibo vigente</span><span class="lg-warn">recibo invalidado / retrabajo</span><span class="lg-none">sin recibo aún</span><span class="lg-cur">fase actual</span></div>
+<div class="topbtns">
+  <button onclick="openBox('📚 Aprendizajes recientes (memorias learning)','learn-src')">📚 Aprendizajes</button>
+  <button onclick="openBox('📖 Glosario del arnés','gloss-src')">📖 Glosario</button>
 </div>
+<div id="learn-src" style="display:none">{learns}</div>
+<div id="gloss-src" style="display:none"><table>{gloss}</table></div>
 
-<div class="panel"><h2>Qué se ha generado por fase (recibos vigentes)</h2>{fase_arts}</div>
+<details class="panel" open><summary>Pipeline — estado actual</summary>
+{_stepper_html(model)}
+{_dash_graph_svg(model)}
+<div class="legend"><span class="lg-ok">gate con recibo vigente</span><span class="lg-warn">recibo invalidado / retrabajo</span><span class="lg-none">sin recibo aún</span><span class="lg-cur">fase actual</span><span style="color:#64748b">clic en una fase (grafo o stepper) para ver sus skills, entradas y salidas · loops tenues: pasa el cursor para ver su nombre</span></div>
+</details>
 
-<div class="panel"><h2>Decisiones gobernadas — ADRs y Tech Radar</h2>{decisiones}</div>
+<details class="panel" open><summary>Acumulado del proyecto</summary><div class="kpis">{kpi_html}</div></details>
 
-<div class="panel"><h2>Acumulado del proyecto</h2><div class="kpis">{kpi_html}</div></div>
+<details class="panel" open><summary>Tendencias por sprint (gráficas + detalle)</summary>{trends}</details>
 
-<div class="panel"><h2>Tendencias (serie de sprint-review-NN.md)</h2>{trends}</div>
+<details class="panel" open><summary>Tiempos de fase y de ciclo</summary>{t_html}</details>
 
-<div class="panel"><h2>Aprendizajes recientes (memorias learning)</h2>{learns}</div>
+<details class="panel" open><summary>Decisiones gobernadas — ADRs y Tech Radar</summary>{decisiones}</details>
 
 <footer>Artefacto derivado de receipts/ + spec/ + sprint-review-NN.md (ADR-002) — regenerar: <code>harness_graph.py --proyecto .</code> · drift: <code>--check</code> en CI · La evidencia son los recibos; este tablero es solo visualización.</footer>
+{MODAL_HTML}{modal_data}
 <!-- dashboard-state: __STATE__ -->
 </body></html>
 """.replace("__STATE__", state_json)

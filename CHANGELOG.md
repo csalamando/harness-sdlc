@@ -7,6 +7,27 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.14.0] - 2026-08-24
+
+### Added
+- **Stepper superior en el dashboard**: fase actual en grande, **progreso por HU cerradas** (soporta alcances que crecen y productos en evolución continua; fallback a gates si no hay estructura HU) y chips de **ciclos ejecutados** (sprints, bugs QA→TDD, hotfixes, replans, impact-reports con ×N).
+- **Gráficas de línea SVG** de tendencias (lead time por gate, % 1er intento, retrabajo/artefactos) a partir del 3er sprint review; con 1-2 sprints, **tarjetas delta** (valor + Δ vs sprint anterior).
+- **Histórico completo por fecha**: serie acumulada derivada de los timestamps de los recibos — cubre los sprints anteriores al primer `sprint_review.py` (los recibos no mienten sobre cuándo pasó algo).
+- **Tiempos de fase y de ciclo**: barras + tabla por gate (apertura, cierre, trabajo dentro del gate y **día del proyecto en que cerró** — muestra el orden real de cierre, incluida gobernanza retroactiva) y duración de cada sprint entre cierres de review.
+- **Tech Radar como gráfica de radar** (columna por cuadrante con tooltip) + KPIs de ADRs adoptadas y tecnologías en radar.
+- **Popup por fase** (clic en nodos del grafo o del stepper): descripción, gate, artefactos generados en el proyecto y **tarjetas por skill con entradas (IN) y salidas (OUT)** derivadas del manifiesto. Los chips con archivo existente son **hipervínculos `target="_blank"`** al `.md` real (0 bytes extra; el contenido no se incrusta para no inflar el dashboard).
+- **Botones de cabecera "Aprendizajes" y "Glosario"** que abren popup (las secciones estáticas del final desaparecen).
+- **Control de tamaño de fuente (A−/A+)** persistente (localStorage), disponible en el dashboard y dentro de cada popup.
+- **Glosario del arnés** (14 términos: gate, recibo, Risk Tier, ADR, paved roads, drift, lead time, ciclo…).
+- Secciones del dashboard **colapsables** (`<details>`).
+
+### Changed
+- KPI "Recibos rehechos" renombrado a **"Recibos invalidados"** (invalidados + revocados — nombre alineado con el mecanismo real de `receipt.py`).
+
+### Fixed
+- **Grafo del dashboard sin traslapes**: lienzo más alto, títulos de nodos en filas alternadas, etiquetas de gates compactas con tooltip (vigentes/rehechos), loops sin recorrer ya no muestran texto (arco tenue con tooltip; texto solo si tienen recorridos ×N o están activos), anclas de texto en nodos extremos.
+- Etiquetas cortadas en la gráfica de radar y ADR con prefijo duplicado en la tabla de decisiones.
+
 ## [2.13.0] - 2026-08-24
 
 ### Added

@@ -220,7 +220,9 @@ check("modelo incluye ADRs con estado y tier",
       len(model.get("adrs", [])) == 2
       and model["adrs"][0]["status"] == "Adopted" and model["adrs"][0]["tier"] == "1")
 check("modelo incluye tech radar por cuadrante",
-      (model.get("radar") or {}).get("ADOPT") == 2 and model["radar"].get("TRIAL") == 1)
+      (model.get("radar") or {}).get("counts", {}).get("ADOPT") == 2
+      and model["radar"]["counts"].get("TRIAL") == 1
+      and len(model["radar"]["techs"].get("ADOPT", [])) == 2)
 check("modelo incluye artefactos por fase y recorridos de loops",
       model.get("artefactos_por_fase", {}).get("1") == ["vision.md"]
       and model.get("loops_count", {}).get("4->4") == 2

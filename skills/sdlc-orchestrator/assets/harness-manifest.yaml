@@ -2,7 +2,7 @@
 # NO editar a mano: la fuente de verdad es el frontmatter harness-* de cada SKILL.md,
 # y la lista de scripts se deriva del disco. Drift = fallo en self_test y en CI.
 manifest-version: 1
-harness-version: "2.13.0"
+harness-version: "2.14.0"
 skill-count: 21
 skills:
   - name: sdlc-backend-dev-tdd
