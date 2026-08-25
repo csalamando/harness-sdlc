@@ -7,6 +7,12 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.14.1] - 2026-08-25
+
+### Added
+- **`docs/gobernanza-github.md`**: especificación paso a paso para convertir la matriz de autoridad y los gates en fronteras duras nativas de GitHub — teams ↔ roles, branch protection con Code Owners y stale reviews, status checks requeridos, environments como aprobación de GATE 3, bypass de emergencia gobernado (learning obligatorio) y perfiles de adopción mínimo/completo.
+- **Guía §5n "Distribución, versionado y gobierno a nivel GitHub"**: aclara el modelo de distribución — el agente ejecuta las skills instaladas en su ruta; la copia vendorizada en el proyecto es el registro de versión y lo que corre en CI. Referenciada desde §5d y CONTRIBUTING.
+
 ## [2.14.0] - 2026-08-24
 
 ### Added

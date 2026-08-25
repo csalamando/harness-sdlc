@@ -410,6 +410,7 @@ El arquitecto ya no aparece solo en Fase 2: participa desde la concepción de la
 - **Recibos con rol (`receipt.py emit --role <rol>`)**: si el artefacto tiene owner en la matriz, el rol emisor debe coincidir — si no, el recibo se rechaza y el gate no reconoce la aprobación. El rol queda grabado en el recibo y `verify` lo re-valida contra la matriz vigente.
 - **`authority_check.py`**: validación standalone (`--role`, o `--author <usuario-git> --team spec/team-roster.yaml`) para usar en CI; incluye plantilla de workflow `assets/ci-spec-governance.yml` que en cada PR verifica autoría + gates de los artefactos tocados.
 - **CODEOWNERS (frontera dura)**: plantilla `assets/CODEOWNERS-template` — con branch protection, un PR que toca `spec/adr/` no se mergea sin revisión del Arquitecto.
+- **Configuración GitHub completa**: la especificación paso a paso (teams ↔ roles, branch protection, status checks, environments como aprobación de GATE 3, bypass gobernado) está en [`docs/gobernanza-github.md`](gobernanza-github.md) (§5n).
 
 Jerarquía de garantías: convención (SKILL.md) → gate (recibo con rol) → CI (`authority_check.py`) → Git (CODEOWNERS + branch protection). Las dos últimas son las que realmente bloquean; las dos primeras hacen que el incumplimiento sea visible e inútil.
 
@@ -567,6 +568,21 @@ Qué muestra y de dónde sale:
 | Aprendizajes recientes | memorias `learning` de `spec/memory/` |
 
 **Regla de frescura:** si el dashboard queda atrás, el `--check` falla en CI — pero **no bloquea gates**: es visualización, no evidencia (la evidencia son los recibos). Decisión completa en `docs/decisions/ADR-002-dashboard-html-proyecto.md`.
+
+---
+
+## 5n. Distribución, versionado y gobierno a nivel GitHub (v2.14)
+
+**Dónde vive cada cosa.** El agente solo ejecuta las skills **instaladas en su ruta de skills** (§2). La copia vendorizada del arnés dentro del repo del proyecto **no es para la sesión del agente** — tiene dos funciones: (1) registro de "con qué versión de las reglas se gobernó el proyecto" (los recibos estampan `harness_version`), y (2) los **scripts se ejecutan desde el repo en CI** — un clone limpio verifica recibos, autoridad y drift con las reglas exactas de la versión adoptada, sin depender de qué tenga instalado cada quien en su máquina.
+
+| Dónde vive | Qué es | Quién lo ejecuta |
+|---|---|---|
+| Ruta de skills del agente | Instrucciones de rol (cómo trabajar) | El agente en sesión |
+| Copia vendorizada en el proyecto | Scripts + manifiesto fijados por versión | **CI/CD** y auditoría |
+
+Adoptar una versión nueva del arnés es una decisión explícita: se actualizan ambos lados (skills del agente + copia vendorizada) y los recibos nuevos estampan la versión nueva; `harness_doctor.py` alerta si el proyecto operó con una versión anterior.
+
+**Gobierno a nivel GitHub.** La matriz de autoridad y los gates (§5d) gobiernan *dentro* del repo; para convertirlos en fronteras duras nativas de GitHub (teams ↔ roles, branch protection con Code Owners, status checks requeridos, environments como aprobación de GATE 3, bypass de emergencia gobernado, perfiles mínimo/completo), sigue la especificación paso a paso en **[`docs/gobernanza-github.md`](gobernanza-github.md)**.
 
 ---
 

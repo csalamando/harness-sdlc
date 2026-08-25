@@ -35,6 +35,8 @@ El arnés predica gobierno con evidencia — y se predica con el ejemplo: **ning
 
 El ZIP se construye con `git archive <tag> skills`: todo lo que viva fuera de `skills/` queda automáticamente fuera del paquete que descargan los usuarios. No pongas tooling de mantenimiento dentro de `skills/`.
 
+**Modelo de distribución (contexto para mantenedores):** el agente ejecuta las skills instaladas en su ruta de skills; la copia vendorizada en cada proyecto es el registro de versión + lo que corre en CI. Detalle en la Guía §5n y en `docs/gobernanza-github.md`.
+
 ## Convenciones
 
 - **Commits** en español, estilo conventional: `feat(vX.Y):`, `fix(vX.Y):`, `docs(vX.Y):`, `test:`, `chore:`.
