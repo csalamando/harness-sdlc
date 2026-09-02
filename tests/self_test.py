@@ -246,6 +246,44 @@ finally:
 code, out = run("harness_graph.py", "--proyecto", FIXTURE, "--check")
 check("fixture restaurado: dashboard sin drift de nuevo", code == 0)
 
+# ── 9. Visibilidad gobernada (v2.15) ─────────────────────────────────────────
+print("\n[9] v2.15: gate sprint-review, telemetría con dueño y TDD por commits")
+code, out = run("gate_checker.py", os.path.join(FIXTURE, "spec", "reports", "sprint-review-02.md"),
+                "--tipo", "sprint-review")
+check("gate sprint-review: review canónico del fixture pasa (8 checks + learning del periodo)",
+      code == 0, out.splitlines()[-1] if code else "")
+# negativo: el mismo review en un spec sin memorias learning debe fallar
+with tempfile.TemporaryDirectory() as tmp:
+    rdir = os.path.join(tmp, "spec", "reports")
+    os.makedirs(rdir)
+    import shutil as _sh2
+    _sh2.copy(os.path.join(FIXTURE, "spec", "reports", "sprint-review-02.md"), rdir)
+    code, out = run("gate_checker.py", os.path.join(rdir, "sprint-review-02.md"),
+                    "--tipo", "sprint-review")
+    check("gate sprint-review sin learning del periodo FALLA", code == 1,
+          out if code == 0 else "")
+# dueños de la telemetría en la matriz (antes eran tierra de nadie)
+for path in ("spec/METRICS.md", "spec/metrics/", "spec/reports/"):
+    check(f"matriz: {path} -> orchestrator",
+          bool(re.search(rf"path:\s*{re.escape(path)}\s+owner:\s*orchestrator\b", matrix_text)))
+# tdd_order_check: compila y detecta orden invertido en un repo sintético
+code, _ = run("tdd_order_check.py", "--help")
+check("tdd_order_check.py compilable y con CLI", code == 0)
+with tempfile.TemporaryDirectory() as tmp:
+    subprocess.run(["git", "init", "-q"], cwd=tmp, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "t@t.co"], cwd=tmp, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp, capture_output=True)
+    for msg in ("chore: init", "feat(HU-001): green", "test(HU-001): red"):
+        open(os.path.join(tmp, "f.txt"), "a").write(msg + "\n")
+        subprocess.run(["git", "add", "."], cwd=tmp, capture_output=True)
+        subprocess.run(["git", "commit", "-qm", msg], cwd=tmp, capture_output=True)
+    r = subprocess.run([sys.executable, os.path.join(ORCH, "tdd_order_check.py"),
+                        "--range", "HEAD~2..HEAD"],
+                       capture_output=True, text=True, cwd=tmp)
+    check("tdd_order_check detecta código antes que test (exit 1)",
+          r.returncode == 1 and "VIOLACION HU-001" in r.stdout,
+          (r.stdout + r.stderr).splitlines()[-1] if r.returncode != 1 else "")
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

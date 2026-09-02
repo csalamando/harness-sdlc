@@ -7,6 +7,20 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.15.0] - 2026-09-02
+
+**"La visibilidad se gobierna, no se pide."** Hasta v2.14 la telemetría (métricas, sprint review, dashboard) vivía en la capa de convención: el agente debía *recordar* generarla y nada bloqueaba si no ocurría. v2.15 sube cada pieza a la capa más fuerte posible (gate, CI, git). Ver guía §5o "Qué controla el arnés y qué no".
+
+### Added
+- **Gate `sprint-review` con exigencia semántica** (`gate_checker.py --tipo sprint-review`): 8 checks de secciones + **obligatoriedad de memoria `learning` creada dentro del periodo del sprint**. Un sprint sin aprendizaje registrado ya no pasa el gate. El workflow CI aplica este gate a `spec/reports/*.md`.
+- **`sprint_review.py` cierra el sprint por sí mismo**: regenera `spec/METRICS.md` siempre, **autogenera la memoria `learning`** cuando el sprint fue limpio (sin rehechos, gates 1er intento 100%, sin freestyle) y no había una, e imprime los 3 comandos de cierre (gate + recibo + dashboard).
+- **Dashboard con frescura garantizada en CI** (`ci-spec-governance.yml`): en PR, step visible (warning) de drift con `harness_graph.py --check`; en push a main, **regenera y auto-commitea `spec/dashboard.html`** (`chore: dashboard regenerado [skip ci]`). `harness_doctor.py` alerta si el proyecto tiene workflows pero ninguno menciona `harness_graph`.
+- **Dueños de la telemetría**: `spec/METRICS.md`, `spec/metrics/`, `spec/reports/` y `spec/dashboard.html` entran a la matriz de autoridad y a `CODEOWNERS-template` (owner: orchestrator) — dejan de ser tierra de nadie.
+- **Tokens honestos**: sprint review y dashboard separan tokens **medidos** (reportados) de **estimados** (chars/4), muestran el **% de cobertura medida** y alertan cuando los estimados difieren >25% de los reportados. Nuevo KPI "Tokens medidos (cobertura)" en el dashboard.
+- **`tdd_order_check.py`** (nuevo script, stdlib puro): por cada HU del rango de commits verifica en `git log` que el commit `test(HU-xxx): red` precede al `feat(HU-xxx): green`. El TDD intra-sesión no es observable; el orden de commits sí. Step CI en modo warning y KPI "HUs con orden TDD en commits" en el dashboard.
+- **Convención de commits TDD** en `sdlc-backend-dev-tdd` y `sdlc-frontend-dev-tdd`: commits separados red→green con el formato que `tdd_order_check.py` verifica.
+- **Self-test sección [9]**: gate sprint-review (positivo y negativo), dueños de telemetría en la matriz y detección de orden TDD invertido en repo sintético. Fixture `proyecto-demo` actualizado: sus reviews son ahora el ejemplo canónico que pasa el gate.
+
 ## [2.14.1] - 2026-08-25
 
 ### Added

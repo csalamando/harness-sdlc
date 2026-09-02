@@ -6,9 +6,13 @@ name: spec-governance
 on:
   pull_request:
     paths: ["spec/**"]
+  push:
+    branches: [main]
+    paths: ["spec/**"]
 
 jobs:
   authority-and-gates:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,8 +49,59 @@ jobs:
               spec/qa-report.md)               T=qa-report ;;
               spec/slo.md)                     T=slo ;;
               spec/adr/*.md)                   T=adr ;;
+              spec/reports/*.md)               T=sprint-review ;;
               *) continue ;;
             esac
             python3 $ORCH/gate_checker.py "$f" --tipo $T || FAILED=1
           done
           exit $FAILED
+
+      - name: Dashboard — frescura del grafo (visible, no bloqueante)
+        continue-on-error: true
+        run: |
+          ORCH=.claude/skills/sdlc-orchestrator/scripts
+          python3 $ORCH/harness_graph.py --proyecto . --check \
+            || echo "::warning::spec/dashboard.html está desactualizado — regenerar con harness_graph.py --proyecto ."
+
+      - name: TDD — orden de commits test→código por HU (warning)
+        continue-on-error: true
+        run: |
+          python3 .claude/skills/sdlc-orchestrator/scripts/tdd_order_check.py \
+            --range origin/${{ github.base_ref }}...HEAD --warn
+
+      - name: Freestyle — código sin que las skills de dev hayan registrado activación (warning)
+        continue-on-error: true
+        run: |
+          CODE=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- \
+            'src/**' 'app/**' 'lib/**' '*.py' '*.ts' '*.tsx' '*.js' ':!spec/**' ':!docs/**' ':!.github/**' ':!*.md' | wc -l)
+          if [ "$CODE" -eq 0 ]; then echo "sin código en el PR"; exit 0; fi
+          DEV_ROLES="backend-dev-tdd|frontend-dev-tdd|qa-automation"
+          ACT=$(grep -hE "$DEV_ROLES" spec/metrics/usage.jsonl 2>/dev/null | wc -l)
+          if [ "$ACT" -eq 0 ]; then
+            echo "::warning::$CODE archivo(s) de código en el PR pero ninguna activación registrada de roles dev ($DEV_ROLES) — posible trabajo freestyle"
+          else
+            echo "OK: $ACT activación(es) dev registradas"
+          fi
+
+  dashboard-freshness:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Regenerar dashboard desde los datos actuales de spec/
+        run: python3 .claude/skills/sdlc-orchestrator/scripts/harness_graph.py --proyecto .
+
+      - name: Auto-commit del dashboard regenerado
+        run: |
+          git config user.name "harness-bot"
+          git config user.email "harness-bot@users.noreply.github.com"
+          if ! git diff --quiet -- spec/dashboard.html; then
+            git add spec/dashboard.html
+            git commit -m "chore: dashboard regenerado [skip ci]"
+            git push
+          else
+            echo "dashboard ya está fresco"
+          fi

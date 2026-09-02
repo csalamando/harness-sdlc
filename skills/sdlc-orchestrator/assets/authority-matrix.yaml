@@ -59,3 +59,7 @@ artifacts:
   - path: spec/team-roster.yaml           owner: orchestrator
   - path: spec/risk-tier.yaml             owner: orchestrator
   - path: spec/dashboard.html             owner: orchestrator   # dashboard vivo (v2.12, ADR-002): derivado de recibos + sprint reviews; nunca editado a mano
+  # Telemetría gobernada (v2.15): la evidencia del proceso se edita por script, no a mano
+  - path: spec/METRICS.md                 owner: orchestrator   # tablero vivo; lo regenera skill_metrics.py report / sprint_review.py
+  - path: spec/metrics/                   owner: orchestrator   # usage.jsonl append-only (activaciones de skills)
+  - path: spec/reports/                   owner: orchestrator   # sprint-review-NN.md: snapshot de cierre; requiere gate sprint-review + recibo

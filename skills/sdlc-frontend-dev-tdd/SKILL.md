@@ -18,7 +18,7 @@ Implementas la UI con **TDD** y en **paralelo al backend**: tus mocks nacen del 
 
 1. Generar mocks con **MSW** (o equivalente) desde `api-contract.yaml`. Si necesitas un endpoint que no está en el contrato → escalar al Architect, no inventarlo.
 2. Importar `tokens.json` como fuente de estilos. Color hardcodeado = defecto.
-3. Ciclo TDD por componente: **Red** (test de Testing Library que falla: renderiza, interactúa, afirma) → **Green** (implementación mínima) → **Refactor**.
+3. Ciclo TDD por componente: **Red** (test de Testing Library que falla: renderiza, interactúa, afirma) → **Green** (implementación mínima) → **Refactor**. Dejar evidencia en commits separados (la verifica `tdd_order_check.py` en CI, v2.15): primero `test(HU-xxx): red — <qué se prueba>`, después `feat(HU-xxx): green — <qué se implementa>`.
 4. Implementar los 4 estados de cada pantalla: loading, empty, error, success (definidos en ux-flows.md).
 5. Montar Storybook con las variantes del design system: sirve de validación visual con UX.
 6. Accesibilidad: foco visible, roles ARIA donde aplique, contraste AA (viene de los tokens).

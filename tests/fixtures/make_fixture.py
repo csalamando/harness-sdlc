@@ -55,11 +55,14 @@ w("spec/receipts/release.md.receipt.json",
 w("spec/release.md", "# Release v0.9.0\n")
 
 # ── sprint reviews (snapshots canónicos, formato sprint_review.py) ──
+# v2.15: el fixture cumple el gate sprint-review (secciones completas + learning
+# con created: dentro del periodo) — es el ejemplo de referencia del formato.
 def review(n, artefactos, gates_1er, rehechos, lead_rows):
+    cierre = f"2026-08-{10 + n}"
     lead = "\n".join(f"| {g} | {d0} | {d1} | {k} | {span} |" for g, d0, d1, k, span in lead_rows)
     return f"""# Sprint Review — Sprint {n:02d}
 
-Generado: 2026-08-{10 + n} | Periodo (recibos): 2026-08-01 → 2026-08-{10 + n}
+Generado: {cierre} | Periodo (recibos): 2026-08-01 → {cierre}
 
 <!-- KPIs para tendencia (no borrar, los lee sprint_review.py) -->
 <!-- Artefactos aprobados: {artefactos} -->
@@ -73,11 +76,31 @@ Generado: 2026-08-{10 + n} | Periodo (recibos): 2026-08-01 → 2026-08-{10 + n}
 - Gates al primer intento: **{gates_1er}%**
 - Trabajo rehecho (recibos invalidados/revocados): **{rehechos}**
 
+## 2. Avance del proyecto
+
+| Gate | Artefactos vigentes | Rehechos |
+|---|---|---|
+| GATE 1 | {artefactos} | {rehechos} |
+
+## 3. Desempeño del arnés (métricas de skills)
+
+| Skill | Activaciones | Artefactos | Gates 1er intento | Tokens |
+|---|---|---|---|---|
+| product-owner | 1 | 1 | 100% | 1,000 est. |
+
 ## 4. Tiempos del pipeline (lead time por gate)
 
 | Gate | Primer recibo | Ultimo recibo | Recibos | Span |
 |---|---|---|---|---|
 {lead}
+
+## 5. Tendencia vs sprint anterior
+
+Sin sprint anterior con review (o ver tabla de tendencia en el dashboard).
+
+## 6. Aprendizajes y acciones
+
+- Memorias `learning` guardadas este sprint: revisar con `mem.py search learning --brief`.
 """
 
 w("spec/reports/sprint-review-01.md", review(1, 2, 100, 0, [
@@ -92,7 +115,14 @@ w("spec/reports/sprint-review-02.md", review(2, 3, 75, 1, [
 
 # ── memorias learning ──
 w("spec/memory/entries/2026-08-10-mocks-desde-contrato.md", """---
+id: MEM-20260810-001
 type: learning
+project: proyecto-demo
+created: 2026-08-10
+session: fixture
+tags: [mocks, contrato, retrabajo]
+links: []
+supersedes: null
 ---
 # Los mocks generados desde el contrato OpenAPI reducen el retrabajo
 

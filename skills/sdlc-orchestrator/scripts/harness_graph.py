@@ -440,6 +440,50 @@ def cycle_times(reviews, recs):
     return out
 
 
+def tdd_commits(project_dir, rango="HEAD~60..HEAD"):
+    """HUs con evidencia de orden TDD (test antes que código) según git log.
+    Degrada a None si no hay repo git o ningún commit con la convención."""
+    import subprocess as _sp
+    r = _sp.run(["git", "log", "--reverse", "--format=%s", rango],
+                capture_output=True, text=True, cwd=project_dir)
+    if r.returncode != 0:
+        return None
+    import re as _re
+    hu_re, kind_re = _re.compile(r"\b([A-Z]+-\d+)\b"), _re.compile(r"^(test|feat|fix)\(")
+    por_hu = {}
+    for msg in r.stdout.splitlines():
+        m = kind_re.match(msg)
+        if not m:
+            continue
+        for hu in hu_re.findall(msg):
+            por_hu.setdefault(hu, []).append(m.group(1))
+    verificables = {h: ks for h, ks in por_hu.items()
+                    if "test" in ks and any(k in ("feat", "fix") for k in ks)}
+    if not verificables:
+        return None
+    ok = sum(1 for ks in verificables.values()
+             if ks.index("test") < min(i for i, k in enumerate(ks) if k in ("feat", "fix")))
+    return {"ok": ok, "total": len(verificables)}
+
+
+def tokens_honestos(recs):
+    """Separa tokens medidos (reportados) de estimados y mide la cobertura.
+    v2.15: alerta si el promedio estimado difiere >25% del reportado."""
+    rep = [r for r in recs if r.get("tokens_src") == "reportado"]
+    est = [r for r in recs if r.get("tokens_src") == "estimado"]
+    tot = lambda rs: sum(int(r.get("tokens_in") or 0) + int(r.get("tokens_out") or 0) for r in rs)
+    tok_rep, tok_est = tot(rep), tot(est)
+    n = len(rep) + len(est)
+    alerta = None
+    if rep and est and tok_rep:
+        diff = (tok_est / len(est) - tok_rep / len(rep)) / (tok_rep / len(rep))
+        if abs(diff) > 0.25:
+            alerta = f"estimados {diff:+.0%} vs reportados"
+    return {"reportados": tok_rep, "estimados": tok_est,
+            "cobertura": round(100 * len(rep) / n) if n else None,
+            "alerta": alerta}
+
+
 def derive_project(project_dir):
     """Modelo del dashboard: todo derivado de receipts/ + spec/ + sprint reviews."""
     import skill_metrics
@@ -557,6 +601,8 @@ def derive_project(project_dir):
             "recibos_vigentes": len(vigentes), "recibos_rehechos": len(rehechos),
             "gates_1er": reviews[-1]["gates_1er"] if reviews else None,
         },
+        "tokens": tokens_honestos(recs),
+        "tdd": tdd_commits(project_dir),
         "tendencias": reviews,
         "timeline": receipt_timeline(recs),
         "tiempos": {"fases": phase_times(recs), "ciclos": cycle_times(reviews, recs)},
@@ -1000,12 +1046,21 @@ def render_dashboard_html(model, state_json=""):
                       if "adopt" in a["status"].lower() or "acept" in a["status"].lower())
     radar_model = model.get("radar")
     radar_total = sum(radar_model["counts"].values()) if radar_model else None
+    tok = model.get("tokens") or {}
+    tok_kpi = None
+    if tok.get("cobertura") is not None:
+        tok_kpi = f'{tok["cobertura"]}%'
+        if tok.get("alerta"):
+            tok_kpi += " ⚠"
     kpis = [("Sprints completados", c["sprints"]),
             ("Releases (GATE 3)", c["releases"]),
             ("HU cerradas", f'{c["hu"]["cerradas"]}/{c["hu"]["total"]}' if c["hu"] else None),
             ("Recibos vigentes", c["recibos_vigentes"]),
             ("Recibos invalidados", c["recibos_rehechos"]),
             ("Gates al primer intento", f'{c["gates_1er"]}%' if c["gates_1er"] is not None else None),
+            ("Tokens medidos (cobertura)", tok_kpi),
+            ("HUs con orden TDD en commits",
+             f'{model["tdd"]["ok"]}/{model["tdd"]["total"]}' if model.get("tdd") else None),
             ("ADRs (adoptadas)", f"{adr_adopted}/{len(adrs_count)}" if adrs_count else None),
             ("Tecnologías en radar", radar_total)]
     kpi_html = "".join(

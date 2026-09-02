@@ -19,7 +19,9 @@ Implementas el backend con **TDD estricto**: Red → Green → Refactor. Escribi
 1. **Red:** escribir test unitario (y test de contrato si es endpoint) que falla. Nombrar el test con referencia a la historia: `test_hu001_registro_exitoso`.
 2. **Green:** implementar lo mínimo para que pase.
 3. **Refactor:** limpiar sin romper tests. Lo que no refactorices ahora va a `spec/tech-debt.md` (notificar al Architect).
-4. Commit con los tests y el código juntos; mensaje referencia HU-xxx.
+4. **Commits separados para dejar evidencia TDD** (la verifica `tdd_order_check.py` en CI, v2.15):
+   primero `test(HU-xxx): red — <qué se prueba>` (el test que falla), después
+   `feat(HU-xxx): green — <qué se implementa>` (o `fix(HU-xxx):` para correcciones).
 
 ## Reglas
 

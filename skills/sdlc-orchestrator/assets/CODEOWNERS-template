@@ -38,3 +38,9 @@ spec/impact-report.md               @product-analyst
 # Gobierno — la matriz y los recibos solo los toca quien administra el arnés
 spec/authority-matrix.yaml          @architecture-board
 spec/receipts/                      @architecture-board
+
+# Telemetría y evidencia del proceso (v2.15) — se editan por script, no a mano
+spec/METRICS.md                     @architecture-board
+spec/metrics/                       @architecture-board
+spec/reports/                       @architecture-board
+spec/dashboard.html                 @architecture-board

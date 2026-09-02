@@ -129,6 +129,18 @@ def main():
     roles_con_recibo = {skill_metrics.norm(r.get("rol")) for r in recs if r.get("rol")}
     freestyle = roles_con_recibo - roles_activados
 
+    n_rep = sum(1 for r in recs if r.get("tokens_src") == "reportado")
+    n_est = sum(1 for r in recs if r.get("tokens_src") == "estimado")
+    cobertura = round(100 * n_rep / max(n_rep + n_est, 1)) if recs else 0
+    # Honestidad de tokens (v2.15): si hay de ambas fuentes, comparar promedios
+    # por recibo; una brecha >25% vuelve sospechosas las estimaciones (chars/4).
+    alerta_tok = ""
+    if n_rep and n_est:
+        prom_rep, prom_est = tok_rep / n_rep, tok_est / n_est
+        if prom_rep and abs(prom_est - prom_rep) / prom_rep > 0.25:
+            alerta_tok = (f" ⚠ estimados difieren {(prom_est - prom_rep) / prom_rep:+.0%} de los reportados"
+                          " — calibrar o reportar tokens reales")
+
     hoy = datetime.date.today().isoformat()
     fechas = sorted(r.get("emitido", "")[:10] for r in recs if r.get("emitido"))
     periodo = f"{fechas[0]} → {fechas[-1]}" if fechas else hoy
@@ -153,7 +165,8 @@ def main():
         f"- Trabajo rehecho (recibos invalidados/revocados): **{len(rehechos)}**",
         f"- Activaciones de skills: **{len(events)}** | Roles en freestyle: **{len(freestyle)}**"
         + (f" ({', '.join(sorted(freestyle))})" if freestyle else ""),
-        f"- Tokens: {tok_rep:,} reportados + {tok_est:,} estimados",
+        f"- Tokens: {tok_rep:,} reportados + {tok_est:,} estimados"
+        f" (cobertura medida: **{cobertura}%** de los recibos){alerta_tok}",
         f"- Memorias learning acumuladas: **{count_learnings(spec_dir)}**",
         "",
         "## 2. Avance del proyecto",
@@ -223,6 +236,68 @@ def main():
         with open(p, "w", encoding="utf-8") as fh:
             fh.write(text)
         print(f"Sprint review guardado: {p}")
+
+        # v2.15 — el cierre de sprint deja la telemetría al día, no "por demanda":
+        # 1. METRICS.md (tablero vivo) se regenera SIEMPRE al cerrar el sprint.
+        class _R:  # argparse-like para skill_metrics.cmd_report
+            pass
+        r_ = _R(); r_.spec_dir = spec_dir; r_.stdout = False
+        skill_metrics.cmd_report(r_)
+
+        # 2. Sprint limpio (0 retrabajo, 100% al primer intento, sin freestyle) y
+        #    sin memoria learning en el periodo → se autogenera: el aprendizaje
+        #    "todo salió bien" también queda registrado (lo exige el gate
+        #    sprint-review de gate_checker.py). Sprints con señales: la memoria
+        #    la escribe el humano/agente con mem.py add --type learning.
+        fechas_p = sorted(r.get("emitido", "")[:10] for r in recs if r.get("emitido"))
+        inicio_p = fechas_p[0] if fechas_p else hoy
+        entries = os.path.join(spec_dir, "memory", "entries")
+        hay_learning = False
+        if os.path.isdir(entries):
+            for f in glob.glob(os.path.join(entries, "*.md")):
+                try:
+                    head = open(f, encoding="utf-8", errors="replace").read(600)
+                except OSError:
+                    continue
+                c = re.search(r"created:\s*(\d{4}-\d{2}-\d{2})", head)
+                if "type: learning" in head and c and inicio_p <= c.group(1) <= hoy:
+                    hay_learning = True; break
+        limpio = not rehechos and gates_1er == 100 and not freestyle
+        if limpio and not hay_learning:
+            os.makedirs(entries, exist_ok=True)
+            hoy_c = hoy.replace("-", "")
+            n = len([f for f in os.listdir(entries)
+                     if f.startswith(f"MEM-{hoy_c}-")]) + 1
+            mem_id = f"MEM-{hoy_c}-{n:03d}"
+            proyecto = os.path.basename(os.path.dirname(os.path.abspath(spec_dir)))
+            mp = os.path.join(entries, f"{mem_id}-sprint-{a.sprint:02d}-limpio-sin-senales.md")
+            with open(mp, "w", encoding="utf-8") as fh:
+                fh.write(f"""---
+id: {mem_id}
+type: learning
+project: {proyecto}
+created: {datetime.datetime.now().isoformat(timespec="seconds")}
+session: sprint-review-{a.sprint:02d}
+tags: [sprint-review, sprint-limpio]
+links: []
+supersedes: []
+---
+# Sprint {a.sprint:02d} limpio — sin señales
+
+Autogenerada por sprint_review.py (v2.15): 0 recibos rehechos, 100% de gates
+al primer intento y 0 roles en freestyle en el periodo {periodo}.
+El aprendizaje "el proceso funcionó" también queda registrado.
+""")
+            print(f"Memoria learning (sprint limpio) autogenerada: {mp}")
+        elif not hay_learning:
+            print("⚠ Sprint con señales y SIN memoria learning en el periodo — "
+                  "el gate sprint-review la exige: mem.py add --type learning")
+
+        # 3. Cierre guiado: los dos comandos que dejan la evidencia y el tablero al día.
+        print("\nCierre de sprint (v2.15) — ejecutar para dejar la evidencia al día:")
+        print(f"  python3 gate_checker.py {p} --tipo sprint-review")
+        print(f"  python3 receipt.py emit {os.path.abspath(p)} --gate gate2 --tipo sprint-review --role orchestrator")
+        print("  python3 harness_graph.py --proyecto .   # dashboard al día")
     return 0
 
 

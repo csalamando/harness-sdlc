@@ -586,6 +586,30 @@ Adoptar una versión nueva del arnés es una decisión explícita: se actualizan
 
 ---
 
+## 5o. Qué controla el arnés y qué no (v2.15) — la visibilidad se gobierna, no se pide
+
+Hasta v2.14 la telemetría (métricas, sprint review, dashboard) dependía de que el agente *recordara* generarla: todo vivía en la capa de **convención** (instrucciones en las skills) y nada la bloqueaba si no ocurría. v2.15 sube cada pieza a la capa más fuerte posible:
+
+| Mecanismo | Capa | Qué garantiza |
+|---|---|---|
+| Gate `sprint-review` (`spec/reports/*.md`) | **Gate bloqueante** | El review no pasa sin secciones completas **y sin al menos una memoria `learning` del periodo** (v2.15: se exige evidencia de aprendizaje, no solo formato) |
+| Cierre de sprint en `sprint_review.py` | **Automatización** | Al generar el review, `spec/METRICS.md` se regenera **siempre**; si el sprint fue limpio y no hay learnings, el script **autogenera** la memoria `learning` del sprint; e imprime los 3 comandos de cierre (gate + recibo + dashboard) |
+| Workflow `spec-governance.yml` | **CI** | En PR: autoridad + gates (incluido `sprint-review`) + frescura del dashboard (warning) + **freestyle** (código sin activación de roles dev, warning) + **orden TDD por commits** (warning). En push a main: **regenera y auto-commitea `spec/dashboard.html`** — el dashboard ya no depende de que alguien lo pida |
+| Dueños de telemetría | **Matriz/CODEOWNERS** | `spec/METRICS.md`, `spec/metrics/`, `spec/reports/`, `spec/dashboard.html` tienen dueño (orchestrator) — antes eran "tierra de nadie" |
+| `tdd_order_check.py` | **Git** | Por cada HU del PR verifica en `git log` que el commit `test(HU-x): red` precede al `feat(HU-x): green`. El TDD intra-sesión no es observable desde fuera; el orden de commits **sí** queda registrado |
+| Tokens honestos | **Visibilidad** | Sprint review y dashboard separan tokens **medidos** (reportados por la plataforma) de **estimados** (chars/4), con % de cobertura medida y alerta si los estimados difieren >25% de los reportados |
+| `harness_doctor.py` | **Diagnóstico** | Alerta si el proyecto tiene workflows de CI pero ninguno menciona `harness_graph` (dashboard sin frescura garantizada) |
+
+**Qué queda deliberadamente fuera** (ninguna herramienta puede controlarlo, y prometerlo sería mentira):
+
+- **Tokens exactos de cada sesión** — solo la plataforma del agente los conoce; el arnés los acepta reportados y los separa de los estimados para no mezclar fuentes.
+- **TDD intra-sesión** (que el agente escriba el test antes *dentro* de su contexto) — solo es verificable vía el orden de commits, y eso exige que el equipo use la convención `test(HU-x)`/`feat(HU-x)`.
+- **Que el humano apruebe los gates** — GATE 1/2/3 son decisiones humanas por diseño; el arnés garantiza que *sin aprobación registrada no hay recibo*, no que el humano piense mejor.
+
+> **Regla práctica:** si algo te importa, pregúntate en qué capa está. Convención = se pide. Gate = se exige por artefacto. CI = se exige por PR. Git = quedó grabado. v2.15 mueve la visibilidad de "se pide" a "se exige".
+
+---
+
 ## 5k. Desarrollar el propio arnés (solo para mantenedores)
 > ⚠️ **Esta sección NO es para usar el arnés, es para MODIFICARLO.** Si solo quieres usarlo en tus proyectos, no necesitas nada de lo que sigue — instala las skills (§2) y listo. Lo que aquí se describe vive en el repo fuente del arnés (`tests/`), **nunca entra al ZIP de release** y no es una skill que tu agente deba cargar.
 

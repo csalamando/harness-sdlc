@@ -52,6 +52,11 @@ CHECKS = {
     "screen-inventory": [r"PANT-\d+", r"HU-\d+", r"ROL-\d+",
                          r"loading", r"empty", r"error", r"success",
                          r"[Ii]nteracciones", r"[Dd]estino"],
+    # v2.15 — cierre de sprint con evidencia: el review es un artefacto gobernado
+    "sprint-review": [r"Sprint Review — Sprint \d+", r"Resumen ejecutivo",
+                      r"Avance del proyecto", r"Desempe.o del arn",
+                      r"lead time por gate", r"Tendencia vs sprint anterior",
+                      r"Aprendizajes y acciones", r"<!-- Artefactos aprobados:"],
 }
 
 TECH_KEYWORDS = [
@@ -156,6 +161,43 @@ def resolve_spec_path(path, artefacto):
     return None
 
 
+def check_sprint_learning(artefacto):
+    """Sprint review sin memoria learning del periodo = aprendizaje perdido (v2.15).
+
+    El aprendizaje institucional no es opcional: exige al menos una memoria
+    `type: learning` creada dentro del periodo del sprint (del primer recibo a
+    la fecha de generación del review). sprint_review.py autogenera la memoria
+    "sprint limpio" cuando no hubo señales, así que esta regla nunca pide
+    burocracia vacía — pide que el aprendizaje quede registrado.
+    """
+    import glob
+    text = open(artefacto, encoding="utf-8").read()
+    gen = re.search(r"Generado:\s*(\d{4}-\d{2}-\d{2})", text)
+    per = re.search(r"Periodo \(recibos\):\s*(\d{4}-\d{2}-\d{2})", text)
+    if not gen:
+        return ["Sprint review sin línea 'Generado:' — regenerar con sprint_review.py"]
+    inicio = per.group(1) if per else "0000-00-00"
+    fin = gen.group(1)
+    entries = resolve_spec_path("spec/memory/entries", artefacto)
+    if not entries:
+        return ["Sin spec/memory/entries/ — la memoria del sprint no existe (guardar una "
+                "memoria learning con las señales del sprint; si fue limpio, "
+                "sprint_review.py la autogenera)"]
+    for p in glob.glob(os.path.join(entries, "*.md")):
+        try:
+            head = open(p, encoding="utf-8", errors="replace").read(600)
+        except OSError:
+            continue
+        if "type: learning" not in head:
+            continue
+        c = re.search(r"created:\s*(\d{4}-\d{2}-\d{2})", head)
+        if c and inicio <= c.group(1) <= fin:
+            return []
+    return [f"Sin memoria learning en el periodo del sprint ({inicio} → {fin}) — "
+            "guardar con mem.py add --type learning (o regenerar el review: "
+            "los sprints limpios la autogeneran)"]
+
+
 def check_roles_refs(roles_path, stories_path):
     """Verifica que los ROL-xx citados en las historias existan en el catálogo.
 
@@ -227,6 +269,8 @@ def main():
         semantic += check_roles_refs(roles_f, stories_f)
     if a.tipo == "screen-inventory":
         semantic += check_screens_refs(a.artefacto, resolve_spec_path("spec/user-stories.md", a.artefacto))
+    if a.tipo == "sprint-review":
+        semantic += check_sprint_learning(a.artefacto)
     if missing or semantic:
         print(f"GATE NO PASADO ({a.tipo}):")
         for m in missing: print(f"  - patrón no encontrado: {m}")

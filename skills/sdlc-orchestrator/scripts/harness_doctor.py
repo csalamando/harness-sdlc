@@ -120,6 +120,21 @@ def main():
           os.path.isfile(ci_db),
           "" if os.path.isfile(ci_db) else "(correr: code_intel.py --root <proyecto> index)")
 
+    # Frescura del dashboard en CI (v2.15): si el proyecto tiene workflows pero
+    # ninguno regenera/verifica el dashboard, la visibilidad queda por demanda.
+    wf_dir = os.path.join(a.project_dir, ".github", "workflows")
+    if os.path.isdir(wf_dir):
+        mencion = False
+        for wf in os.listdir(wf_dir):
+            if wf.endswith((".yml", ".yaml")):
+                txt = open(os.path.join(wf_dir, wf), encoding="utf-8", errors="ignore").read()
+                if "harness_graph" in txt:
+                    mencion = True
+                    break
+        check(results, "CI regenera/verifica spec/dashboard.html (harness_graph)",
+              mencion,
+              "sin eso el dashboard solo se actualiza por demanda — añadir ci-spec-governance.yml")
+
     # Versión del arnés: instalada vs. la última vista en los recibos del proyecto (v2.12.1)
     import json as _json
     hv = None
