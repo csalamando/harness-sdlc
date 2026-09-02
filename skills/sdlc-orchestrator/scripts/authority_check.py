@@ -25,7 +25,7 @@ def load_matrix(path=DEFAULT_MATRIX):
     except FileNotFoundError:
         return rules
     import re
-    for m in re.finditer(r"-\s*path:\s*(\S+)\s+owner:\s*(\S+)", text):
+    for m in re.finditer(r"-\s*path:\s*(\S+)\s*\n\s*owner:\s*(\S+)", text):
         rules.append((m.group(1).strip(), m.group(2).strip()))
     return rules
 

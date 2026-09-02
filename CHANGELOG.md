@@ -7,6 +7,12 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.15.2] - 2026-09-02
+
+### Fixed
+- **`sdlc-technical-writer/assets/gh-pages-docs.yml`**: el `environment` del job `deploy` usaba un flow mapping con `${{ }}` dentro (`{ name: ..., url: ${{ ... }} }`), que es **YAML inválido** — GitHub no podía parsear el workflow y lo reportaba como run fallido (con la ruta del archivo como nombre) en *cada push*, aunque el trigger push estuviera comentado. Reescrito en block style. Detectado en CATI: el fallo "docs-pages" que parecía de Pages deshabilitado era en realidad este error de sintaxis. Validados todos los assets `.yml` del arnés con parser.
+- **`authority-matrix.yaml` (asset)**: usaba dos claves en una línea (`- path: X  owner: Y`), YAML **inválido** que los scripts toleraban por parseo regex; cualquier consumidor con parser real (yq, CI) fallaba. Convertido a block style válido y actualizados los tres regex consumidores (`authority_check.py`, `manifest_check.py`, `self_test.py`). El self-test suma la sección [9b]: **todos los assets `.yml/.yaml` deben parsear como YAML válido** — la clase de bug queda cerrada estructuralmente. **Nota de adopción:** quien vendorice scripts debe actualizar también su `spec/authority-matrix.yaml` al formato nuevo (los scripts v2.15.2 esperan `path:` y `owner:` en líneas separadas).
+
 ## [2.15.1] - 2026-09-02
 
 ### Fixed

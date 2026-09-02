@@ -103,7 +103,7 @@ OWNED = {
     "spec/ux/": "ux-designer",
 }
 for path, owner in OWNED.items():
-    found = re.search(rf"path:\s*{re.escape(path)}\s+owner:\s*{owner}\b", matrix_text)
+    found = re.search(rf"path:\s*{re.escape(path)}\s*\n\s*owner:\s*{owner}\b", matrix_text)
     check(f"matriz: {path} -> {owner}", bool(found))
 
 with tempfile.TemporaryDirectory() as tmp:
@@ -265,7 +265,7 @@ with tempfile.TemporaryDirectory() as tmp:
 # dueños de la telemetría en la matriz (antes eran tierra de nadie)
 for path in ("spec/METRICS.md", "spec/metrics/", "spec/reports/"):
     check(f"matriz: {path} -> orchestrator",
-          bool(re.search(rf"path:\s*{re.escape(path)}\s+owner:\s*orchestrator\b", matrix_text)))
+          bool(re.search(rf"path:\s*{re.escape(path)}\s*\n\s*owner:\s*orchestrator\b", matrix_text)))
 # tdd_order_check: compila y detecta orden invertido en un repo sintético
 code, _ = run("tdd_order_check.py", "--help")
 check("tdd_order_check.py compilable y con CLI", code == 0)
@@ -283,6 +283,23 @@ with tempfile.TemporaryDirectory() as tmp:
     check("tdd_order_check detecta código antes que test (exit 1)",
           r.returncode == 1 and "VIOLACION HU-001" in r.stdout,
           (r.stdout + r.stderr).splitlines()[-1] if r.returncode != 1 else "")
+
+# ── 9b. Assets YAML válidos (lección v2.15.2: flow map con ${{ rompió CI) ────
+print("\n[9b] Assets .yml/.yaml de las skills parsean como YAML válido")
+try:
+    import yaml as _yaml
+    _bad = []
+    for base, _, files in os.walk(os.path.join(ROOT, "skills")):
+        for f in files:
+            if f.endswith((".yml", ".yaml")):
+                p = os.path.join(base, f)
+                try:
+                    _yaml.safe_load(open(p, encoding="utf-8"))
+                except Exception as e:
+                    _bad.append(f"{os.path.relpath(p, ROOT)}: {str(e).splitlines()[-1]}")
+    check("todos los assets YAML parsean", not _bad, " | ".join(_bad))
+except ImportError:
+    check("todos los assets YAML parsean", True, "(pyyaml no disponible — omitido)")
 
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")

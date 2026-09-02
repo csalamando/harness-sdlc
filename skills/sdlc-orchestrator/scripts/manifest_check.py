@@ -98,7 +98,7 @@ def gate_checker_types():
 
 def matrix_paths():
     text = open(MATRIX, encoding="utf-8").read()
-    return [m.group(1).strip() for m in re.finditer(r"-\s*path:\s*(\S+)\s+owner:", text)]
+    return [m.group(1).strip() for m in re.finditer(r"-\s*path:\s*(\S+)\s*\n\s*owner:", text)]
 
 
 def cross_validate(skills):
