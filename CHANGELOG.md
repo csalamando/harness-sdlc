@@ -7,6 +7,11 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.15.1] - 2026-09-02
+
+### Fixed
+- **`ci-spec-governance.yml` (asset)**: el job `dashboard-freshness` solo regenera y commitea cuando `harness_graph.py --check` detecta **drift real** (la huella embebida ignora el timestamp; antes commiteaba en cada push a main por la sola diferencia de fecha de generación). Añadido `concurrency: dashboard-freshness` para evitar la carrera bot-vs-bot cuando dos push seguidos disparan el job (detectado en la adopción en CATI: un run quedaba rojo por push rechazado del otro).
+
 ## [2.15.0] - 2026-09-02
 
 **"La visibilidad se gobierna, no se pide."** Hasta v2.14 la telemetría (métricas, sprint review, dashboard) vivía en la capa de convención: el agente debía *recordar* generarla y nada bloqueaba si no ocurría. v2.15 sube cada pieza a la capa más fuerte posible (gate, CI, git). Ver guía §5o "Qué controla el arnés y qué no".

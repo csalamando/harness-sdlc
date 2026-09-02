@@ -86,22 +86,24 @@ jobs:
   dashboard-freshness:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    concurrency:
+      group: dashboard-freshness
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
 
-      - name: Regenerar dashboard desde los datos actuales de spec/
-        run: python3 .claude/skills/sdlc-orchestrator/scripts/harness_graph.py --proyecto .
-
-      - name: Auto-commit del dashboard regenerado
+      - name: Regenerar dashboard solo si hay drift real
         run: |
+          # --check compara la huella embebida (ignora el timestamp de generación):
+          # sin drift no se toca el archivo y no hay commit vacío por cada push.
+          if python3 .claude/skills/sdlc-orchestrator/scripts/harness_graph.py --proyecto . --check; then
+            echo "dashboard fresco — nada que hacer"; exit 0
+          fi
+          python3 .claude/skills/sdlc-orchestrator/scripts/harness_graph.py --proyecto .
           git config user.name "harness-bot"
           git config user.email "harness-bot@users.noreply.github.com"
-          if ! git diff --quiet -- spec/dashboard.html; then
-            git add spec/dashboard.html
-            git commit -m "chore: dashboard regenerado [skip ci]"
-            git push
-          else
-            echo "dashboard ya está fresco"
-          fi
+          git add spec/dashboard.html
+          git commit -m "chore: dashboard regenerado [skip ci]"
+          git push
