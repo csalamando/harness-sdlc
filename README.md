@@ -35,6 +35,8 @@ Eso es todo — el orquestador elige la ruta mínima, activa los roles y exige l
    - [Contexto mínimo e inteligencia de código](#4c-contexto-mínimo-e-inteligencia-de-código-v23)
    - [Telemetría de skills y Sprint Review](#4d-telemetría-de-skills-y-sprint-review-v24--v25)
    - [Diagramas como mecanismo de aceptación](#4e-diagramas-como-mecanismo-de-aceptación-de-cambios-v26)
+   - [Manifiesto dinámico, grafo y dashboard vivo](#4f-manifiesto-dinámico-del-arnés-v29)
+   - [La visibilidad se gobierna, no se pide](#4g-la-visibilidad-se-gobierna-no-se-pide-v215)
 5. [Receipts (RDD): confiar en evidencia, no en narración](#5-receipts-rdd-confiar-en-evidencia-no-en-narración)
 6. [El sistema de memoria](#6-el-sistema-de-memoria)
 7. [Gobernanza de decisiones (v2.0)](#7-gobernanza-de-decisiones-v20)
@@ -96,7 +98,7 @@ Ordenadas por fase del pipeline (las transversales al final):
 | `sdlc-sre` | SLOs + incidentes + postmortems | 7 |
 | `sdlc-product-analyst` | Medición de impacto → realimenta backlog | 7 |
 | `sdlc-technical-writer` | Documentación doc-as-code (Wiki / Pages / Confluence) | 4-6 |
-| `sdlc-orchestrator` | Orquestador del pipeline + 16 herramientas CLI | Transversal |
+| `sdlc-orchestrator` | Orquestador del pipeline + 18 herramientas CLI | Transversal |
 | `sdlc-memory` | Memoria persistente con scopes y gobierno | Transversal |
 | `sdlc-diagrams` | Diagramas C4, cloud (AWS/Azure/GCP), secuencia, BPMN, Gantt, GitFlow vía drawio MCP + derivación desde IaC/workflows con aprobación por recibo | Transversal |
 
@@ -152,7 +154,7 @@ Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**
 
 ## 4. Capacidades de gobierno
 
-Cinco mecanismos transversales mantienen al agente dentro de los carriles, en cualquier ruta y fase.
+Siete mecanismos transversales mantienen al agente dentro de los carriles, en cualquier ruta y fase.
 
 ### 4a. Routing orgánico
 
@@ -175,7 +177,7 @@ Un dev puede *opinar* sobre un ADR (de hecho debe: Paso 5 del Advice Process), p
 
 1. **Recibos con rol:** `receipt.py emit --role <rol>` — si el artefacto tiene owner declarado y el rol no coincide, el recibo se rechaza y el gate no reconoce la aprobación. Un ADR "aprobado" por un dev simplemente no existe para GATE 1.
 2. **CI:** `authority_check.py` valida en cada PR que quien toca `spec/` tiene el rol dueño (mapeo usuario→rol en `spec/team-roster.yaml`).
-3. **Git (frontera dura):** plantilla `CODEOWNERS` + branch protection — un PR que toca `spec/adr/` no se mergea sin el Arquitecto.
+3. **Git (frontera dura):** plantilla `CODEOWNERS` + branch protection — un PR que toca `spec/adr/` no se mergea sin el Arquitecto. La especificación completa para llevar esto a GitHub nativo (teams ↔ roles, status checks requeridos, environments como aprobación de GATE 3, bypass de emergencia gobernado) está en **[docs/gobernanza-github.md](docs/gobernanza-github.md)** (v2.14).
 
 Cambiar la matriz es un cambio de gobierno: requiere PR y queda auditado en el historial.
 
@@ -200,7 +202,7 @@ La disciplina no se narra, se mide — y **sin meter telemetría en el contexto 
 1. **`skill_metrics.py use --skill <rol> --fase <N>`**: el orquestador registra cada activación (append-only en `spec/metrics/usage.jsonl`).
 2. **`receipt.py emit --tokens-src reportado|estimado --attempts K`**: tokens por artefacto — exactos si la plataforma del agente los expone, estimados por chars/4 si no (nunca depende de que el agente "se acuerde").
 3. **`skill_metrics.py report` → `spec/METRICS.md`**: tres vistas — **aporte** (artefactos, % de gates al primer intento, tokens por skill), **cobertura** (detector de *freestyle*: un rol con artefactos pero sin activación registrada está trabajando por fuera de la skill; una activación sin artefactos es skill de adorno) y **señales** accionables para mejorar skills.
-4. **`sprint_review.py --sprint <N>` (v2.5) → `spec/reports/sprint-review-NN.md`**: al cerrar cada sprint, snapshot versionado con avance del proyecto, desempeño del arnés, lead times por gate, **tendencia vs el sprint anterior** y aprendizajes — la visibilidad de largo plazo para ajustar basándose en datos.
+4. **`sprint_review.py --sprint <N>` (v2.5) → `spec/reports/sprint-review-NN.md`**: al cerrar cada sprint, snapshot versionado con avance del proyecto, desempeño del arnés, lead times por gate, **tendencia vs el sprint anterior** y aprendizajes — la visibilidad de largo plazo para ajustar basándose en datos. Desde **v2.15** el review es un **artefacto gobernado con gate propio** (`--tipo sprint-review`): exige las secciones completas y al menos una memoria `learning` del periodo; ver §4g.
 
 En Fase 8 el orquestador genera `METRICS.md` y guarda las señales como memoria `learning` — la mejora de las skills se retroalimenta sola. `METRICS.md` nunca se inyecta en paquetes de contexto.
 
@@ -244,7 +246,23 @@ python3 harness_graph.py --proyecto .          # genera/actualiza spec/dashboard
 python3 harness_graph.py --proyecto . --check  # exit 1 si quedó atrás (CI)
 ```
 
-Muestra el pipeline con los gates pintados según sus recibos (vigente / invalidado / pendiente), la fase actual con banda de progreso, los loops de feedback con **recorridos históricos ×N** (y resaltados cuando están activos), los artefactos generados por fase, el panel de **decisiones gobernadas** (ADRs con estado y Risk Tier + Tech Radar por cuadrante), contadores acumulados (sprints, releases, HU cerradas, gates al primer intento), tendencias por sprint con **alertas automáticas** cuando un lead time empeora, y las últimas memorias `learning`. Cero narración manual: todo deriva de `receipts/` + `spec/` + `spec/reports/` + `spec/adr/`. **El dashboard es visualización, no evidencia** — la evidencia siguen siendo los recibos; por eso un dashboard desactualizado alerta en CI pero no bloquea gates.
+Muestra el pipeline con los gates pintados según sus recibos (vigente / invalidado / pendiente), la fase actual con banda de progreso, los loops de feedback con **recorridos históricos ×N** (y resaltados cuando están activos), los artefactos generados por fase, el panel de **decisiones gobernadas** (ADRs con estado y Risk Tier + Tech Radar por cuadrante), contadores acumulados (sprints, releases, HU cerradas, gates al primer intento), tendencias por sprint con **alertas automáticas** cuando un lead time empeora, y las últimas memorias `learning`. Cero narración manual: todo deriva de `receipts/` + `spec/` + `spec/reports/` + `spec/adr/`. **El dashboard es visualización, no evidencia** — la evidencia siguen siendo los recibos; por eso un dashboard desactualizado alerta en CI pero no bloquea gates. Desde **v2.15** el workflow de referencia lo **regenera y auto-commitea en cada push a main** cuando hay drift real (§4g): la frescura ya no depende de que alguien lo pida.
+
+### 4g. La visibilidad se gobierna, no se pide (v2.15)
+
+La lección de fondo: mientras métricas, sprint review y dashboard dependían de que el agente *recordara* generarlos, la visibilidad era opcional en la práctica. v2.15 sube cada pieza de telemetría a la capa más fuerte posible — convención → gate → CI → git:
+
+| Pieza | Mecanismo v2.15 |
+|---|---|
+| **Sprint review** | Gate `sprint-review` **bloqueante** en CI sobre `spec/reports/*.md`: exige secciones completas **y una memoria `learning` del periodo** — un sprint sin aprendizaje registrado no pasa |
+| **Cierre de sprint** | `sprint_review.py` regenera `spec/METRICS.md` siempre, **autogenera la memoria learning** en sprints limpios e imprime los comandos de cierre (gate + recibo + dashboard) |
+| **Dashboard** | En PR: warning de drift (`--check`). En push a main: **auto-commit del dashboard regenerado** (solo con drift real; `concurrency` dedicada evita carreras del bot) |
+| **Freestyle** | Warning en CI si el PR toca código sin activaciones registradas de roles dev en `usage.jsonl` |
+| **TDD** | `tdd_order_check.py` verifica en `git log` que `test(HU-x): red` precede a `feat(HU-x): green` — el orden de commits es la evidencia observable del TDD intra-sesión |
+| **Tokens** | Review y dashboard separan **medidos** (reportados) de **estimados** (chars/4) con % de cobertura y alerta si difieren >25% |
+| **Propiedad** | `spec/METRICS.md`, `spec/metrics/`, `spec/reports/`, `spec/dashboard.html` con dueño en la matriz de autoridad y CODEOWNERS |
+
+Qué queda **deliberadamente fuera** (prometerlo sería mentira): tokens exactos por sesión (solo la plataforma los conoce), TDD intra-sesión (solo verificable vía commits), y la calidad de la aprobación humana en los gates. Detalle completo en la guía, §5o "Qué controla el arnés y qué no".
 
 ---
 
@@ -421,7 +439,7 @@ En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias super
 ## 9. Herramientas compartidas y propias
 
 - **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`), Penpot MCP (`sdlc-ux-designer`, prototipos de pantalla gobernados).
-- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado), `manifest_check.py` (manifiesto dinámico derivado + drift), `harness_graph.py` (grafo interactivo del pipeline derivado del manifiesto + drift). **`sdlc-diagrams/scripts/`:** `iac_to_diagram.py` (despliegue derivado del IaC + drift), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless SVG/PNG).
+- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado + cierre de sprint automatizado), `tdd_order_check.py` (orden TDD test→código verificable en `git log`), `manifest_check.py` (manifiesto dinámico derivado + drift), `harness_graph.py` (grafo interactivo del pipeline + **dashboard vivo del proyecto** + drift). **`sdlc-diagrams/scripts/`:** `iac_to_diagram.py` (despliegue derivado del IaC + drift), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless SVG/PNG).
 - **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
 ---
