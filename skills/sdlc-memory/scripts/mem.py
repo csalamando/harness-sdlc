@@ -13,9 +13,14 @@ Tipo `policy`: lineamiento normativo en scope org. enforcement=mandatory exige,
 en cada proyecto, attestation `compliant` o desviacion APROBADA y vigente antes
 del GATE 1. Las desviaciones siguen flujo request -> approve|reject, con expiracion.
 
-Comandos: save, search, get, timeline, conflicts, session, promote,
-          policy list|check|attest, deviation request|approve|reject|list,
+Comandos: save, search, get, timeline, conflicts, session, promote, context,
+          close-check, policy list|check|attest, deviation request|approve|reject|list,
           reindex, doctor, export.
+
+v1.3: topic_key (identidad estable por tema: guardar con la misma clave
+supersede la memoria anterior del tema), handoff estructurado en session end,
+close-check (gate verificable de cierre de sprint/ciclo) y context (digest
+minimo de arranque para el orquestador, equivalente a mem_context).
 Overrides: --root, SDLCMEM_ROOT (project), SDLCMEM_USER_ROOT, SDLCMEM_ORG_ROOT.
 """
 import os, re, sys, json, sqlite3, argparse, datetime, unicodedata, glob
@@ -52,12 +57,16 @@ def db(root):
     con = sqlite3.connect(dbp)
     con.executescript("""
     CREATE TABLE IF NOT EXISTS entries(id TEXT PRIMARY KEY, title TEXT, type TEXT, project TEXT,
-        created TEXT, session TEXT, file TEXT, tags TEXT, links TEXT);
+        created TEXT, session TEXT, file TEXT, tags TEXT, links TEXT, topic_key TEXT DEFAULT '');
     CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5(id, title, body, tokenize='unicode61');
     CREATE TABLE IF NOT EXISTS relations(src TEXT, dst TEXT, relation TEXT, status TEXT DEFAULT 'judged',
         note TEXT DEFAULT '', PRIMARY KEY(src, dst, relation));
     CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, project TEXT, started TEXT, ended TEXT, summary TEXT DEFAULT '');
     """)
+    try:  # migracion suave para indices creados con v1.2 (sin topic_key)
+        con.execute("ALTER TABLE entries ADD COLUMN topic_key TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
     return con
 
 # ---------- parseo de entradas ----------
@@ -102,7 +111,7 @@ created: {created}
 session: {session}
 tags: [{tags}]
 links: [{links}]
-supersedes: [{supersedes}]{extra_meta}
+supersedes: [{supersedes}]{topic_meta}{extra_meta}
 ---
 # {title}
 
@@ -133,9 +142,10 @@ def fts_candidates(con, mid, title):
         return []
 
 def index_entry(con, e):
-    con.execute("INSERT OR REPLACE INTO entries VALUES (?,?,?,?,?,?,?,?,?)",
+    con.execute("INSERT OR REPLACE INTO entries VALUES (?,?,?,?,?,?,?,?,?,?)",
         (e["id"], e.get("title", ""), e.get("type", ""), e.get("project", ""), e.get("created", ""),
-         e.get("session", ""), e["file"], ",".join(e.get("tags", [])), ",".join(e.get("links", []))))
+         e.get("session", ""), e["file"], ",".join(e.get("tags", [])), ",".join(e.get("links", [])),
+         e.get("topic_key", "")))
     con.execute("DELETE FROM fts WHERE id=?", (e["id"],))
     con.execute("INSERT INTO fts VALUES (?,?,?)", (e["id"], e.get("title", ""), e.get("body", "")))
     for dst in e.get("supersedes", []):
@@ -163,6 +173,20 @@ def cmd_save(a):
     created = datetime.datetime.now().isoformat(timespec="seconds")
     session = current_session(root)
     sup = [s.strip() for s in a.supersedes.split(",") if s.strip()] if a.supersedes else []
+    topic_key = (getattr(a, "topic_key", "") or "").strip()
+    if topic_key and scope == "project":
+        # Identidad estable por tema: la memoria vigente anterior con la misma
+        # clave queda supersedida automaticamente (evita duplicados competidores).
+        con0 = db(root)
+        rows = con0.execute(
+            """SELECT e.id, e.title FROM entries e WHERE e.topic_key=? AND
+               NOT EXISTS (SELECT 1 FROM relations r WHERE r.dst=e.id AND r.relation='supersedes')""",
+            (topic_key,)).fetchall()
+        con0.close()
+        for rid, rtitle in rows:
+            if rid not in sup:
+                sup.append(rid)
+                print(f"Auto-supersede por topic_key '{topic_key}': {rid} ({rtitle})")
     extra = ""
     if a.type == "policy":
         extra = f"\nenforcement: {a.enforcement}\napplies_to: {a.applies_to or 'all'}"
@@ -171,10 +195,11 @@ def cmd_save(a):
     open(fpath, "w", encoding="utf-8").write(TEMPLATE.format(
         id=mid, type=a.type, project=a.project or os.path.basename(os.getcwd()), created=created,
         session=session, tags=a.tags or "", links=a.links.upper() if a.links else "",
-        supersedes=",".join(sup), extra_meta=extra, title=a.title, what=a.what or "-",
+        supersedes=",".join(sup), topic_meta=f"\ntopic_key: {topic_key}" if topic_key else "",
+        extra_meta=extra, title=a.title, what=a.what or "-",
         why=a.why or "-", where=a.where or "-", details=a.details or "-", learned=a.learned or "-"))
     e = {"id": mid, "type": a.type, "project": a.project or os.path.basename(os.getcwd()),
-         "created": created, "session": session, "title": a.title,
+         "created": created, "session": session, "title": a.title, "topic_key": topic_key,
          "tags": [t.strip() for t in a.tags.split(",") if t.strip()] if a.tags else [],
          "links": [l.strip().upper() for l in a.links.split(",") if l.strip()] if a.links else [],
          "supersedes": sup, "file": fpath, "body": open(fpath, encoding="utf-8").read()}
@@ -284,9 +309,28 @@ def cmd_session(a):
         n = con.execute("SELECT COUNT(*) FROM entries WHERE session=?", (sid,)).fetchone()[0]
         con.commit()
         spath = os.path.join(paths(root)[3], f"{sid}.md")
-        open(spath, "w", encoding="utf-8").write(
-            f"# Resumen de sesion {sid}\n\n**Memorias creadas**: {n}\n\n**Resumen**: {a.summary or '-'}\n")
+        goal = getattr(a, "goal", "") or "-"
+        done = getattr(a, "done", "") or "-"
+        nxt = getattr(a, "next", "") or "-"
+        files = getattr(a, "files", "") or "-"
+        open(spath, "w", encoding="utf-8").write(f"""# Handoff de sesion {sid}
+
+**Objetivo**: {goal}
+
+**Trabajo realizado**: {done}
+
+**Memorias creadas**: {n}
+
+**Proximos pasos**: {nxt}
+
+**Archivos relevantes**: {files}
+
+**Resumen**: {a.summary or '-'}
+""")
         print(f"Sesion cerrada: {sid} ({n} memorias) -> {spath}")
+        if n == 0:
+            print("AVISO: la sesion cierra sin memorias. Si hubo decisiones, bugs o aprendizajes,")
+            print("guardalos con 'mem.py save' antes de cerrar (o registra el por que no aplica).")
     con.close()
 
 def cmd_promote(a):
@@ -487,15 +531,109 @@ def cmd_deviation(a):
     if a.sub == "approve":
         print("La desviacion queda vigente hasta 'expires'. Verificar con 'policy check'.")
 
+# ---------- v1.3: context, close-check ----------
+
+def sprint_window_start(spec_dir):
+    """Inicio de la ventana del sprint: fecha del ultimo sprint review (o None = todo)."""
+    reps = sorted(glob.glob(os.path.join(spec_dir, "reports", "sprint*review*.md")))
+    if not reps:
+        return None
+    return datetime.datetime.fromtimestamp(os.path.getmtime(reps[-1])).isoformat(timespec="seconds")
+
+def cmd_close_check(a):
+    """Gate verificable de cierre de ciclo: falla si el sprint cierra sin las
+    evidencias de memoria/metricas que la Fase 8 promete. Exit 1 = ciclo NO cerrado."""
+    root = scope_root(a, "project")
+    spec_dir = os.path.dirname(os.path.abspath(root))
+    since = a.since or sprint_window_start(spec_dir)
+    falta = []
+    con = db(root)
+    if since:
+        learn = con.execute("SELECT COUNT(*) FROM entries WHERE type='learning' AND created>=?", (since,)).fetchone()[0]
+        closed = con.execute("SELECT COUNT(*) FROM sessions WHERE ended IS NOT NULL AND ended>=?", (since,)).fetchone()[0]
+    else:
+        learn = con.execute("SELECT COUNT(*) FROM entries WHERE type='learning'").fetchone()[0]
+        closed = con.execute("SELECT COUNT(*) FROM sessions WHERE ended IS NOT NULL").fetchone()[0]
+    open_s = con.execute("SELECT id FROM sessions WHERE ended IS NULL").fetchall()
+    con.close()
+    ventana = f"desde {since[:16]}" if since else "desde el inicio del proyecto"
+    print(f"=== close-check ({ventana}) ===")
+    if learn < 1:
+        falta.append("sin memoria 'learning' del sprint — guardar las senales de METRICS.md con 'mem.py save --type learning'")
+    if closed < 1:
+        falta.append("sin sesion cerrada con handoff — cerrar con 'mem.py session end --goal ... --done ... --next ...'")
+    if open_s:
+        falta.append(f"sesion(es) abiertas sin cerrar: {', '.join(s[0] for s in open_s)}")
+    usage = os.path.join(spec_dir, "metrics", "usage.jsonl")
+    n_ev = 0
+    if os.path.isfile(usage):
+        for line in open(usage, encoding="utf-8"):
+            line = line.strip()
+            if not line: continue
+            try:
+                ts = json.loads(line).get("ts", "")
+            except json.JSONDecodeError:
+                continue
+            if not since or ts >= since:
+                n_ev += 1
+    if n_ev < 1:
+        falta.append("usage.jsonl sin activaciones en la ventana — las metricas de skills estan muertas; "
+                     "registrar con 'skill_metrics.py use' (los recibos ya auto-registran)")
+    for f in falta:
+        print(f"  FALTA: {f}")
+    if falta:
+        print(f"\nCIERRE BLOQUEADO: {len(falta)} evidencia(s) pendiente(s). El ciclo no puede archivarse.")
+        sys.exit(1)
+    print(f"  learning: {learn} | sesiones cerradas: {closed} | activaciones: {n_ev}")
+    print("Cierre verificado: el ciclo puede archivarse.")
+
+def cmd_context(a):
+    """Digest minimo de arranque para el orquestador (pocos tokens):
+    sesion activa, ultimo handoff, memorias vigentes recientes, conflictos y politicas."""
+    root = scope_root(a, "project")
+    if not os.path.isfile(paths(root)[2]):
+        print("Sin memoria de proyecto todavia (se crea al primer 'mem.py save' o 'session start').")
+        return
+    con = db(root)
+    print("=== mem context (project) ===")
+    row = con.execute("SELECT id, started FROM sessions WHERE ended IS NULL ORDER BY started DESC LIMIT 1").fetchone()
+    print(f"Sesion activa: {row[0]} (desde {row[1][:16]})" if row else "Sesion activa: ninguna — abrir con 'mem.py session start'")
+    row = con.execute("SELECT id, ended, summary FROM sessions WHERE ended IS NOT NULL ORDER BY ended DESC LIMIT 1").fetchone()
+    if row:
+        print(f"Ultimo handoff: {row[0]} ({row[1][:16]})")
+        if row[2]: print(f"  resumen: {row[2][:200]}")
+        print(f"  detalle: sessions/{row[0]}.md")
+    rows = con.execute(
+        """SELECT e.id, e.type, e.title, e.created FROM entries e
+           WHERE NOT EXISTS (SELECT 1 FROM relations r WHERE r.dst=e.id AND r.relation='supersedes')
+           ORDER BY e.created DESC LIMIT ?""", (a.limit,)).fetchall()
+    print(f"\nMemorias vigentes recientes ({len(rows)}):")
+    for rid, typ, title, created in rows:
+        print(f"  {rid}  [{typ}]  {title}  ({created[:10]})")
+    pend = con.execute("SELECT COUNT(*) FROM relations WHERE relation='candidate' AND status='pending'").fetchone()[0]
+    conf = con.execute("SELECT COUNT(*) FROM relations WHERE relation='conflicts_with'").fetchone()[0]
+    con.close()
+    print(f"\nConflictos: {conf} | candidatos pendientes: {pend}" +
+          (" — resolver antes de GATE 1" if conf or pend else ""))
+    try:
+        pols = org_policies(a, mandatory_only=True)
+        att = load_attestations(a)
+        viol = [p["id"] for p in pols if att.get(p["id"], {}).get("status") != "compliant"]
+        if pols:
+            print(f"Politicas mandatory: {len(pols) - len(viol)}/{len(pols)} attestadas" +
+                  (f" — violaciones: {', '.join(viol)}" if viol else ""))
+    except Exception:
+        pass
+
 def main():
-    ap = argparse.ArgumentParser(description="Motor de memoria del arnes SDLC v1.2")
+    ap = argparse.ArgumentParser(description="Motor de memoria del arnes SDLC v1.3")
     ap.add_argument("--root", help="Raiz scope project (default ./spec/memory)")
     ap.add_argument("--scope", choices=SCOPES, default="", help="Scope de la operacion (save/conflicts/reindex/export)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("save"); p.add_argument("--type", required=True); p.add_argument("--title", required=True)
     p.add_argument("--scope", choices=SCOPES, default="", help="Scope donde guardar (default project)")
     for f in ["what", "why", "where", "details", "learned", "links", "supersedes", "tags", "project",
-              "enforcement", "applies_to"]:
+              "enforcement", "applies_to", "topic_key"]:
         p.add_argument(f"--{f}", default="")
     p.set_defaults(enforcement="recommended")
     p = sub.add_parser("search"); p.add_argument("query"); p.add_argument("--any", action="store_true")
@@ -510,8 +648,14 @@ def main():
     p.add_argument("--status", default="")
     p = sub.add_parser("session"); p.add_argument("sub", choices=["start", "end"])
     p.add_argument("--project", default=""); p.add_argument("--summary", default="")
+    for f in ["goal", "done", "next", "files"]:
+        p.add_argument(f"--{f}", default="", help=f"handoff estructurado ({f})")
     p = sub.add_parser("promote"); p.add_argument("id"); p.add_argument("--to", choices=["user", "org"], required=True)
     sub.add_parser("reindex")
+    p = sub.add_parser("context", help="digest minimo de arranque (orquestador)")
+    p.add_argument("--limit", type=int, default=8)
+    p = sub.add_parser("close-check", help="gate verificable de cierre de ciclo (Fase 8)")
+    p.add_argument("--since", default="", help="ISO datetime; default: fecha del ultimo sprint review")
     p = sub.add_parser("policy"); p.add_argument("sub", choices=["list", "check", "attest"])
     p.add_argument("id", nargs="?", default=""); p.add_argument("--status", choices=["compliant", "violation"], default="compliant")
     p.add_argument("--note", default=""); p.add_argument("--by", default="")
@@ -529,7 +673,8 @@ def main():
     {"save": cmd_save, "search": cmd_search, "get": cmd_get, "timeline": cmd_timeline,
      "conflicts": cmd_conflicts, "session": cmd_session, "promote": cmd_promote,
      "reindex": cmd_reindex, "policy": cmd_policy, "deviation": cmd_deviation,
-     "doctor": cmd_doctor, "export": cmd_export}[a.cmd](a)
+     "doctor": cmd_doctor, "export": cmd_export, "context": cmd_context,
+     "close-check": cmd_close_check}[a.cmd](a)
 
 if __name__ == "__main__":
     main()

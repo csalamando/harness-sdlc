@@ -4,7 +4,7 @@ description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pi
 harness-role: orchestrator
 harness-phases: "transversal"
 harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/"
-harness-version: "2.15.2"
+harness-version: "2.16.0"
 ---
 
 
@@ -55,12 +55,12 @@ El Arquitecto de Software es el **Decision Owner técnico**: el PO define el QU�
 ## Responsabilidades
 
 1. Mantener `spec/pipeline-state.md`: artefacto, fase, rol dueño, estado, gate pendiente, resultado de `detect_stack.py` y Risk Tier vigente.
-2. Antes de invocar un rol, verificar su DoR: entradas presentes **y con recibo vigente** (ver Recibos). Registrar la activación con `skill_metrics.py use --skill <rol> --fase <N>` (telemetría v2.4: sin este registro, el trabajo del rol cuenta como *freestyle* en METRICS.md).
+2. Antes de invocar un rol, verificar su DoR: entradas presentes **y con recibo vigente** (ver Recibos). Registrar la activación con `skill_metrics.py use --skill <rol> --fase <N>` (telemetría v2.4: sin este registro, el trabajo del rol cuenta como *freestyle* en METRICS.md). Desde v2.16 `receipt.py emit` auto-registra la activación como respaldo contra el olvido (deduplicada contra el uso manual), pero el registro manual **antes** de activar sigue siendo la fuente primaria.
 3. Al recibir un artefacto, ejecutar `gate_checker.py`; si pasa, **emitir recibo** con `receipt.py emit`, incluyendo telemetría si está disponible: `--tokens-in/-out --tokens-src reportado` cuando la plataforma del agente expone el consumo, o `--tokens-src estimado` (chars/4, lo calcula el script) cuando no; `--attempts K` si el gate necesitó reintentos.
 4. Armar el paquete de contexto mínimo por rol con `context_packager.py` — nunca pasar toda la spec a todos. Si existe `spec/INDEX.md` va primero (orientación de una página).
 5. Ante cambio de spec: declarar relación (supersedes/conflicts_with), correr `spec_diff_impact.py` (impacto en spec) **y** `code_intel.py impact <artefacto/símbolo>` (impacto en código), revocar recibos impactados, re-ejecutar solo fases afectadas.
 6. Mantener trazabilidad con `traceability_matrix.py`: historia → Gherkin → test → código.
-7. Sesiones de memoria: abrir con la skill sdlc-memory al iniciar trabajo, buscar memoria relevante por fase, cerrar con resumen. Un `conflicts_with` de memoria sin resolver bloquea GATE 1.
+7. Sesiones de memoria: abrir con la skill sdlc-memory al iniciar trabajo (`mem.py context` da el digest de arranque: sesión activa, último handoff, memorias vigentes, conflictos), buscar memoria relevante por fase, cerrar con handoff estructurado (`session end --goal --done --next --files`). Temas evolutivos: re-guardar con `--topic_key` estable (auto-supersede) en vez de crear duplicados. Un `conflicts_with` de memoria sin resolver bloquea GATE 1.
 8. Health check del arnés con `harness_doctor.py` al instalar o cuando algo falle.
 9. Recomendar perfiles de modelo por fase según `references/model-profiles.md`.
 
@@ -94,8 +94,8 @@ Al completarse y verificarse un sprint/incremento:
 3. Marcar memorias superseded según corresponda; resolver conflictos pendientes.
 4. `traceability_matrix.py` final en verde + `receipt.py status` en `spec/receipts/` + drift de diagramas en verde (`iac_to_diagram.py check` y `pipeline_diagram.py check` si existen las fuentes).
 5. Generar el **Sprint Review** con `sprint_review.py --sprint <N>` (snapshot versionado en `spec/reports/sprint-review-NN.md`: avance, desempeño del arnés con las métricas de skills, lead times, tendencia vs sprint anterior y aprendizajes) y guardar una memoria `tipo: learning` con las señales relevantes (skills con rechazos de gate, tokens altos, freestyle detectado) — la retroalimentación de mejora queda institucionalizada. `METRICS.md` queda como tablero vivo entre sprints; el sprint review es el registro histórico.
-6. Regenerar el **dashboard vivo** con `harness_graph.py --proyecto .` (v2.12, ADR-002: UN `spec/dashboard.html` — gates pintados por recibos, fase actual, loops activos, tendencias leídas de los sprint reviews). También se regenera tras emitir/invalidar un recibo; `--check` en CI. Es visualización, no evidencia: no bloquea gates.
-7. Cerrar sesión de memoria con resumen del sprint. El ciclo queda cerrado y la próxima iteración arranca desde una spec consolidada.
+6. Regenerar el **dashboard vivo** con `harness_graph.py --proyecto .` (v2.12, ADR-002: UN `spec/dashboard.html` — gates pintados por recibos, fase actual, loops activos, tendencias leídas de los sprint reviews, últimas sesiones/handoffs desde v2.16). También se regenera tras emitir/invalidar un recibo; `--check` en CI. Es visualización, no evidencia: no bloquea gates.
+7. Cerrar sesión de memoria con handoff estructurado (`mem.py session end --goal --done --next --files`) y verificar el cierre con `mem.py close-check` (v2.16): si falta la memoria `learning`, el handoff o las activaciones en `usage.jsonl`, **el ciclo NO se archiva** (exit 1) — la disciplina de memoria y métricas deja de ser opcional. Con el cierre verificado, la próxima iteración arranca desde una spec consolidada.
 
 ## Telemetría de skills (v2.4) y Sprint Review (v2.5)
 

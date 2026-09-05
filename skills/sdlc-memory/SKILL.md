@@ -18,6 +18,9 @@ Memoria persistente, Git-nativa y agent-agnostic para el pipeline SDLC. Compleme
 5. **Dos transportes**: CLI directo (`mem.py`, cualquier agente con terminal) y MCP stdio (`mem_mcp.py`, agentes compatibles con MCP). Misma lógica, mismo storage.
 6. **Scopes con precedencia** (v1.2): `project` (`./spec/memory`, versionada en Git), `user` (`~/.sdlcmem/user`, personal cross-proyecto), `org` (`~/.sdlcmem/org`, patrones y políticas de la organización). Búsqueda federada en los tres; lo específico vence a lo general.
 7. **Gobierno de políticas** (v1.2): tipo `policy` en scope org con `enforcement: mandatory|recommended`. Toda policy mandatory debe estar attestada `compliant` o tener desviación **aprobada y vigente** antes del GATE 1 (`policy check`). Las desviaciones siguen flujo `request → approve|reject` con aprobador humano designado y fecha de expiración. El scope org rechaza contenido con patrones de secretos.
+8. **Identidad estable por tema** (v1.3): `save --topic_key "catalogos/fk-chips"` da al tema una clave estable; al guardar de nuevo con la misma clave, la memoria vigente anterior queda **auto-supersedida** — los temas evolutivos se actualizan en vez de acumular duplicados competidores.
+9. **Cierre verificable** (v1.3): `close-check` es el gate de la Fase 8 — falla (exit 1) si el ciclo cierra sin memoria `learning`, sin handoff de sesión, con sesiones abiertas o con `usage.jsonl` vacío en la ventana del sprint. La disciplina deja de ser texto: se verifica.
+10. **Handoff estructurado** (v1.3): `session end --goal --done --next --files` deja un handoff recuperable (tras compactación o cambio de agente); el dashboard del proyecto muestra las últimas sesiones ("qué se está trabajando").
 
 ## Cuándo guardar memoria (y cuándo no)
 
@@ -26,10 +29,11 @@ NO guardar: nada que ya esté en la spec (la memoria enlaza a la spec, no la dup
 
 ## Protocolo en el pipeline
 
-- **session start**: el orquestador abre sesión al iniciar trabajo en el proyecto; antes, hace `mem_search` de las fases/artefactos que va a tocar.
-- **Durante cada fase**: el rol guarda decisiones y aprendizajes relevantes con `links` a sus artefactos.
+- **session start**: el orquestador abre sesión al iniciar trabajo en el proyecto; antes, corre `mem.py context` (digest de arranque: sesión activa, último handoff, memorias vigentes, conflictos y políticas — pocos tokens) y hace `mem_search` de las fases/artefactos que va a tocar.
+- **Durante cada fase**: el rol guarda decisiones y aprendizajes relevantes con `links` a sus artefactos. Para temas evolutivos, usar `--topic_key` estable y re-guardar sobre la misma clave en vez de crear memorias competidoras.
 - **Al guardar**: si aparecen candidatos a conflicto, resolverlos antes de seguir (`conflicts list` → `conflicts resolve`). Un `conflicts_with` sin resolver **bloquea el GATE 1** igual que una contradicción en la spec.
-- **session end**: al cerrar, resumen ejecutivo — es la primera lectura de la próxima sesión.
+- **session end**: handoff estructurado obligatorio: `--goal --done --next --files` — es la primera lectura de la próxima sesión y alimenta la vista de sesiones del dashboard.
+- **Cierre de ciclo (Fase 8)**: `close-check` debe salir en verde **antes** de archivar el sprint; si falta evidencia (learning, handoff, métricas), el ciclo no se archiva.
 - **Cambio de spec**: si un artefacto cambia, verificar memorias con `links` afectados y marcarlas superseded si el cambio las invalida.
 - **Antes de GATE 1**: correr `policy check`. Debe salir todo `COMPLIANT` o `WAIVED`; un `VIOLATION` bloquea el gate igual que una contradicción en la spec.
 
@@ -80,7 +84,10 @@ python3 scripts/mem.py get MEM-20260808-001
 python3 scripts/mem.py timeline MEM-20260808-001
 python3 scripts/mem.py conflicts list
 python3 scripts/mem.py conflicts resolve MEM-...-002 MEM-...-001 --relation supersedes --note "la nueva reemplaza"
-python3 scripts/mem.py session end --summary "Fase 2 cerrada; auth definida con JWT rotativo"
+python3 scripts/mem.py session end --summary "Fase 2 cerrada; auth definida con JWT rotativo" \
+    --goal "cerrar Fase 2" --done "auth JWT rotativo definida" --next "Fase 4: implementar" --files "spec/architecture.md"
+python3 scripts/mem.py context        # digest de arranque (sesión, handoff, memorias vigentes, conflictos)
+python3 scripts/mem.py close-check    # gate de cierre de ciclo (exit 1 si falta evidencia)
 python3 scripts/mem.py reindex      # reconstruye el índice desde markdown (tras pull/clone)
 python3 scripts/mem.py doctor       # salud del sistema
 python3 scripts/mem.py export       # dump JSON completo

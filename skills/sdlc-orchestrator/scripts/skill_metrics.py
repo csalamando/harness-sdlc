@@ -68,7 +68,25 @@ def load_usage(spec_dir):
                         events.append(json.loads(line))
                     except json.JSONDecodeError:
                         pass
-    return events
+    # v2.16: deduplicar auto-registros de receipt.py — colapsar a uno por
+    # skill+fase+dia, y descartarlos donde ya existe un uso manual del mismo
+    # skill+fase (el manual manda; el auto es respaldo contra el olvido).
+    manual_pairs = {(norm(e.get("skill", "")), str(e.get("fase", "")))
+                    for e in events if not e.get("auto")}
+    out, seen_auto = [], set()
+    for e in events:
+        if not e.get("auto"):
+            out.append(e)
+            continue
+        pair = (norm(e.get("skill", "")), str(e.get("fase", "")))
+        if pair in manual_pairs:
+            continue
+        key = (pair[0], pair[1], str(e.get("ts", ""))[:10])
+        if key in seen_auto:
+            continue
+        seen_auto.add(key)
+        out.append(e)
+    return out
 
 
 def load_receipts(spec_dir):

@@ -274,6 +274,32 @@ def parse_reviews(spec_dir):
     return out
 
 
+def recent_sessions(spec_dir, limit=4):
+    """Handoffs de sesión más recientes (degrada a [] si no hay)."""
+    import re as _re
+    d = os.path.join(spec_dir, "memory", "sessions")
+    if not os.path.isdir(d):
+        return []
+    found = []
+    for f in os.listdir(d):
+        if not f.endswith(".md"):
+            continue
+        p = os.path.join(d, f)
+        try:
+            text = open(p, encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        done = _re.search(r"\*\*Trabajo realizado\*\*:\s*(.+)", text)
+        nxt = _re.search(r"\*\*Proximos pasos\*\*:\s*(.+)", text)
+        res = _re.search(r"\*\*Resumen\*\*:\s*(.+)", text)
+        found.append((os.path.getmtime(p), {
+            "id": f[:-3],
+            "done": (done.group(1).strip() if done else (res.group(1).strip() if res else "-"))[:180],
+            "next": (nxt.group(1).strip() if nxt else "-")[:180],
+        }))
+    return [s for _, s in sorted(found, key=lambda x: x[0], reverse=True)[:limit]]
+
+
 def recent_learnings(spec_dir, limit=4):
     """Títulos de las memorias learning más recientes (degrada a [] si no hay)."""
     d = os.path.join(spec_dir, "memory", "entries")
@@ -608,6 +634,7 @@ def derive_project(project_dir):
         "tiempos": {"fases": phase_times(recs), "ciclos": cycle_times(reviews, recs)},
         "fases_detalle": fases_detalle,
         "aprendizajes": recent_learnings(spec_dir),
+        "sesiones": recent_sessions(spec_dir),
     }
 
 
@@ -1187,6 +1214,15 @@ def render_dashboard_html(model, state_json=""):
     else:
         learns = '<div class="empty">Sin memorias learning registradas.</div>'
 
+    if model.get("sesiones"):
+        sess = "".join(
+            f'<div class="learn">🕓 <b>{esc(s["id"])}</b><br>'
+            f'<span style="color:#94a3b8">hecho:</span> {esc(s["done"])}<br>'
+            f'<span style="color:#94a3b8">sigue:</span> {esc(s["next"])}</div>'
+            for s in model["sesiones"])
+    else:
+        sess = '<div class="empty">Sin handoffs de sesión — cerrar con mem.py session end.</div>'
+
     # Detalle por fase: ahora vive en el popup (clic en nodos del grafo o del
     # stepper) — los datos viajan incrustados como JSON para el modal.
     import json as _json
@@ -1243,9 +1279,11 @@ def render_dashboard_html(model, state_json=""):
 <div class="sub">Generado: {model["generado"]} · arnés v{esc(model.get("harness_version", "?"))} · spec/dashboard.html (artefacto derivado — no editar a mano)</div>
 <div class="topbtns">
   <button onclick="openBox('📚 Aprendizajes recientes (memorias learning)','learn-src')">📚 Aprendizajes</button>
+  <button onclick="openBox('🕓 Últimas sesiones (handoffs)','sess-src')">🕓 Sesiones</button>
   <button onclick="openBox('📖 Glosario del arnés','gloss-src')">📖 Glosario</button>
 </div>
 <div id="learn-src" style="display:none">{learns}</div>
+<div id="sess-src" style="display:none">{sess}</div>
 <div id="gloss-src" style="display:none"><table>{gloss}</table></div>
 
 <details class="panel" open><summary>Pipeline — estado actual</summary>

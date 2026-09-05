@@ -7,6 +7,22 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.16.0] - 2026-09-04
+
+**"La memoria se cierra con evidencia, no con voluntad."**  v2.16 cierra brecha detectada sobre la disciplina de memoria/métricas estaba prescrita en texto pero nada la verificaba — proyectos con 14 sprints y **cero** memorias.
+
+### Added
+- **`mem.py close-check`** (gate verificable de cierre de ciclo, Fase 8): exit 1 si el sprint cierra sin memoria `learning` en la ventana, sin handoff de sesión, con sesiones abiertas o con `usage.jsonl` vacío. La ventana se deriva de la fecha del último sprint review (`--since` para override).
+- **`mem.py save --topic_key`**: identidad estable por tema — re-guardar con la misma clave **auto-supersede** la memoria vigente anterior (mata los duplicados competidores tipo `tablas-nombres-...-p` / `...-m` de CATI). Columna `topic_key` en el índice con migración suave.
+- **`mem.py context`**: digest mínimo de arranque para el orquestador (sesión activa, último handoff, memorias vigentes recientes, conflictos, políticas mandatory) — equivalente al `mem_context` de engram, en pocos tokens.
+- **Handoff estructurado**: `mem.py session end --goal --done --next --files` escribe `sessions/SES-*.md` con secciones de handoff recuperables tras compactación; avisa si la sesión cierra sin memorias.
+- **Sesiones en el dashboard**: `harness_graph.py` lee `spec/memory/sessions/` y muestra los últimos handoffs (botón "🕓 Sesiones") — el dashboard responde "qué se está trabajando", no solo "qué se ha generado".
+- **Auto-registro de activaciones**: `receipt.py emit --role X` escribe la activación en `spec/metrics/usage.jsonl` como respaldo contra el olvido de `skill_metrics.py use`; `skill_metrics.py report` deduplica (el uso manual manda; los auto-registros colapsan a uno por skill+fase+día).
+
+### Changed
+- `sdlc-memory/SKILL.md`: protocolo actualizado (context al arrancar, topic_key, handoff estructurado, close-check en Fase 8).
+- `sdlc-orchestrator/SKILL.md`: paso 7 del flujo y Fase 8 exigen handoff + `close-check` en verde antes de archivar el ciclo.
+
 ## [2.15.2] - 2026-09-02
 
 ### Fixed
