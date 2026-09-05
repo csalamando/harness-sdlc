@@ -1,0 +1,36 @@
+{
+  "kind": "flow",
+  "titulo": "Ejemplo — pipeline CI/CD con GATE humano",
+  "fuente": "spec/diagrams/pipeline-cicd.ir.json",
+  "bandas": "filas",
+  "grupos": {"01 / CI automatico": "#0ea5e9", "02 / Correccion": "#f472b6"},
+  "nodos": [
+    {"id": "push",   "titulo": "Push a main",       "sub": "trigger",            "tipo": "source",    "grupo": "01 / CI automatico", "detalle": "Todo push dispara el pipeline completo."},
+    {"id": "lint",   "titulo": "Lint + unit",       "sub": "backend · frontend", "tipo": "transform", "grupo": "01 / CI automatico", "detalle": "Ruff + pytest; ng lint + Karma."},
+    {"id": "e2e",    "titulo": "Contract + E2E",    "sub": "Playwright",         "tipo": "transform", "grupo": "01 / CI automatico", "detalle": "Contratos OpenAPI + flujos criticos E2E."},
+    {"id": "gate",   "titulo": "GATE 3",            "sub": "aprobacion humana",  "tipo": "decision",  "grupo": "01 / CI automatico", "detalle": "Recibo vigente + aprobacion del owner. Sin esto no hay deploy."},
+    {"id": "deploy", "titulo": "Deploy prod",       "sub": "Railway",            "tipo": "service",   "grupo": "01 / CI automatico", "detalle": "Despliegue automatico tras aprobacion."},
+    {"id": "fin",    "titulo": "Release publicado", "sub": "tag + recibo",       "tipo": "terminal",  "grupo": "01 / CI automatico", "detalle": "Tag semver + notas + assets."},
+    {"id": "fix",    "titulo": "Correccion",        "sub": "rama hotfix",        "tipo": "job",       "grupo": "02 / Correccion",    "detalle": "Una correccion acotada por gate antes de escalar."}
+  ],
+  "aristas": [
+    {"desde": "push", "hasta": "lint", "label": "commit"},
+    {"desde": "lint", "hasta": "e2e", "label": "verde"},
+    {"desde": "e2e", "hasta": "gate", "label": "evidencia"},
+    {"desde": "gate", "hasta": "deploy", "label": "aprobado"},
+    {"desde": "deploy", "hasta": "fin", "label": "OK"},
+    {"desde": "gate", "hasta": "fix", "label": "rechazado"},
+    {"desde": "fix", "hasta": "lint", "label": "reintento", "back": true}
+  ],
+  "insights": [
+    {"titulo": "Ruta feliz", "color": "#34d399", "bullets": [
+      "commit → lint → contract/E2E → GATE 3 → deploy → release",
+      "Cada etapa deja evidencia: recibo y tag en la release"]},
+    {"titulo": "Gate humano", "color": "#f472b6", "bullets": [
+      "GATE 3 exige recibo vigente y aprobacion del owner",
+      "El rechazo abre una correccion acotada, no un rediseño"]},
+    {"titulo": "Reintentos", "color": "#fbbf24", "bullets": [
+      "El reintento vuelve a lint, no al inicio del pipeline",
+      "Los retrocesos quedan visibles como back-edges punteados"]}
+  ]
+}

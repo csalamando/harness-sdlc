@@ -4,7 +4,7 @@ description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pi
 harness-role: orchestrator
 harness-phases: "transversal"
 harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/"
-harness-version: "2.16.0"
+harness-version: "2.17.0"
 ---
 
 
@@ -147,7 +147,7 @@ Al iniciar una iniciativa, el routing ya no se interpreta solo de la prosa de es
 3. **Elegir la ruta mínima** (routing orgánico §4a del README: directo / exploración / hotfix / discovery / full-pipeline) sobre ese conjunto activo. Los gates de entrega (2, 2.5, 3) aplican siempre.
 4. Añadir una skill al arnés = crearla con su frontmatter `harness-*` y regenerar el manifiesto — aparece en el routing sin editar esta skill.
 
-Los scripts de diagramas viven en `sdlc-diagrams/scripts/`: `iac_to_diagram.py`, `pipeline_diagram.py`, `diagram_render.py` (ver Diagramas como mecanismo de aceptación).
+Los scripts de diagramas viven en `sdlc-diagrams/scripts/`: `iac_to_diagram.py`, `pipeline_diagram.py`, `diagram_render.py` (ver Diagramas como mecanismo de aceptación) y `diagram_ir.py` (v2.17: diagramas vivos interactivos desde IR JSON — architecture/workflow/dataflow/lifecycle/sequence con foco, lens, detalle e insights; el IR `spec/diagrams/*.ir.json` es la fuente con recibo, el HTML es vista derivada con `check` anti-drift; ver ADR-003).
 
 ## Gates
 

@@ -301,6 +301,53 @@ try:
 except ImportError:
     check("todos los assets YAML parsean", True, "(pyyaml no disponible — omitido)")
 
+# ── 9c. diagram_ir.py: validate / render / check / diff (ADR-003) ───────────
+print("\n[9c] Diagramas IR interactivos (diagram_ir.py)")
+DIR_SCRIPT = os.path.join(ROOT, "skills", "sdlc-diagrams", "scripts", "diagram_ir.py")
+FIX = os.path.join(ROOT, "tests", "fixtures")
+def rund(*args):
+    p = subprocess.run([sys.executable, DIR_SCRIPT, *args], capture_output=True, text=True, cwd=ROOT)
+    return p.returncode, (p.stdout + p.stderr).strip()
+
+for fx in ("diagram-flow.ir.json", "diagram-sequence.ir.json"):
+    code, out = rund("validate", "--ir", os.path.join(FIX, fx))
+    check(f"validate acepta fixture {fx}", code == 0, out)
+    code, out = rund("validate", "--ir", os.path.join(FIX, fx))
+    with tempfile.TemporaryDirectory() as tmp:
+        out_html = os.path.join(tmp, fx.replace(".ir.json", ".html"))
+        code, out = rund("render", "--ir", os.path.join(FIX, fx), "--out", out_html)
+        cond = code == 0 and os.path.exists(out_html)
+        if cond:
+            content = open(out_html, encoding="utf-8").read()
+            cond = "insights" in content and "#focus=" in content and "http" not in content.replace("http://www.w3.org/2000/svg", "")
+        check(f"render {fx}: HTML auto-contenido con insights e interaccion", cond, out)
+        code, out = rund("check", "--ir", os.path.join(FIX, fx), "--out", out_html)
+        check(f"check {fx}: sin drift tras render", code == 0, out)
+        # drift: tocar el HTML
+        open(out_html, "a", encoding="utf-8").write("<!-- editado a mano -->")
+        code, out = rund("check", "--ir", os.path.join(FIX, fx), "--out", out_html)
+        check(f"check {fx}: detecta HTML editado a mano (exit 1)", code == 1, out)
+
+# validate rechaza IR roto
+with tempfile.TemporaryDirectory() as tmp:
+    bad = os.path.join(tmp, "bad.ir.json")
+    json.dump({"titulo": "roto", "nodos": [{"id": "a", "titulo": "A", "tipo": "service"}],
+               "aristas": [{"desde": "a", "hasta": "fantasma", "label": "x"}]}, open(bad, "w", encoding="utf-8"))
+    code, out = rund("validate", "--ir", bad)
+    check("validate rechaza arista a nodo inexistente (exit 1)", code == 1 and "fantasma" in out, out)
+
+# diff: sin cambios exit 0; con cambios exit 2 y lista el agregado
+code, out = rund("diff", "--old", os.path.join(FIX, "diagram-flow.ir.json"),
+                 "--new", os.path.join(FIX, "diagram-flow.ir.json"))
+check("diff sin cambios: exit 0", code == 0 and "Agregados (0)" in out, out)
+with tempfile.TemporaryDirectory() as tmp:
+    mod = json.load(open(os.path.join(FIX, "diagram-flow.ir.json"), encoding="utf-8"))
+    mod["nodos"].append({"id": "nuevo", "titulo": "Nuevo", "tipo": "job"})
+    p2 = os.path.join(tmp, "mod.ir.json")
+    json.dump(mod, open(p2, "w", encoding="utf-8"))
+    code, out = rund("diff", "--old", os.path.join(FIX, "diagram-flow.ir.json"), "--new", p2)
+    check("diff detecta nodo agregado (exit 2)", code == 2 and "[nodo] nuevo" in out, out)
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

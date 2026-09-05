@@ -7,6 +7,25 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.17.0] - 2026-09-05
+
+**"El diagrama que se explora se mantiene; el que solo se mira, muere."**  v2.17 añade una vía de diagramas **vivos e interactivos** con render determinista de cero tokens, inspirada en [archify](https://github.com/tt-a1i/archify) (inspiración, no dependencia — mismo patrón que engram → `mem.py` en v2.16). Ver [ADR-003](docs/decisions/ADR-003-diagramas-ir-interactivos.md).
+
+### Added
+- **`sdlc-diagrams/scripts/diagram_ir.py`** (stdlib puro): renderer de diagramas interactivos desde IR JSON versionado en `spec/diagrams/*.ir.json`. El IR es la fuente de verdad (diff-able en PR, lo edita el rol dueño, recibe el recibo); el HTML/SVG auto-contenido es vista derivada que **nunca se edita a mano**. Subcomandos: `render`, `validate` (esquema + referencias), `diff` (Before/After: nodos/aristas/mensajes/insights agregados, eliminados, modificados — exit 2 si hay cambios), `check` (anti-drift, exit 1 si el HTML quedó atrás).
+- **Dos motores de layout**: `flow` (architecture / workflow / dataflow / lifecycle según `bandas`: hulls, filas o columnas; rombos `decision`, `terminal` doble borde, back-edges rosa punteados enrutados por los huecos entre columnas) y `sequence` (lifelines, mensajes numerados, retornos punteados, barras de activación con margen, aire real entre cabeceras y primer mensaje).
+- **Interacción uniforme estilo archify** en los 5 tipos: clic en elemento → foco + panel de detalle con relaciones; leyenda clicable tipo *lens* (hasta 2 tipos simultáneos); estado compartible por URL (`#focus=`, `#lens=`); tarjetas de **insights** bajo el diagrama (viven en el IR — el `diff` detecta cuándo un insight queda desalineado del grafo).
+- Fixtures de ejemplo: `tests/fixtures/diagram-flow.ir.json` y `diagram-sequence.ir.json`.
+- Self-test: sección [9c] con 11 checks (validate, render auto-contenido, drift on/off, diff vacío/con cambios, IR inválido). Total: 110 checks.
+
+### Changed
+- `sdlc-diagrams/SKILL.md`: nueva sección "Diagramas interactivos desde IR" con la tabla IR vs drawio y reglas de gobierno (recibo sobre el IR, HTML derivado).
+- `sdlc-orchestrator/SKILL.md`: referencia a `diagram_ir.py` junto a los scripts de diagramas.
+
+### Notas
+- Los `.drawio` siguen siendo el formato para diagramas formales con stakeholders (C4, BPMN, cloud con iconos oficiales); los `.ir.json` son para diagramas vivos de seguimiento. Coexisten.
+- Dueños del IR por tipo: architecture/sequence → `sdlc-software-architect`, workflow CI/CD → `sdlc-devops-engineer`, lifecycle de HU → `sdlc-orchestrator`, dataflow → `sdlc-data-engineer`.
+
 ## [2.16.0] - 2026-09-04
 
 **"La memoria se cierra con evidencia, no con voluntad."**  v2.16 cierra brecha detectada sobre la disciplina de memoria/métricas estaba prescrita en texto pero nada la verificaba — proyectos con 14 sprints y **cero** memorias.

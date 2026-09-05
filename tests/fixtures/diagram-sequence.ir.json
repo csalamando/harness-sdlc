@@ -1,0 +1,30 @@
+{
+  "kind": "sequence",
+  "titulo": "Ejemplo — login con token",
+  "fuente": "spec/diagrams/login.seq.ir.json",
+  "participantes": [
+    {"id": "spa",  "titulo": "Browser (SPA)", "sub": "Angular 18",  "tipo": "ui",       "detalle": "Interceptor JWT adjunta el token en cada request."},
+    {"id": "api",  "titulo": "API REST",      "sub": ".NET 8",      "tipo": "service",  "detalle": "AuthController + middleware de validacion."},
+    {"id": "auth", "titulo": "Entra ID",      "sub": "OAuth2+PKCE", "tipo": "security", "detalle": "IdP corporativo; JWT de 15 min + refresh rotativo."},
+    {"id": "sql",  "titulo": "Azure SQL",     "sub": "auditoria",   "tipo": "db",       "detalle": "Tabla de auditoria; escritura con rol de app (sin DDL)."}
+  ],
+  "mensajes": [
+    {"desde": "spa", "hasta": "api",  "label": "POST /auth/login"},
+    {"desde": "api", "hasta": "auth", "label": "validar credenciales"},
+    {"desde": "auth", "hasta": "api", "label": "token + claims", "retorno": true},
+    {"desde": "api", "hasta": "sql",  "label": "registrar acceso"},
+    {"desde": "sql", "hasta": "api",  "label": "ok", "retorno": true},
+    {"desde": "api", "hasta": "spa",  "label": "200 { jwt, exp }", "retorno": true}
+  ],
+  "insights": [
+    {"titulo": "Ruta feliz", "color": "#34d399", "bullets": [
+      "Login → validacion en Entra ID → JWT de 15 min",
+      "La SPA renueva el token sin intervencion del usuario"]},
+    {"titulo": "Seguridad", "color": "#f59e0b", "bullets": [
+      "OAuth2 + PKCE; refresh token rotativo",
+      "El API nunca ve credenciales, solo valida el JWT"]},
+    {"titulo": "Auditoria", "color": "#38bdf8", "bullets": [
+      "Cada acceso se registra en Azure SQL",
+      "Escritura con rol de app, sin DDL"]}
+  ]
+}
