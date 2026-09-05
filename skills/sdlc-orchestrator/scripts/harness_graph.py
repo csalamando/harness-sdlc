@@ -576,10 +576,23 @@ def derive_project(project_dir):
         art = r.get("artefacto", "")
         b = os.path.basename(art or "?")
         if art:
-            artefactos_href[b] = os.path.relpath(art, spec_dir).replace(os.sep, "/")
+            rel = os.path.relpath(art, spec_dir).replace(os.sep, "/")
+            # Los .md se enlazan a su pagina renderizada por mdview (docs-html/);
+            # el resto (json, yaml, drawio...) va al archivo tal cual.
+            if rel.lower().endswith(".md"):
+                import mdview
+                rel = "docs-html/" + mdview.doc_name(rel)
+            artefactos_href[b] = rel
         mac = GATE_MACRO.get(norm_gate(r.get("gate")))
         if mac:
             artefactos_por_fase.setdefault(mac, []).append(b)
+
+    # Diagramas vivos IR + renders (v2.17/2.18): spec/diagrams/*.html
+    import glob as _gd
+    diagramas = []
+    for p in sorted(_gd.glob(os.path.join(spec_dir, "diagrams", "*.html"))):
+        diagramas.append({"id": os.path.splitext(os.path.basename(p))[0],
+                          "href": "diagrams/" + os.path.basename(p)})
 
     # HU: historias con test y código (degrada a None si no hay estructura).
     # Los proyectos reales no siempre usan src/ + tests/: se exploran los
@@ -618,6 +631,7 @@ def derive_project(project_dir):
         "loops_count": loops_count,
         "artefactos_por_fase": {str(k): sorted(v) for k, v in sorted(artefactos_por_fase.items())},
         "artefactos_href": artefactos_href,
+        "diagramas": diagramas,
         "adrs": parse_adrs(project_dir),
         "radar": parse_radar(spec_dir),
         "contadores": {
@@ -723,6 +737,9 @@ DASH_CSS = """
   .topbtns button { background:#0f172a; border:1px solid #334155; border-radius:8px; color:#cbd5e1;
                     font-size:.82rem; font-weight:600; padding:.4rem .9rem; cursor:pointer; }
   .topbtns button:hover { border-color:#3b82f6; color:#e2e8f0; }
+  .topbtns a.toplink { background:#0f172a; border:1px solid #334155; border-radius:8px; color:#cbd5e1;
+    padding:.45rem .9rem; font-size:.9rem; cursor:pointer; text-decoration:none; }
+  .topbtns a.toplink:hover { border-color:#3b82f6; color:#e2e8f0; }
 """
 
 _STATUS_COLOR = {"ok": "#22c55e", "warn": "#f59e0b", "none": "#475569"}
@@ -1269,6 +1286,8 @@ def render_dashboard_html(model, state_json=""):
 
     gloss = "".join(f'<tr><td style="white-space:nowrap"><b>{esc(t)}</b></td><td>{esc(d)}</td></tr>'
                     for t, d in GLOSARIO)
+    diags = "".join(f'<li><a href="{esc(d["href"])}" style="color:#58a6ff">{esc(d["id"])}</a></li>'
+                    for d in model.get("diagramas") or []) or '<li style="color:#64748b">sin diagramas renderizados en spec/diagrams/</li>'
 
     return f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
@@ -1281,10 +1300,13 @@ def render_dashboard_html(model, state_json=""):
   <button onclick="openBox('📚 Aprendizajes recientes (memorias learning)','learn-src')">📚 Aprendizajes</button>
   <button onclick="openBox('🕓 Últimas sesiones (handoffs)','sess-src')">🕓 Sesiones</button>
   <button onclick="openBox('📖 Glosario del arnés','gloss-src')">📖 Glosario</button>
+  <button onclick="openBox('🗺 Diagramas del proyecto (clic para abrir)','diag-src')">🗺 Diagramas</button>
+  <a class="toplink" href="docs-html/index.html">📄 Documentos</a>
 </div>
 <div id="learn-src" style="display:none">{learns}</div>
 <div id="sess-src" style="display:none">{sess}</div>
 <div id="gloss-src" style="display:none"><table>{gloss}</table></div>
+<div id="diag-src" style="display:none"><ul style="line-height:2">{diags}</ul></div>
 
 <details class="panel" open><summary>Pipeline — estado actual</summary>
 {_stepper_html(model)}
@@ -1342,9 +1364,17 @@ def main_proyecto(a):
 
     html = render_dashboard_html(model, state_json)
     open(out, "w", encoding="utf-8", newline="\n").write(html)
+    # Visor Markdown estatico de la spec (v2.18): los enlaces .md del dashboard
+    # apuntan a spec/docs-html/. Derivado, best-effort: nunca bloquea el dashboard.
+    try:
+        import mdview
+        n_docs = mdview.build(spec_dir, os.path.join(spec_dir, "docs-html"))
+        docs_msg = f" · docs-html: {n_docs} docs"
+    except Exception as e:
+        docs_msg = f" · docs-html OMITIDO ({e})"
     print(f"Dashboard generado: {out}")
     print(f"  fase actual: {model['fase_actual']} · sprints: {model['contadores']['sprints']} "
-          f"· recibos vigentes: {model['contadores']['recibos_vigentes']}")
+          f"· recibos vigentes: {model['contadores']['recibos_vigentes']}{docs_msg}")
     sys.exit(0)
 
 

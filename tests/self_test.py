@@ -348,6 +348,33 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out = rund("diff", "--old", os.path.join(FIX, "diagram-flow.ir.json"), "--new", p2)
     check("diff detecta nodo agregado (exit 2)", code == 2 and "[nodo] nuevo" in out, out)
 
+# ── 9d. mdview: visor Markdown estático de la spec (v2.18) ──────────────────
+print("\n[9d] mdview.py (visor Markdown de la spec)")
+MDV = os.path.join(ORCH, "mdview.py")
+sys.path.insert(0, ORCH)
+import mdview
+html_md = mdview.render_md(
+    "# Titulo\n\nTexto con **negrita** y `codigo`.\n\n"
+    "| A | B |\n|---|---|\n| 1 | 2 |\n\n"
+    "- item\n- item2\n\n```mermaid\nflowchart LR\n A-->B\n```\n\n> cita\n\n[enlace](x.md)\n")
+check("mdview renderiza encabezado/tabla/lista/codigo/cita/enlace",
+      all(t in html_md for t in ("<h1>", "<table>", "<li>", "<pre>", "<blockquote>", "<a href")))
+check("mdview: mermaid queda como codigo (sin red)",
+      "mermaid (ver fuente)" in html_md and "cdn" not in html_md)
+check("mdview doc_name: ruta anidada -> nombre unico",
+      mdview.doc_name("reports/sprint-review-11.md") == "reports__sprint-review-11.html")
+with tempfile.TemporaryDirectory() as tmp:
+    spec = os.path.join(tmp, "spec")
+    os.makedirs(os.path.join(spec, "reports"))
+    open(os.path.join(spec, "vision.md"), "w", encoding="utf-8").write("# Vision\n\nHola **mundo**.")
+    open(os.path.join(spec, "reports", "sprint-review-01.md"), "w", encoding="utf-8").write("# S1\n\ncierre.")
+    n = mdview.build(spec, os.path.join(spec, "docs-html"))
+    idx = open(os.path.join(spec, "docs-html", "index.html"), encoding="utf-8").read()
+    pag = open(os.path.join(spec, "docs-html", "vision.html"), encoding="utf-8").read()
+    check("mdview build: genera paginas + index", n == 2 and "vision.html" in idx and "reports__sprint-review-01.html" in idx)
+    check("mdview pagina: estilo propio + backlink al dashboard",
+          "<b>mundo</b>" in pag and "../dashboard.html" in pag)
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

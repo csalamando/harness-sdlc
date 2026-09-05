@@ -7,6 +7,21 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.18.0] - 2026-09-05
+
+**"La spec se lee donde se mira."**  v2.18 convierte el dashboard en el punto de entrada de lectura del proyecto: los documentos Markdown de la spec y los diagramas vivos se abren desde el tablero, renderizados y sin servidor.
+
+### Added
+- **`sdlc-orchestrator/scripts/mdview.py`** (stdlib puro): visor Markdown estático estilo GitHub (tema oscuro acorde al dashboard). `mdview.py build --spec <dir>` genera `spec/docs-html/` con una página por documento (top-level, `reports/`, `adr/`, `diagrams/`, `memory/`) más un `index.html`; cada página enlaza de vuelta al dashboard. Cobertura: encabezados, tablas GFM, listas, citas, código, enlaces, imágenes; mermaid se muestra como código fuente (sin red). Inspirado en el patrón `grip --export` ([joeyespo/grip](https://github.com/joeyespo/grip)) pero **sin GitHub API ni dependencias** — offline y determinista.
+- **Dashboard navegable**: botón **📄 Documentos** (índice de la spec renderizada), botón **🗺 Diagramas** (popup con los `spec/diagrams/*.html` vivos), y los artefactos `.md` del popup de fases ahora abren su **página renderizada** en vez del Markdown crudo.
+- Self-test: sección [9d] (5 checks). Total: 116 checks.
+
+### Changed
+- `harness_graph.py --proyecto`: regenera `spec/docs-html/` en cada corrida (best-effort, nunca bloquea); el modelo incluye `diagramas`.
+
+### Notas
+- `spec/docs-html/` es artefacto derivado (como `dashboard.html`): se regenera, nunca se edita a mano. Recomendado versionarlo para lectura offline; quien prefiera no versionarlo puede ignorarlo en `.gitignore` y regenerarlo con `harness_graph.py --proyecto .`.
+
 ## [2.17.0] - 2026-09-05
 
 **"El diagrama que se explora se mantiene; el que solo se mira, muere."**  v2.17 añade una vía de diagramas **vivos e interactivos** con render determinista de cero tokens, inspirada en [archify](https://github.com/tt-a1i/archify) (inspiración, no dependencia — mismo patrón que engram → `mem.py` en v2.16). Ver [ADR-003](docs/decisions/ADR-003-diagramas-ir-interactivos.md).
