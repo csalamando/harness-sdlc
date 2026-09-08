@@ -12,7 +12,7 @@ Exit 0 = todo verde. Exit 1 = hay fallos (se listan). Stdlib puro, sin deps.
 Historia: nace de la revisión de calidad de v2.8.1, que encontró features
 documentadas por encima de lo que los scripts hacían (ver CHANGELOG [2.8.1]).
 """
-import os, re, subprocess, sys, tempfile, json
+import os, re, subprocess, sys, tempfile, json, shutil
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORCH = os.path.join(ROOT, "skills", "sdlc-orchestrator", "scripts")
@@ -227,6 +227,18 @@ check("modelo incluye artefactos por fase y recorridos de loops",
       model.get("artefactos_por_fase", {}).get("1") == ["vision.md"]
       and model.get("loops_count", {}).get("4->4") == 2
       and model.get("loops_count", {}).get("5->4") == 1)
+# v2.20.1 (lección CI): un recibo con ruta absoluta de Windows no debe romper
+# el basename en Linux (os.path.basename no separa '\\' en POSIX)
+tmp_rec = tempfile.mkdtemp()
+os.makedirs(os.path.join(tmp_rec, "spec", "receipts"))
+json.dump({"artefacto": "D:\\repo\\proyecto\\spec\\vision.md", "gate": "GATE 0",
+           "estado": "vigente", "sha256": "x"},
+          open(os.path.join(tmp_rec, "spec", "receipts", "vision.md.receipt.json"), "w"))
+code, out = run("harness_graph.py", "--proyecto", tmp_rec, "--json")
+model_win = json.loads(out) if code == 0 else {}
+check("derive: basename correcto con ruta Windows en recibo (cross-platform)",
+      model_win.get("artefactos_por_fase", {}).get("1") == ["vision.md"])
+shutil.rmtree(tmp_rec, ignore_errors=True)
 code, out = run("harness_graph.py", "--proyecto", FIXTURE)
 check("dashboard del fixture generado", code == 0 and "Dashboard generado" in out,
       out.splitlines()[-1] if code else "")

@@ -574,9 +574,13 @@ def derive_project(project_dir):
     artefactos_href = {}   # basename -> ruta relativa a spec/ (enlace desde el popup)
     for r in vigentes:
         art = r.get("artefacto", "")
-        b = os.path.basename(art or "?")
+        # Los recibos pueden traer rutas absolutas con separadores de otro SO
+        # (fixture generado en Windows, CI en Linux): normalizar a '/'.
+        a = (art or "").replace("\\", "/")
+        b = a.rsplit("/", 1)[-1] if a else "?"
         if art:
-            rel = os.path.relpath(art, spec_dir).replace(os.sep, "/")
+            s = spec_dir.replace("\\", "/").rstrip("/") + "/"
+            rel = a[len(s):] if a.startswith(s) else b
             # Los .md se enlazan a su pagina del portal (ruta hash del shell);
             # el resto (json, yaml...) va al archivo tal cual en otra pestaña.
             if rel.lower().endswith(".md"):

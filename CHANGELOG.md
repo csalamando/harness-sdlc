@@ -7,6 +7,11 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.20.1] - 2026-09-07
+
+### Fixed
+- **CI en verde (cross-platform)**: `harness_graph.py --proyecto` fallaba en Linux cuando un recibo traía la ruta absoluta del artefacto con separadores de Windows (`D:\...`) — `os.path.basename` no separa `\` en POSIX y el modelo derivaba nombres de artefacto incorrectos. Ahora `derive_project` normaliza ambos separadores al leer `artefacto` de los recibos. Nuevo check de regresión en el self-test con un recibo de ruta Windows (138 checks).
+
 ## [2.20.0] - 2026-09-07
 
 **"El tablero se convierte en el centro de control."**  v2.20 reemplaza el dashboard monolítico por un **portal web único** del proyecto — navegable, buscable y con identidad visual compartida — y retira la generación `.drawio`, que no alcanzaba el nivel de detalle requerido.
