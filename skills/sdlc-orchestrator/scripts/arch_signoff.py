@@ -37,7 +37,7 @@ def collect_artifacts(spec_dir):
             artifacts[name] = sha256(p)
     diagrams = os.path.join(spec_dir, "diagrams")
     if os.path.isdir(diagrams):
-        for d in sorted(Path(diagrams).glob("*.drawio")):
+        for d in sorted(Path(diagrams).glob("*.ir.json")):
             artifacts[f"diagrams/{d.name}"] = sha256(d)
     return artifacts
 

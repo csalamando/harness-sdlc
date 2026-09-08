@@ -42,7 +42,7 @@ mkdocs build        # validación local
 ```
 
 - `nav` del mkdocs.yml se deriva de la estructura de `docs/`; la API reference se regenera desde `api-contract.yaml` (Redoc) **en el pipeline**, no se commitea el HTML.
-- Diagramas: referenciar los `.drawio` exportados a SVG (exportar en CI con drawio-desktop headless o incluir el PNG exportado por la skill sdlc-diagrams) — nunca screenshots.
+- Diagramas: enlazar el HTML interactivo generado por `diagram_ir.py` (vía portal del proyecto) o los SVG/PNG renderizados con mmdc desde Mermaid — nunca screenshots.
 - Versionado del sitio con `mike` (opcional) cuando el producto tenga releases.
 
 ## 3. Confluence (fase posterior)

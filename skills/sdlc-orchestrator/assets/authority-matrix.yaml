@@ -80,8 +80,8 @@ artifacts:
     owner: product-analyst
 
   # Diagramas (v2.6) — mecanismo de aceptación de cambios
-  - path: spec/diagrams/despliegue.drawio
-    owner: cloud-engineer     # derivado del IaC (tfstate/ARM); nunca editado a mano
+  - path: spec/diagrams/despliegue.ir.json
+    owner: cloud-engineer     # IR interactivo (v2.20); el HTML es vista derivada
   - path: spec/diagrams/pipeline-cicd.md
     owner: devops-engineer    # derivado de .github/workflows/; nunca editado a mano
   # Nota: los diagramas de diseño (C4, BPMN, secuencia, Gantt) no se listan

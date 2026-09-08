@@ -23,7 +23,7 @@ skills:
   - name: sdlc-cloud-engineer
     role: cloud-engineer
     phases: [6]
-    owns: [spec/cloud-costs.md, spec/diagrams/despliegue.drawio]
+    owns: [spec/cloud-costs.md, spec/diagrams/despliegue.ir.json]
     gates: []
     optional-deps: []
     scripts: []
@@ -62,7 +62,7 @@ skills:
     owns: []
     gates: []
     optional-deps: [mmdc]
-    scripts: [diagram_ir.py, diagram_render.py, iac_to_diagram.py, pipeline_diagram.py]
+    scripts: [diagram_ir.py, diagram_render.py, pipeline_diagram.py]
   - name: sdlc-enterprise-architect
     role: enterprise-architect
     phases: [2]

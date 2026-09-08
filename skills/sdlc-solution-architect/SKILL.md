@@ -96,7 +96,7 @@ Traspaso: la opción aprobada en GATE 0 + sus ADRs preliminares son **entrada ob
 
 ## Herramientas
 
-- `sdlc-diagrams` para diagramas de la propuesta (drawio, versionados en `spec/diagrams/`)
+- `sdlc-diagrams` para diagramas de la propuesta (IR interactivo vía `diagram_ir.py`, versionados en `spec/diagrams/`)
 - `sdlc-cloud-pricing` para la estimación de costos
 - `sdlc-decision-engine` para scorecard y ADRs Tier 1-2 escalados
 - `gate_checker.py` / `receipt.py` del orquestador para GATE 0

@@ -21,14 +21,14 @@
 
 ### Opción A: <nombre>
 
-- Diagrama: `spec/diagrams/proposal-opcion-a.drawio`
+- Diagrama: `spec/diagrams/proposal-opcion-a.ir.json`
 - Componentes: <...>
 - Integraciones: <...>
 - ADRs preliminares: ADR-P-001 <decisión de dirección>, ADR-P-002 <...>
 
 ### Opción B: <nombre>
 
-- Diagrama: `spec/diagrams/proposal-opcion-b.drawio`
+- Diagrama: `spec/diagrams/proposal-opcion-b.ir.json`
 - Componentes: <...>
 - Integraciones: <...>
 - ADRs preliminares: ADR-P-003 <...>

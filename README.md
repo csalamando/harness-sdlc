@@ -100,7 +100,7 @@ Ordenadas por fase del pipeline (las transversales al final):
 | `sdlc-technical-writer` | Documentación doc-as-code (Wiki / Pages / Confluence) | 4-6 |
 | `sdlc-orchestrator` | Orquestador del pipeline + 18 herramientas CLI | Transversal |
 | `sdlc-memory` | Memoria persistente con scopes y gobierno | Transversal |
-| `sdlc-diagrams` | Diagramas C4, cloud (AWS/Azure/GCP), secuencia, BPMN, Gantt, GitFlow vía drawio MCP + derivación desde IaC/workflows con aprobación por recibo | Transversal |
+| `sdlc-diagrams` | Diagramas interactivos HTML vía IR (`diagram_ir.py`), Mermaid (doc-as-code) y pipeline CI/CD derivado de workflows (`pipeline_diagram.py`), con auto-registro en el portal | Transversal |
 
 </details>
 
@@ -210,9 +210,9 @@ En Fase 8 el orquestador genera `METRICS.md` y guarda las señales como memoria 
 
 Los diagramas no son solo documentación: son un **punto de control**. Ningún diagrama cuenta sin recibo de aprobación del rol dueño sobre su contenido:
 
-1. **Derivados de fuente** (nunca se editan a mano): `iac_to_diagram.py` genera la topología de despliegue desde `terraform.tfstate`/ARM (lo *realmente* desplegado, con iconos oficiales y clusters); `pipeline_diagram.py` genera el diagrama del CI/CD desde `.github/workflows/` y valida `needs:` rotos y ciclos. La regeneración **propone** el cambio → el diff en Git se revisa → el rol dueño lo **acepta** con `receipt.py emit --role cloud-engineer|devops-engineer`. Modo `check` = drift detection en CI y Fase 8.
-2. **De diseño** (C4, secuencia, BPMN, Gantt, GitFlow): edición manual vía drawio MCP, pero si la spec que representan cambia, `spec_diff_impact.py` revoca su recibo → se actualizan y re-aprueban.
-3. **Render headless** (`diagram_render.py`): `.drawio`/Mermaid → SVG/PNG vía drawio-desktop CLI o mmdc (este último renderiza bloques Mermaid dentro de Markdown — doc-as-code). Motores opcionales: sin ellos, el fuente versionado sigue siendo el entregable.
+1. **Derivados de fuente** (nunca se editan a mano): `pipeline_diagram.py` genera el diagrama del CI/CD desde `.github/workflows/` y valida `needs:` rotos y ciclos. La regeneración **propone** el cambio → el diff en Git se revisa → el rol dueño lo **acepta** con `receipt.py emit --role devops-engineer`. Modo `check` = drift detection en CI y Fase 8.
+2. **Interactivos HTML** (`diagram_ir.py`): desde v2.20 los diagramas de arquitectura se generan como HTML interactivo (IR) con tema claro/oscuro y zoom, y se auto-registran en el portal del proyecto (`spec/portal/`).
+3. **Render headless** (`diagram_render.py`): Mermaid → SVG/PNG vía mmdc (renderiza bloques Mermaid dentro de Markdown — doc-as-code). Motores opcionales: sin ellos, el fuente versionado sigue siendo el entregable.
 
 ### 4f. Manifiesto dinámico del arnés (v2.9)
 
@@ -438,8 +438,8 @@ En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias super
 
 ## 9. Herramientas compartidas y propias
 
-- **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), drawio MCP (`sdlc-diagrams`), Penpot MCP (`sdlc-ux-designer`, prototipos de pantalla gobernados).
-- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado + cierre de sprint automatizado), `tdd_order_check.py` (orden TDD test→código verificable en `git log`), `manifest_check.py` (manifiesto dinámico derivado + drift), `harness_graph.py` (grafo interactivo del pipeline + **dashboard vivo del proyecto** + drift). **`sdlc-diagrams/scripts/`:** `iac_to_diagram.py` (despliegue derivado del IaC + drift), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless SVG/PNG).
+- **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), Penpot MCP (`sdlc-ux-designer`, prototipos de pantalla gobernados).
+- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado + cierre de sprint automatizado), `tdd_order_check.py` (orden TDD test→código verificable en `git log`), `manifest_check.py` (manifiesto dinámico derivado + drift), `harness_graph.py` (grafo interactivo del pipeline + **portal vivo del proyecto** + drift). **`sdlc-diagrams/scripts/`:** `diagram_ir.py` (diagramas interactivos HTML vía IR + auto-registro en el portal), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless Mermaid → SVG/PNG).
 - **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
 ---

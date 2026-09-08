@@ -24,6 +24,7 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 
 ### Removed
 - **Generación `.drawio` retirada**: `diagram_render.py` solo procesa Mermaid (`.mmd`/`.md` vía mmdc); los `.drawio` se rechazan con mensaje claro de retiro. La vía vigente para diagramas gobernados es el IR interactivo (`diagram_ir.py`, ADR-003) y Mermaid para renders de CI.
+- **Retiro físico de la vía drawio**: eliminados `iac_to_diagram.py`, las referencias por familia (`c4-and-cloud-styles.md`, `bpmn.md`, `sequence-gantt-gitflow.md`), el asset `c4-contenedores-ejemplo.drawio` y los demos `.drawio`/`tfstate`. Referencias vivas actualizadas: matriz de autoridad y `arch_signoff.py` firman `despliegue.ir.json` (ya no `.drawio`), `harness_doctor.py` solo reporta mmdc, plantillas del solution-architect usan `.ir.json` y el technical-writer enlaza el HTML IR.
 
 ### Notas
 - Retrocompatible: los proyectos existentes regeneran el portal con el mismo `harness_graph.py --proyecto .` de siempre; los recibos, gates y el `--check` del dashboard no cambian. `spec/docs-html/` (v2.18) queda sustituido por `spec/portal/` (puede borrarse a mano).
