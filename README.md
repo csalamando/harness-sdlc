@@ -24,8 +24,30 @@ Eso es todo — el orquestador elige la ruta mínima, activa los roles y exige l
 
 ---
 
+## Demo: el portal del proyecto
+
+`harness_graph.py --proyecto .` genera `spec/portal/` — un portal web navegable, buscable (Ctrl+K) y con tema claro/oscuro, derivado 100% de recibos + spec (cero narración manual). Así se ve en un proyecto real:
+
+| Inicio (pipeline + acumulado) | Métricas (tendencias + tiempos) | Arquitectura (ADRs ↔ Tech Radar) |
+|---|---|---|
+| ![Portal — Inicio](demos/portal2-inicio.png) | ![Portal — Métricas](demos/portal2-metricas.png) | ![Portal — Arquitectura](demos/portal2-arquitectura.png) |
+
+Diagrama vivo interactivo (IR): tema claro/oscuro, zoom, badges de ubicación de despliegue (☁ nube / ⌂ on-premise / ◈ otro), insights y foco por URL:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="demos/arch-diagrams-oscuro.png">
+  <img src="demos/arch-diagrams-claro.png" alt="Diagrama IR — tema claro y oscuro">
+</picture>
+
+Sprint review versionado (gate `sprint-review` bloqueante en CI):
+
+![Sprint review](demos/sprint-review-report.png)
+
+---
+
 ## Tabla de contenidos
 
+[Demo: el portal del proyecto](#demo-el-portal-del-proyecto) ·
 1. [Visión general](#1-visión-general)
 2. [Las 21 skills](#2-las-21-skills)
 3. [El pipeline y los gates](#3-el-pipeline-y-los-gates)
@@ -37,6 +59,7 @@ Eso es todo — el orquestador elige la ruta mínima, activa los roles y exige l
    - [Diagramas como mecanismo de aceptación](#4e-diagramas-como-mecanismo-de-aceptación-de-cambios-v26)
    - [Manifiesto dinámico, grafo y dashboard vivo](#4f-manifiesto-dinámico-del-arnés-v29)
    - [La visibilidad se gobierna, no se pide](#4g-la-visibilidad-se-gobierna-no-se-pide-v215)
+   - [El portal del proyecto](#4h-el-portal-del-proyecto-v220)
 5. [Receipts (RDD): confiar en evidencia, no en narración](#5-receipts-rdd-confiar-en-evidencia-no-en-narración)
 6. [El sistema de memoria](#6-el-sistema-de-memoria)
 7. [Gobernanza de decisiones (v2.0)](#7-gobernanza-de-decisiones-v20)
@@ -154,7 +177,7 @@ Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**
 
 ## 4. Capacidades de gobierno
 
-Siete mecanismos transversales mantienen al agente dentro de los carriles, en cualquier ruta y fase.
+Ocho mecanismos transversales mantienen al agente dentro de los carriles, en cualquier ruta y fase.
 
 ### 4a. Routing orgánico
 
@@ -263,6 +286,16 @@ La lección de fondo: mientras métricas, sprint review y dashboard dependían d
 | **Propiedad** | `spec/METRICS.md`, `spec/metrics/`, `spec/reports/`, `spec/dashboard.html` con dueño en la matriz de autoridad y CODEOWNERS |
 
 Qué queda **deliberadamente fuera** (prometerlo sería mentira): tokens exactos por sesión (solo la plataforma los conoce), TDD intra-sesión (solo verificable vía commits), y la calidad de la aprobación humana en los gates. Detalle completo en la guía, §5o "Qué controla el arnés y qué no".
+
+### 4h. El portal del proyecto (v2.20)
+
+v2.20 reemplaza el dashboard monolítico (v2.12, §4f) por un **portal web único** del proyecto: el mismo `harness_graph.py --proyecto .` emite `spec/portal/` y `spec/dashboard.html` queda como redirect. Las capturas de la [sección Demo](#demo-el-portal-del-proyecto) son de este portal. En pocas líneas:
+
+- **Shell navegable**: menú lateral colapsable por categorías (🏠 Inicio, 📊 Métricas, 🏛 Arquitectura, 💼 Negocio, 🧪 Calidad, 🚀 Operación, 📚 Documentos, 🧠 Memoria) con contadores y subgrupos; routing por hash `#/id/<slug>` (funciona desde `file://`, sin servidor); miga de pan con botones de historial y **última página visitada persistida por proyecto**.
+- **Búsqueda global (Ctrl+K)**: índice de texto plano de todas las páginas — títulos, contenido de los `.md`, nodos e insights de diagramas — con resultados priorizados y resaltado.
+- **Tema claro/oscuro y zoom A−/A/A+ compartidos** con los diagramas IR (mismas variables CSS y mismas claves de `localStorage`); el shell propaga el tema al contenido por `postMessage`.
+- **Páginas modulares y densas**: `inicio` (pipeline compacto + acumulado), `metricas` (tendencias + tiempos en dos columnas), `arquitectura` (tarjetas de diagramas vivos + **ADRs ↔ Tech Radar vinculados**: clic en un ADR resalta su tecnología en el radar y viceversa) y `memoria` (aprendizajes + sesiones lado a lado). Los `.md` de la spec se renderizan dentro del portal (`mdview.py`), con los enlaces internos reescritos a su página renderizada.
+- **Generación modular por registry**: cada generador (`harness_graph`, `mdview`, `diagram_ir`) solo **registra** lo suyo en `spec/portal/registry.json`; `rebuild_index()` poda entradas huérfanas y reescribe el índice, y `portal_lib.py --check` detecta drift en CI. Añadir contenido nunca regenera el sitio a mano.
 
 ---
 
