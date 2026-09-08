@@ -9,4 +9,6 @@ quadrants:
     - technology: "Vitest"
       category: "Testing"
   ASSESS: []
-  HOLD: []
+  HOLD:
+    - technology: "PostgreSQL"
+      category: "Base de datos"

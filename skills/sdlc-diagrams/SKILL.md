@@ -1,75 +1,42 @@
 ---
 name: sdlc-diagrams
-description: "Generador de diagramas del arnés SDLC con el servidor MCP oficial de draw.io (npx @drawio/mcp o mcp.draw.io). Cubo todas las familias: C4 (Context/Container/Component), arquitectura y despliegue cloud con iconos oficiales AWS/Azure/GCP, diagramas de secuencia UML, BPMN 2.0, Gantt, GitFlow/Git graph y flujos de proceso — eligiendo la ruta correcta por familia: XML nativo drawio (C4, cloud, BPMN) o importación Mermaid (secuencia, Gantt, GitFlow) vía open_drawio_mermaid. Salida .drawio editable versionada en spec/diagrams/. Además DERIVO diagramas desde fuentes (despliegue desde terraform.tfstate/ARM, pipeline CI/CD desde workflows de GitHub) y los renderizo headless a SVG/PNG (drawio-desktop CLI / mmdc), con detección de drift y aprobación humana por recibo — el diagrama regenerado propone el cambio y un humano lo acepta. Además renderizo DIAGRAMAS VIVOS INTERACTIVOS desde IR JSON (diagram_ir.py: architecture, workflow, dataflow, lifecycle, sequence) con foco/lens/detalle/insights, diff Before/After y check anti-drift — cero tokens de render, HTML auto-contenido (ADR-003). Usar cuando cualquier rol necesite diagramas formales: Architect, Cloud Engineer, BA (BPMN), DevOps (GitFlow, pipelines CI/CD), PO (Gantt/roadmap). Dispara ante: diagrama C4, diagrama de arquitectura, diagrama AWS/Azure/GCP, drawio, diagrama de secuencia, BPMN, Gantt, GitFlow, diagrama de despliegue, iconos de nube, diagrama desde terraform, diagrama de pipeline CI/CD, drift de diagramas, renderizar diagrama a svg/png, diagrama interactivo, IR de diagrama, diagrama vivo de seguimiento."
+description: "Generador de diagramas del arnés SDLC. Vía principal: DIAGRAMAS VIVOS INTERACTIVOS desde IR JSON (diagram_ir.py: architecture, workflow, dataflow, lifecycle, sequence) con foco/lens/detalle/insights, tema claro/oscuro, control de fuente, badges de ubicación cloud/on-prem, textos sin desborde, diff Before/After y check anti-drift — cero tokens de render, HTML auto-contenido (ADR-003). Además: pipeline CI/CD DERIVADO de workflows de GitHub en Mermaid (pipeline_diagram.py, con validación de needs y ciclos), plantillas Mermaid para secuencia/Gantt/GitFlow embebidas en la spec, y render headless a SVG/PNG vía mmdc (diagram_render.py). Todo con aprobación humana por recibo — el diagrama regenerado propone el cambio y un humano lo acepta. Desde v2.20 el arnés NO genera drawio (retirado: no daba el nivel de detalle requerido). Usar cuando cualquier rol necesite diagramas: Architect (C4/arquitectura vía IR), Cloud Engineer (despliegue vía IR), BA (flujos), DevOps (pipelines, GitFlow), PO (Gantt/roadmap). Dispara ante: diagrama de arquitectura, C4, diagrama de secuencia, Gantt, GitFlow, diagrama de despliegue, diagrama desde workflows, pipeline CI/CD, drift de diagramas, renderizar mermaid a svg/png, diagrama interactivo, IR de diagrama, diagrama vivo de seguimiento, ubicación en nube de componentes."
 harness-role: diagrams
 harness-phases: "transversal"
-harness-optional-deps: "drawio-mcp, drawio-desktop, mmdc"
+harness-optional-deps: "mmdc"
 ---
 
-# Diagramas con drawio MCP (skill general del arnés)
+# Diagramas del arnés (IR interactivo)
 
-Genera diagramas editables y versionados con el servidor MCP oficial de draw.io: C4, despliegue cloud (AWS/Azure/GCP), secuencia, BPMN 2.0, Gantt, GitFlow, flujos UX y mapas de proceso. Salida: `.drawio` en `spec/diagrams/` (fuente de verdad, Git); los PNG/SVG son derivados.
+La vía principal del arnés son los **diagramas vivos interactivos**: un IR JSON versionado (`spec/diagrams/*.ir.json`, fuente de verdad diff-able en PR) + renderer determinista stdlib de cero tokens (`diagram_ir.py`). La vista es un HTML auto-contenido (sin red, sin dependencias) con foco, lens, detalle e insights. Inspirado en [archify](https://github.com/tt-a1i/archify) (inspiración, no dependencia — no requiere Node).
 
-Sirve a: Architect (C4, cloud), Cloud Engineer (despliegue), BA (BPMN, flujos), DevOps (GitFlow, pipelines), Orquestador (Gantt del roadmap junto al PO).
+Sirve a: Architect (C4/arquitectura), Cloud Engineer (despliegue), BA (flujos), DevOps (GitFlow, pipelines CI/CD), Orquestador (Gantt del roadmap junto al PO).
 
-## Requisito: drawio MCP
+## Decisión clave: ¿qué ruta por familia?
 
-| Variante | Instalación | Herramientas clave | Salida |
-|---|---|---|---|
-| **Tool server** (IDEs) | `npx @drawio/mcp` (stdio) | `open_drawio_xml`, `open_drawio_mermaid`, `open_drawio_csv`, `search_shapes`, `list_pages`/`get_page`/`set_page` | Abre el editor draw.io en el navegador |
-| **App server** (chat inline) | remote `https://mcp.draw.io/mcp` | `create_diagram`, `search_shapes` | Preview inline (MCP Apps: Claude.ai, Cursor) |
-
-```json
-{ "servers": { "drawio": { "command": "npx", "args": ["-y", "@drawio/mcp"] } } }
-```
-
-Sin MCP disponible: generar igualmente el `.drawio` en disco (válido y editable en app.diagrams.net). El MCP es el visor; el artefacto versionado es el entregable.
-
-## Decisión clave: ¿XML nativo o Mermaid→drawio?
-
-No todo se dibuja igual. Elegir la ruta según la familia ANTES de generar:
-
-| Familia | Ruta recomendada | Por qué |
+| Familia | Ruta | Por qué |
 |---|---|---|
-| **C4** (Context/Container/Component) | XML nativo | Control fino de boundaries, colores C4, layout |
-| **Cloud** (Azure/AWS/GCP deployment) | XML nativo | Iconos oficiales exactos vía `search_shapes` |
-| **Secuencia (UML)** | Mermaid → `open_drawio_mermaid` | Sintaxis de lifelines/mensajes es declarativa y corta; el importador hace el layout |
-| **Gantt** | Mermaid → `open_drawio_mermaid` | El Gantt en XML manual es muy laborioso; Mermaid lo deriva de fechas |
-| **GitFlow / Git graph** | Mermaid → `open_drawio_mermaid` | Ramas/merges se declaran, no se dibujan |
-| **BPMN 2.0** | XML nativo con shapes BPMN | Pools/lanes, gateways y eventos tienen shapes dedicados; layout manual da control |
-| **Flujos UX / mapas de proceso** | XML nativo o Mermaid, según complejidad | — |
-| **Datos tabulares** (org charts, listas) | CSV → `open_drawio_csv` | El CSV importer genera el grafo desde datos |
+| **C4 / arquitectura** (Context/Container/Component) | IR `flow` (`bandas: hulls`) | Boundaries por grupos, badges de ubicación en nube, foco/lens |
+| **Despliegue cloud / on-prem** | IR `flow` con `ubicacion` en cada nodo | Mostrar DÓNDE corre cada componente es obligatorio |
+| **Secuencia (UML)** | IR `sequence` | Lifelines, mensajes numerados, retornos, activaciones |
+| **Workflow / dataflow / lifecycle** | IR `flow` (`bandas: filas|columnas`) | Carriles y etapas, back-edges |
+| **Pipeline CI/CD** | `pipeline_diagram.py` (Mermaid derivado) | Se deriva de los workflows; nunca se dibuja a mano |
+| **Gantt / GitFlow / bocetos** | Mermaid embebido en los `.md` de la spec | Declarativo y corto; render opcional vía `diagram_render.py` (mmdc) |
 
-Si Mermaid cubre el 90% del diagrama pero faltan detalles: importar con `open_drawio_mermaid` y terminar de editar en el editor (o con `set_page`).
+> **v2.20 — drawio retirado**: el arnés ya no genera `.drawio` ni usa el MCP de draw.io (no alcanzaba el nivel de detalle requerido ni daba valor frente al IR). Los scripts/referencias drawio quedan en el historial de Git. Mermaid embebido en `.md` sigue válido para bocetos.
 
-## Flujo de trabajo (obligatorio)
+## Tipos soportados (`kind` en el IR)
 
-1. **Elegir familia y ruta** según la tabla anterior. Cargar SOLO la referencia necesaria:
-   - `references/c4-and-cloud-styles.md` — C4 + iconos AWS/Azure/GCP (style strings listos).
-   - `references/sequence-gantt-gitflow.md` — plantillas Mermaid para `open_drawio_mermaid`.
-   - `references/bpmn.md` — shapes y convenciones BPMN 2.0 en XML.
-2. **Resolver shapes no listados con `search_shapes`** (p. ej. `search_shapes "azure functions"`, `"bpmn gateway"`) y copiar el style exacto devuelto. Nunca inventar rutas de iconos.
-3. **Construir** el XML (ruta nativa) o el código Mermaid (ruta importación).
-4. **Abrir/previsualizar**: `open_drawio_xml` u `open_drawio_mermaid`. Para editar una página existente: `list_pages` → `get_page` → `set_page`.
-5. **Persistir** en `spec/diagrams/<familia>-<nombre>.drawio`, multipágina si hay varios niveles/vistas.
-6. **Trazabilidad**: el nombre de página o un `userObject` referencia las HU/EP/artefactos cubiertos.
-
-## Diagramas interactivos desde IR (v2.17, ADR-003)
-
-Para los diagramas **vivos de seguimiento** (los que cambian con la spec y se consultan cada sprint) existe una vía sin tokens de render: un IR JSON versionado + renderer determinista stdlib. Inspirado en la experiencia de [archify](https://github.com/tt-a1i/archify) (inspiración, no dependencia — no requiere Node).
-
-| | IR interactivo (`diagram_ir.py`) | drawio (`.drawio`) |
-|---|---|---|
-| Uso | Seguimiento día a día, exploración, dashboards | Diagramas formales con stakeholders (C4, BPMN, cloud con iconos oficiales) |
-| Fuente | `spec/diagrams/*.ir.json` (diff-able en PR) | `spec/diagrams/*.drawio` |
-| Vista | HTML/SVG auto-contenido con foco+lens+detalle+insights | PNG/SVG vía `diagram_render.py` |
-| Costo de cambio | Editar el IR (pocos tokens) + render gratis | Edición visual o XML/Mermaid |
-
-**Tipos soportados** (`kind` en el IR):
 - `flow` — architecture / workflow / dataflow / lifecycle según `bandas`: `hulls` (grupos), `filas` (carriles), `columnas` (etapas). Soporta `decision` (rombo), `terminal` (doble borde) y back-edges (`"back": true`, rosa punteado, enrutados por los huecos entre columnas).
 - `sequence` — participantes con lifelines, mensajes numerados, retornos punteados (`"retorno": true`), barras de activación.
 
 **Interacción uniforme** (la genera el renderer, no se escribe a mano): clic en elemento → foco + panel de detalle; leyenda clicable tipo *lens* (hasta 2 tipos); estado por URL (`#focus=`, `#lens=`); tarjetas de `insights` bajo el diagrama (viven en el IR, no en el HTML).
+
+**Vista (v1.1 del renderer)**:
+- **Tema claro/oscuro**: toggle ☀/🌙 en la toolbar; persiste en `localStorage`. Default: campo opcional `"tema": "claro"|"oscuro"` del IR, si no, `prefers-color-scheme` del navegador.
+- **Tamaño de fuente**: botones `A− / A / A+` en la toolbar (zoom 0.6–1.8, persiste en `localStorage`).
+- **Ubicación de despliegue** (`"ubicacion"` en nodos/participantes): pill en la esquina superior del nodo con icono automático — ☁ nube (AWS/Azure/GCP/IBM/SaaS…), ⌂ on-premise/datacenter, ◈ otro. **Obligatorio en diagramas de arquitectura**: cada componente declara DÓNDE corre (qué nube, región, on-prem). También aparece en el panel de detalle y en el `diff`.
+- **Textos sin desborde**: los títulos hacen wrap a máximo 2 líneas y los subtítulos usan elipsis, calculado de forma determinista (sin medir fuentes); el texto nunca sale del nodo.
 
 ```bash
 python diagram_ir.py validate --ir spec/diagrams/x.ir.json      # esquema + referencias
@@ -78,14 +45,13 @@ python diagram_ir.py diff     --old a.ir.json --new b.ir.json   # Before/After (
 python diagram_ir.py check    --ir x.ir.json --out x.html       # exit 1 si el HTML quedó atrás
 ```
 
-**Reglas**: el HTML NUNCA se edita a mano (el `check` lo detecta); el recibo de aprobación se emite sobre el **IR** (`receipt.py emit --artifact spec/diagrams/x.ir.json --role <rol dueño>`); el `diff` acompaña el recibo como evidencia del cambio. Dueños del IR por tipo: architecture/sequence → `sdlc-software-architect`, workflow CI/CD → `sdlc-devops-engineer`, lifecycle de HU → `sdlc-orchestrator`, dataflow → `sdlc-data-engineer`. Fixtures de ejemplo: `tests/fixtures/diagram-flow.ir.json` y `diagram-sequence.ir.json`.
+**Reglas**: el HTML NUNCA se edita a mano (el `check` lo detecta); el recibo de aprobación se emite sobre el **IR** (`receipt.py emit --artifact spec/diagrams/x.ir.json --role <rol dueño>`); el `diff` acompaña el recibo como evidencia del cambio. Dueños del IR por tipo: architecture/sequence → `sdlc-software-architect`, workflow CI/CD → `sdlc-devops-engineer`, lifecycle de HU → `sdlc-orchestrator`, dataflow → `sdlc-data-engineer`. Fixtures de ejemplo: `tests/fixtures/diagram-flow.ir.json`, `diagram-sequence.ir.json` y `demo-arquitectura-ubicaciones.ir.json` (arquitectura multi-nube/on-prem con badges de `ubicacion`).
 
 ## Reglas del arnés
 
 - Todo nodo usa el término canónico de `spec/glossary.md`; toda relación declara protocolo/etiqueta.
-- Los diagramas cloud de despliegue reflejan `infra/` (IaC): si el IaC cambia, el diagrama queda impactado (el orquestador lo marca vía `spec_diff_impact`).
-- Mermaid embebido en los `.md` de la spec sigue válido para bocetos; los `.drawio` son para diagramas formales que requieren edición visual o presentación a stakeholders.
-- `assets/c4-contenedores-ejemplo.drawio`: plantilla C4 Container (Azure) lista para duplicar.
+- Los diagramas de despliegue reflejan `infra/` (IaC): si el IaC cambia, el IR queda impactado (el orquestador lo marca vía `spec_diff_impact`).
+- Mermaid embebido en los `.md` de la spec sigue válido para bocetos (Gantt, GitFlow, secuencias rápidas); los IR son para diagramas vivos de seguimiento y presentación a stakeholders.
 
 ## Dos direcciones y aprobación (v2.6)
 
@@ -93,20 +59,22 @@ Los diagramas son también un **mecanismo de aceptación de cambios**: ningún d
 
 | Dirección | Familias | Cómo se crea | Quién aprueba (recibo con rol) |
 |---|---|---|---|
-| **Diseño** (manual) | C4, secuencia, BPMN, Gantt, GitFlow, flujos | El rol lo dibuja con el MCP drawio / XML / Mermaid | Su rol dueño (C4 → `software-architect`, BPMN → `business-analyst`, Gantt → `product-owner`, GitFlow → `devops-engineer`) |
-| **Derivado** (desde fuente, NUNCA editado a mano) | Despliegue cloud/red, pipeline CI/CD, diagramas vivos IR | Script desde `terraform.tfstate`/ARM, `.github/workflows/` o `diagram_ir.py render` desde `*.ir.json` | `cloud-engineer` (despliegue), `devops-engineer` (pipeline), rol dueño del IR — revisan el diff en Git y aprueban con `receipt.py emit` |
+| **Diseño** (manual) | Arquitectura/C4, secuencia, flujos, Gantt, GitFlow | El rol edita el IR (o el Mermaid embebido) | Su rol dueño (C4 → `software-architect`, flujos → `business-analyst`, Gantt → `product-owner`, GitFlow → `devops-engineer`) |
+| **Derivado** (desde fuente, NUNCA editado a mano) | Pipeline CI/CD, vistas HTML de los IR | `pipeline_diagram.py` desde `.github/workflows/`, `diagram_ir.py render` desde `*.ir.json` | `devops-engineer` (pipeline), rol dueño del IR — revisan el diff en Git y aprueban con `receipt.py emit` |
 
 Flujo de aceptación de un diagrama derivado:
 
-1. La fuente cambia (apply de Terraform, push que toca workflows).
+1. La fuente cambia (push que toca workflows, edición del IR).
 2. El script regenera el diagrama → **propuesta de cambio**; el diff en Git muestra exactamente qué cambió.
 3. El humano/rol dueño revisa el contenido y lo acepta con `receipt.py emit --artifact <diagrama> --role <rol>` — sin recibo, el cambio NO está aceptado.
 4. `check` (exit 1 si el diagrama difiere de la fuente) detecta **drift** en CI o en gates: regenerar o investigar.
 
 ### Scripts (Python 3 stdlib puro)
 
-- `iac_to_diagram.py generate|check --tfstate terraform.tfstate|--arm template.json --out spec/diagrams/despliegue.drawio`: topología de despliegue desde el estado real de Terraform (lo REALMENTE desplegado) o ARM/Bicep compilado, con iconos oficiales AWS/Azure/GCP y clusters por módulo/resource group. `check` = drift detection.
-- `pipeline_diagram.py generate|validate|check --workflows-dir .github/workflows --out spec/diagrams/pipeline-cicd.md`: flowchart Mermaid por workflow (triggers, jobs, `needs:`) + validación de `needs:` inexistentes y ciclos de dependencias. `validate` exit 1 si el pipeline está roto; `check` = drift detection.
-- `diagram_render.py render <.drawio|.mmd|.md>|render-dir|engines`: render headless a SVG/PNG vía drawio-desktop CLI (el SVG embebe el fuente — la imagen sigue editable) o mmdc (incluye bloques Mermaid dentro de Markdown, reescribiendo las referencias — ideal para doc-as-code). Motores opcionales: sin ellos informa y el fuente versionado sigue siendo el entregable (nunca bloquea).
+Todos comparten el **lenguaje visual común del arnés** (v2.19): tema claro/oscuro, textos que nunca desbordan su nodo, y la misma paleta que el portal (v2.20).
+
+- `diagram_ir.py validate|render|diff|check` — renderer de los diagramas vivos IR (ver arriba).
+- `pipeline_diagram.py generate|validate|check --workflows-dir .github/workflows --out spec/diagrams/pipeline-cicd.md [--tema auto|claro|oscuro]`: flowchart Mermaid por workflow (triggers, jobs, `needs:`) + validación de `needs:` inexistentes y ciclos de dependencias. `--tema` fija la directiva `%%{init: {'theme': ...}}%%` por bloque (`auto` = el renderer elige, p. ej. GitHub sigue el modo del usuario); ids de job largos se quiebran con `<br/>`. `validate` exit 1 si el pipeline está roto; `check` = drift detection (detecta el tema grabado).
+- `diagram_render.py render <.mmd|.md>|engines [--tema claro|oscuro]`: render headless de bloques Mermaid a SVG/PNG vía mmdc (con un `.md` renderiza cada bloque y reescribe las referencias — ideal para doc-as-code). `--tema` se propaga a mmdc (`-t dark|default` + fondo `#0b1220`/blanco, coherente con el IR). Motor opcional: sin mmdc informa y el fuente versionado sigue siendo el entregable (nunca bloquea).
 
 Los SVG/PNG renderizados son **vistas derivadas**: se regeneran tras cada aprobación y los referencia `sdlc-technical-writer` en la documentación. No reciben recibo propio; el recibo es del fuente.

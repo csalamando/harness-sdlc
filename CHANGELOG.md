@@ -7,6 +7,46 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.20.0] - 2026-09-07
+
+**"El tablero se convierte en el centro de control."**  v2.20 reemplaza el dashboard monolítico por un **portal web único** del proyecto — navegable, buscable y con identidad visual compartida — y retira la generación `.drawio`, que no alcanzaba el nivel de detalle requerido.
+
+### Added
+- **Portal único del proyecto (`portal_lib.py`, stdlib puro)**: `harness_graph.py --proyecto` ahora emite `spec/portal/`:
+  - **Shell** (`index.html`): menú lateral colapsable con árbol por categorías (🏠 Inicio, 📊 Métricas, 🏛 Arquitectura, 💼 Negocio, 🧪 Calidad, 🚀 Operación, 📚 Documentos, 🧠 Memoria) con contadores y subgrupos; routing por hash `#/id/<slug>` (funciona desde `file://`, sin servidor); **miga de pan** (Inicio › Categoría › Página) con botones ‹ › de historial — la navegación interna doc→doc empuja historial, así que "atrás" devuelve a donde estabas — y **última página visitada persistida por proyecto** (reabre donde te quedaste); estado persistente (sidebar, tema, zoom).
+  - **Búsqueda global (Ctrl+K)**: índice de texto plano de todas las páginas (títulos, contenido de los `.md`, nodos e insights de diagramas), con resultados priorizados y resaltado.
+  - **Tema claro/oscuro y zoom A−/A/A+ compartidos**: mismas variables CSS y mismas claves de `localStorage` (`dir-tema`, `dir-zoom`) que los diagramas IR; el shell propaga el tema al contenido por `postMessage` y cada página lo aplica al cargar.
+  - **Páginas modulares y densas** (info relacionada en la misma pantalla, sin saltar entre páginas): `inicio` (pipeline compacto + acumulado — de entrada se ve cómo va el proyecto), `metricas` (tendencias + tiempos en dos columnas), `arquitectura` (tarjetas de diagramas vivos + ADRs ↔ Tech Radar **vinculados**: clic en un ADR resalta su tecnología en el radar y viceversa), `memoria` (aprendizajes + sesiones lado a lado). El **glosario** y la **ayuda** ("cómo navegar") viven en el menú superior derecho del shell, no ocupan páginas. Las páginas se auto-reportan al shell (`data-page-id` + `postMessage`), así los enlaces internos doc→doc actualizan el menú sin recargar; los artefactos del popup por fase abren el `.md` dentro del portal (no en pestaña nueva).
+  - **Generación modular por registry**: cada generador (`harness_graph`, `mdview`, `diagram_ir`) solo **registra** lo suyo en `spec/portal/registry.json`; `rebuild_index()` poda entradas huérfanas y reescribe `manifest.js` + `search-index.js` + `index.html`. Añadir contenido nunca regenera el sitio completo a mano, y `portal_lib.py --check` detecta drift en CI. Items `oculto` (fuera del menú lateral, enrutables y buscables) y `topbar` configurable por el generador.
+- **`mdview.py` v2.0**: los `.md` de la spec se renderizan a `spec/portal/paginas/docs/` con la identidad del portal (sin backlink al viejo dashboard), reescriben los enlaces `.md` internos a su página renderizada y se auto-registran con texto buscable y categoría inferida de la ruta (`adr/`→Arquitectura, `reports/`→Operación, `vision/backlog/user-stories`→Negocio, `memory/`→Memoria…).
+- **`diagram_ir.py`**: auto-registro best-effort en el portal tras cada `render` (categoría Arquitectura, u Operación si el título es pipeline/CI-CD; texto de búsqueda con nodos e insights) y listener de tema del shell.
+- **`spec/dashboard.html`** queda como redirect al portal pero conserva el comentario `dashboard-state`: `harness_graph.py --proyecto --check` sigue comparando exactamente lo mismo.
+
+### Removed
+- **Generación `.drawio` retirada**: `diagram_render.py` solo procesa Mermaid (`.mmd`/`.md` vía mmdc); los `.drawio` se rechazan con mensaje claro de retiro. La vía vigente para diagramas gobernados es el IR interactivo (`diagram_ir.py`, ADR-003) y Mermaid para renders de CI.
+
+### Notas
+- Retrocompatible: los proyectos existentes regeneran el portal con el mismo `harness_graph.py --proyecto .` de siempre; los recibos, gates y el `--check` del dashboard no cambian. `spec/docs-html/` (v2.18) queda sustituido por `spec/portal/` (puede borrarse a mano).
+- Self-test: 138 checks verdes (sección [9d] reescrita para el portal y [9f] con 13 checks del shell, registry, páginas densas, vinculación ADR↔radar, poda y drift). El fixture demo incluye un diagrama vivo IR y PostgreSQL en HOLD para demostrar la vinculación.
+
+## [2.19.0] - 2026-09-07
+
+**"Un diagrama de arquitectura que no dice dónde corre cada cosa, no dice nada."**  v2.19 endurece la vista de los diagramas vivos IR: tema claro/oscuro, control de fuente, badges de ubicación de despliegue y textos que nunca desbordan su nodo.
+
+### Added
+- **`diagram_ir.py` v1.1 — tema claro/oscuro**: toda la vista migra a variables CSS (`:root[data-theme=claro]`); toggle ☀/🌙 en la toolbar superior, persistente en `localStorage`. Default: campo opcional `"tema": "claro"|"oscuro"` del IR, si no, `prefers-color-scheme` del navegador. Aplica a `flow` y `sequence`.
+- **Control de tamaño de fuente**: botones `A− / A / A+` en la toolbar (zoom 0.6–1.8, persistente en `localStorage`).
+- **Badge de ubicación de despliegue** (`"ubicacion"` en nodos y participantes): pill en la esquina superior del nodo con icono automático — ☁ nube (AWS/Azure/GCP/IBM/SaaS…), ⌂ on-premise/datacenter, ◈ otro. Visible también en el panel de detalle y comparable en `diff` (un cambio de ubicación aparece como nodo modificado). Pensado para diagramas de arquitectura: cada componente declara en qué nube/región/on-prem corre.
+- **Textos sin desborde**: títulos con wrap determinista a máximo 2 líneas (reduce a 12.5px si no cabe a 13.5px) y subtítulos con elipsis, por estimación de ancho sin medir fuentes — el texto nunca sale del nodo. Aplica a nodos flow, rombos `decision` y cabeceras de participantes.
+- Fixture de ejemplo `tests/fixtures/demo-arquitectura-ubicaciones.ir.json` (arquitectura multi-nube + on-prem con badges).
+- **Lenguaje visual común en TODAS las vías de diagramas** (no solo el IR):
+  - `pipeline_diagram.py`: `--tema auto|claro|oscuro` (directiva `%%{init: {'theme': ...}}%%` por bloque; `auto` deja que el renderer elija); ids de job largos se quiebran con `<br/>` para no desbordar el nodo; `check` detecta el tema grabado en el `.md`.
+  - `diagram_render.py`: `--tema claro|oscuro` propagado a mmdc (`-t dark|default` + fondo `#0b1220`/blanco, coherente con la paleta del IR).
+
+### Notas
+- Retrocompatible: los IR existentes renderizan igual (tema oscuro por defecto); `ubicacion` y `tema` son opcionales. Los `.drawio`/`.md` derivados se regeneran con el mismo `generate` de siempre.
+- Self-test: 128 checks verdes (nueva sección [9e] con 11 checks para los tres generadores).
+
 ## [2.18.0] - 2026-09-05
 
 **"La spec se lee donde se mira."**  v2.18 convierte el dashboard en el punto de entrada de lectura del proyecto: los documentos Markdown de la spec y los diagramas vivos se abren desde el tablero, renderizados y sin servidor.

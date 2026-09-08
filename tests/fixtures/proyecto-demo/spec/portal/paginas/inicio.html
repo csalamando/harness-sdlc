@@ -1,0 +1,151 @@
+<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Inicio — proyecto-demo</title><style>:root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);color-scheme:dark}:root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);color-scheme:light}body{background:var(--bg);color:var(--fg);font-family:system-ui,'Segoe UI',sans-serif;margin:0;padding:1.5rem 1.8rem 3rem;line-height:1.55;font-size:15px}h1{font-size:1.35rem;color:var(--txt);margin:.2rem 0 .8rem}h2{font-size:1.08rem;color:var(--txt);margin:1.4rem 0 .6rem}h3{font-size:.92rem;color:var(--sub);margin:1.1rem 0 .4rem}h4{font-size:.85rem;color:var(--sub);margin:1rem 0 .3rem}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:5px;padding:.12em .4em;font-size:.88em;font-family:ui-monospace,'Cascadia Code',Consolas,monospace}pre{background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:10px;padding:1rem;overflow-x:auto}pre code{background:none;border:none;padding:0}table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.88em;display:block;overflow-x:auto}th,td{border-bottom:1px solid var(--panel-bd);padding:.45em .7em;text-align:left;vertical-align:top}th{color:var(--sub);font-size:.78em;text-transform:uppercase;letter-spacing:.04em}blockquote{border-left:3px solid var(--panel-bd);margin:1em 0;padding:.2em 1em;color:var(--sub)}hr{border:none;border-top:1px solid var(--panel-bd);margin:1.6em 0}img{max-width:100%}li{margin:.2em 0}.pnote{color:var(--muted);font-size:.78rem;margin-bottom:1rem}
+  h1 { font-size:1.3rem; margin-bottom:.2rem; }
+  .sub { color:var(--sub); font-size:.85rem; margin-bottom:1.5rem; }
+  .panel { background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:12px; padding:1.2rem; margin-bottom:1.5rem; }
+  .panel h2 { font-size:1rem; margin:0 0 1rem; color:var(--fg); }
+  .legend { display:flex; gap:1.2rem; font-size:.75rem; color:var(--sub); margin-top:.6rem; flex-wrap:wrap; }
+  .legend span::before { content:"\25CF"; margin-right:.35rem; }
+  .lg-ok::before { color:var(--ok); } .lg-warn::before { color:var(--warn); } .lg-none::before { color:var(--muted); }
+  .lg-cur::before { color:var(--accent); }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.8rem; }
+  .kpi { background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:10px; padding:.9rem; }
+  .kpi .v { font-size:1.7rem; font-weight:700; }
+  .kpi .k { font-size:.72rem; color:var(--sub); margin-top:.2rem; }
+  table { border-collapse:collapse; width:100%; font-size:.8rem; }
+  th, td { text-align:left; padding:.45rem .6rem; border-bottom:1px solid var(--panel-bd); }
+  th { color:var(--sub); font-weight:600; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; }
+  .bar { height:8px; border-radius:4px; background:var(--accent); display:inline-block; vertical-align:middle; margin-right:.4rem; }
+  .bar.bad { background:var(--warn); }
+  .learn { font-size:.82rem; color:var(--fg); margin:.4rem 0; }
+  .warn-line { font-size:.75rem; color:var(--warn); margin-top:.6rem; }
+  .empty { color:var(--muted); font-size:.82rem; font-style:italic; }
+  footer { font-size:.7rem; color:var(--muted); margin-top:1rem; }
+  .badge { display:inline-block; font-size:.72rem; border-radius:4px; padding:2px 7px; margin:2px; white-space:nowrap; }
+  .st-ok { background:rgba(34,197,94,.14); color:var(--ok); border:1px solid rgba(34,197,94,.4); }
+  .st-prop { background:rgba(59,130,246,.15); color:var(--accent); border:1px solid rgba(59,130,246,.45); }
+  .st-sup { background:rgba(100,116,139,.15); color:var(--muted); border:1px solid rgba(100,116,139,.4); }
+  .st-otro { background:var(--card-bg); color:var(--sub); border:1px solid var(--panel-bd); }
+  .tier { background:rgba(249,115,22,.15); color:var(--tier); border:1px solid rgba(249,115,22,.45); }
+  .art { background:var(--panel-bg); color:var(--sub); border:1px solid var(--panel-bd); }
+  .quad { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.6rem; margin-top:.8rem; }
+  .quad .kpi .v { font-size:1.3rem; }
+  [data-fase]:hover { opacity:.85; }
+  .moverlay { display:none; position:fixed; inset:0; background:rgba(2,6,23,.78); z-index:50;
+              align-items:flex-start; justify-content:center; padding:3rem 1rem; }
+  .moverlay.open { display:flex; }
+  .mbox { background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:14px; max-width:920px; width:100%;
+          max-height:82vh; overflow-y:auto; padding:1.6rem 1.8rem; position:relative;
+          box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  .mclose { position:absolute; top:.7rem; right:.9rem; background:none; border:none; color:var(--muted);
+            font-size:1.6rem; cursor:pointer; line-height:1; }
+  .mclose:hover { color:var(--fg); }
+  .mbox h2 { font-size:1.15rem; margin:0 0 .3rem; color:var(--txt); }
+  .mdesc { color:var(--sub); font-size:.92rem; margin:.2rem 0 .6rem; }
+  .mgate { display:inline-block; font-size:.8rem; font-weight:600; color:var(--tier); background:rgba(249,115,22,.15);
+           border:1px solid rgba(249,115,22,.45); border-radius:6px; padding:2px 10px; margin-bottom:.4rem; }
+  .mbox h3 { font-size:.82rem; color:var(--sub); text-transform:uppercase; letter-spacing:.05em;
+             margin:1.1rem 0 .5rem; }
+  .sgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:.7rem; }
+  .scard { background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:10px; padding:.7rem .8rem; }
+  .sname { font-weight:700; font-size:.95rem; color:var(--txt); }
+  .sid { font-size:.75rem; color:var(--muted); margin:.1rem 0 .45rem; }
+  .sio { font-size:.78rem; margin-top:.35rem; }
+  .iol { color:var(--muted); font-weight:700; margin-right:.3rem; }
+  .io-in { background:rgba(59,130,246,.15); color:var(--accent); border:1px solid rgba(59,130,246,.45); }
+  .io-out { background:rgba(34,197,94,.14); color:var(--ok); border:1px solid rgba(34,197,94,.4); }
+  .alink { text-decoration:none; cursor:pointer; font-size:.72rem; padding:3px 8px; }
+  .alink:hover { color:var(--txt); border-color:var(--accent); }
+  .home-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.8rem; margin:1rem 0 1.4rem; }
+  .home-links li { margin:.35rem 0; }
+  /* Layouts densos del portal (v2.20.1): info relacionada en la misma pantalla */
+  .graph-wrap { max-width:920px; margin:0 auto; }
+  .dense2 { display:grid; grid-template-columns:3fr 2fr; gap:1.4rem; align-items:start; }
+  .dense2eq { display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; align-items:start; }
+  @media (max-width:1150px) { .dense2, .dense2eq { grid-template-columns:1fr; } }
+  .diag-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:.8rem; margin-bottom:1.2rem; }
+  .dcard { display:block; background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:10px;
+           padding:.8rem .9rem; text-decoration:none; color:var(--fg); }
+  .dcard:hover { border-color:var(--accent); text-decoration:none; }
+  .dcard b { display:block; font-size:.88rem; color:var(--txt); margin-bottom:.15rem; }
+  .dcard span { font-size:.72rem; color:var(--sub); }
+  .adr-row { cursor:pointer; }
+  .adr-row:hover td { background:var(--card-bg); }
+  .adr-row.hl td { background:rgba(59,130,246,.16); }
+  [data-tech] { cursor:pointer; }
+  [data-tech].hl circle { stroke:var(--accent); stroke-width:2.5; }
+  [data-tech].hl text { fill:var(--accent); font-weight:700; }
+  .radar-note { font-size:.72rem; color:var(--muted); margin-top:.3rem; }
+</style></head><body data-page-id="inicio"><div class="pnote">Artefacto derivado de receipts/ + spec/ + sprint-review-NN.md (ADR-002) — no editar a mano; regenerar: harness_graph.py --proyecto .</div><h1>🏠 proyecto-demo</h1><div class="sub">Portal del proyecto · arnés v2.20.0 · generado 2026-09-07T22:12:26</div><div class="panel graph-wrap"><h2>Pipeline — estado actual</h2>
+<div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.8rem">
+  <div><span style="font-size:1.25rem;font-weight:700">Fase 4: Strict TDD</span>
+       <span style="color:#94a3b8;font-size:.8rem;margin-left:.6rem">estás aquí</span></div>
+  <div style="font-size:.85rem;color:#94a3b8">PROGRESO (HU cerradas):
+       <span style="font-size:1.15rem;font-weight:700;color:#22c55e">75%</span>
+       <span style="font-size:.75rem;color:#64748b"> · 3/4 HU</span></div>
+</div>
+<div style="background:#1e293b;border-radius:6px;height:8px;margin-bottom:.6rem">
+  <div style="background:linear-gradient(90deg,#3b82f6,#22c55e);height:8px;border-radius:6px;width:75%"></div>
+</div>
+<div style="font-size:.72rem;color:#94a3b8;margin-bottom:1rem">Ciclos ejecutados: <span class="badge st-ok">sprints ×2</span><span class="badge st-ok">bugs QA→TDD ×1</span><span class="badge st-otro">hotfixes ×0</span><span class="badge st-otro">replans ×0</span><span class="badge st-otro">impact-reports ×0</span></div>
+<div style="display:flex;gap:.2rem"><div data-fase="1" title="Ver skills, entradas y salidas de la fase" style="flex:1;text-align:center;position:relative;cursor:pointer"><div style="width:30px;height:30px;border-radius:50%;margin:0 auto;border:2px solid #475569;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;background:#22c55e;border-color:#22c55e;color:#052e1b">✓</div><div style="font-size:.68rem;color:#94a3b8;margin-top:.3rem">Setup &amp; Visión</div></div><div data-fase="2" title="Ver skills, entradas y salidas de la fase" style="flex:1;text-align:center;position:relative;cursor:pointer"><div style="width:30px;height:30px;border-radius:50%;margin:0 auto;border:2px solid #475569;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;background:#22c55e;border-color:#22c55e;color:#052e1b">✓</div><div style="font-size:.68rem;color:#94a3b8;margin-top:.3rem">Discovery</div></div><div data-fase="3" title="Ver skills, entradas y salidas de la fase" style="flex:1;text-align:center;position:relative;cursor:pointer"><div style="width:30px;height:30px;border-radius:50%;margin:0 auto;border:2px solid #475569;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;background:#22c55e;border-color:#22c55e;color:#052e1b">✓</div><div style="font-size:.68rem;color:#94a3b8;margin-top:.3rem">Arquitectura</div></div><div data-fase="4" title="Ver skills, entradas y salidas de la fase" style="flex:1;text-align:center;position:relative;cursor:pointer"><div style="width:30px;height:30px;border-radius:50%;margin:0 auto;border:2px solid #475569;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;background:#1e293b;border-color:#3b82f6;box-shadow:0 0 0 5px rgba(59,130,246,.25)">4</div><div style="font-size:.68rem;color:#94a3b8;margin-top:.3rem">Strict TDD</div></div><div data-fase="5" title="Ver skills, entradas y salidas de la fase" style="flex:1;text-align:center;position:relative;cursor:pointer"><div style="width:30px;height:30px;border-radius:50%;margin:0 auto;border:2px solid #475569;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;background:#1e293b;border-color:#475569">5</div><div style="font-size:.68rem;color:#94a3b8;margin-top:.3rem">QA &amp; Seguridad</div></div><div data-fase="6" title="Ver skills, entradas y salidas de la fase" style="flex:1;text-align:center;position:relative;cursor:pointer"><div style="width:30px;height:30px;border-radius:50%;margin:0 auto;border:2px solid #475569;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;background:#1e293b;border-color:#475569">6</div><div style="font-size:.68rem;color:#94a3b8;margin-top:.3rem">Release &amp; Operación</div></div></div>
+<svg viewBox="0 0 1140 560" style="width:100%;height:auto;display:block"><defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#334155"/></marker><marker id="la" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#f59e0b"/></marker></defs><line x1="103" y1="220" x2="296" y2="220" stroke="#334155" stroke-width="2" marker-end="url(#a)"/><line x1="296" y1="220" x2="502" y2="220" stroke="#334155" stroke-width="2" marker-end="url(#a)"/><line x1="502" y1="220" x2="718" y2="220" stroke="#334155" stroke-width="2" marker-end="url(#a)"/><line x1="718" y1="220" x2="912" y2="220" stroke="#334155" stroke-width="2" marker-end="url(#a)"/><line x1="912" y1="220" x2="1072" y2="220" stroke="#334155" stroke-width="2" marker-end="url(#a)"/><line x1="103" y1="220" x2="718" y2="220" stroke="#3b82f6" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/><path d="M 694 192 C 658 110, 778 110, 742 192" fill="none" stroke="#f59e0b" stroke-opacity="1" stroke-dasharray="4 3" marker-end="url(#la)"></path><text x="718" y="98" text-anchor="middle" font-size="13" font-weight="600" fill="#fbbf24" fill-opacity="1">sprints (TDD red→green) ×2</text><path d="M 912 220 Q 815 360, 752 220" fill="none" stroke="#f59e0b" stroke-opacity="1" stroke-width="2.5" stroke-dasharray="4 3" marker-end="url(#la)"></path><text x="815" y="310" text-anchor="middle" font-size="13" font-weight="600" fill="#fbbf24" fill-opacity="1">↺ TDD QA Bug (Red) ×1 — ACTIVO: 1</text><path d="M 1072 220 Q 895 410, 752 220" fill="none" stroke="#f59e0b" stroke-opacity=".25" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#la)"><title>↺ Hotfix Prod</title></path><path d="M 502 220 Q 610 80, 684 220" fill="none" stroke="#f59e0b" stroke-opacity=".25" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#la)"><title>↺ Delta-Spec Replan (spec_diff)</title></path><path d="M 1072 220 Q 587 560, 137 220" fill="none" stroke="#f59e0b" stroke-opacity=".25" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#la)"><title>↺ impact-report → backlog</title></path><g data-fase="1" style="cursor:pointer"><title>Ver skills, entradas y salidas de la fase 1</title><circle cx="103" cy="220" r="28" fill="#1e293b" stroke="#22c55e" stroke-width="3"/><text x="103" y="226" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e8f0">1</text><text x="113" y="276" text-anchor="start" font-size="14.5" font-weight="600" fill="#cbd5e1">Setup & Visión</text><text x="113" y="164" text-anchor="start" font-size="11.5" font-weight="600" fill="#22c55e">⛔ GATE 0 ✓<title>GATE 0 — recibo vigente (1 vigentes, 0 rehechos)</title></text><text x="113" y="296" text-anchor="start" font-size="11" fill="#64748b">1 artefacto ✓</text></g><g data-fase="2" style="cursor:pointer"><title>Ver skills, entradas y salidas de la fase 2</title><circle cx="296" cy="220" r="28" fill="#1e293b" stroke="#475569" stroke-width="3"/><text x="296" y="226" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e8f0">2</text><text x="296" y="316" text-anchor="middle" font-size="14.5" font-weight="600" fill="#cbd5e1">Discovery</text></g><g data-fase="3" style="cursor:pointer"><title>Ver skills, entradas y salidas de la fase 3</title><circle cx="502" cy="220" r="28" fill="#1e293b" stroke="#22c55e" stroke-width="3"/><text x="502" y="226" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e8f0">3</text><text x="502" y="276" text-anchor="middle" font-size="14.5" font-weight="600" fill="#cbd5e1">Arquitectura</text><text x="502" y="164" text-anchor="middle" font-size="11.5" font-weight="600" fill="#22c55e">⛔ GATE 1 ✓<title>GATE 1 — recibo vigente (1 vigentes, 0 rehechos)</title></text><text x="502" y="296" text-anchor="middle" font-size="11" fill="#64748b">1 artefacto ✓</text></g><g data-fase="4" style="cursor:pointer"><title>Ver skills, entradas y salidas de la fase 4</title><circle cx="{x:.0f}" cy="{y}" r="36" fill="none" stroke="#3b82f6" stroke-opacity=".35" stroke-width="6"/><circle cx="718" cy="220" r="28" fill="#1e293b" stroke="#3b82f6" stroke-width="3"/><text x="718" y="226" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e8f0">4</text><text x="718" y="316" text-anchor="middle" font-size="14.5" font-weight="600" fill="#cbd5e1">Strict TDD ← estás aquí</text></g><g data-fase="5" style="cursor:pointer"><title>Ver skills, entradas y salidas de la fase 5</title><circle cx="912" cy="220" r="28" fill="#1e293b" stroke="#f59e0b" stroke-width="3"/><text x="912" y="226" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e8f0">5</text><text x="912" y="276" text-anchor="middle" font-size="14.5" font-weight="600" fill="#cbd5e1">QA & Seguridad</text><text x="912" y="164" text-anchor="middle" font-size="11.5" font-weight="600" fill="#f59e0b">⛔ GATE 2 / GATE 2.5 ⚠<title>GATE 2 / GATE 2.5 — recibo invalidado (0 vigentes, 1 rehechos)</title></text></g><g data-fase="6" style="cursor:pointer"><title>Ver skills, entradas y salidas de la fase 6</title><circle cx="1072" cy="220" r="28" fill="#1e293b" stroke="#22c55e" stroke-width="3"/><text x="1072" y="226" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e8f0">6</text><text x="1062" y="316" text-anchor="end" font-size="14.5" font-weight="600" fill="#cbd5e1">Release & Operación</text><text x="1062" y="164" text-anchor="end" font-size="11.5" font-weight="600" fill="#22c55e">⛔ GATE 3 ✓<title>GATE 3 — recibo vigente (1 vigentes, 0 rehechos)</title></text><text x="1062" y="336" text-anchor="end" font-size="11" fill="#64748b">1 artefacto ✓</text></g></svg><div class="legend"><span class="lg-ok">gate con recibo vigente</span><span class="lg-warn">recibo invalidado / retrabajo</span><span class="lg-none">sin recibo aún</span><span class="lg-cur">fase actual</span><span style="color:var(--muted)">clic en una fase (grafo o stepper) para ver sus skills, entradas y salidas · loops tenues: pasa el cursor para ver su nombre</span></div>
+<div id="fmodal" class="moverlay">
+  <div class="mbox"><button class="mclose" onclick="closeF()" title="Cerrar">&times;</button>
+  <div id="fbody"></div></div>
+</div>
+<script>const FASES=[{"id": 1, "title": "Setup & Visión", "desc": "Visión, propuesta con opciones, pricing cloud y caso de negocio. Sin GATE 0 aprobado no hay pipeline.", "gate": "GATE 0", "skills": [{"id": "sdlc-cloud-pricing", "name": "Cloud Pricing", "in": ["architecture-proposal.md"], "out": ["cost-assumptions.yaml", "cost-estimation.md"], "gates": ["cost-estimation"], "conditional": ""}, {"id": "sdlc-devops-engineer", "name": "DevOps Engineer", "in": [], "out": ["pipeline-cicd.md"], "gates": [], "conditional": ""}, {"id": "sdlc-product-owner", "name": "Product Owner", "in": ["epics.md", "vision.md"], "out": ["vision.md", "epics.md", "backlog.md"], "gates": ["vision", "backlog"], "conditional": ""}, {"id": "sdlc-solution-architect", "name": "Solution Architect", "in": ["architecture-proposal.md", "backlog.md", "vision.md"], "out": ["architecture-proposal.md", "technical-stories.md"], "gates": ["architecture-proposal", "technical-stories"], "conditional": ""}]}, {"id": 2, "title": "Discovery", "desc": "Historias Gherkin, reglas de negocio, catálogo de roles gobernado y PDD (AS-IS) si automatiza procesos.", "gate": null, "skills": [{"id": "sdlc-business-analyst", "name": "Business Analyst", "in": ["backlog.md", "business-rules.md", "roles.md", "user-stories.md", "vision.md"], "out": ["user-stories.md", "business-rules.md", "glossary.md", "roles.md", "process-definition.md"], "gates": ["user-stories", "roles", "process-definition"], "conditional": "process-definition.md: iniciativas que automatizan/redisenan procesos"}, {"id": "sdlc-solution-architect", "name": "Solution Architect", "in": ["architecture-proposal.md", "backlog.md", "vision.md"], "out": ["architecture-proposal.md", "technical-stories.md"], "gates": ["architecture-proposal", "technical-stories"], "conditional": ""}]}, {"id": 3, "title": "Arquitectura", "desc": "Contratos duros (OpenAPI), ADRs de 8 pasos firmados, threat modeling, prototipo de pantallas. GATE 1 habilita el paralelismo real.", "gate": "GATE 1", "skills": [{"id": "sdlc-data-engineer", "name": "Data Engineer", "in": ["data-model.md", "security-requirements.md"], "out": ["data-governance.md"], "gates": [], "conditional": "producto con datos significativos"}, {"id": "sdlc-decision-engine", "name": "Decision Engine", "in": [], "out": [], "gates": [], "conditional": ""}, {"id": "sdlc-enterprise-architect", "name": "Enterprise Architect", "in": [], "out": ["tech-radar.yaml", "architectural-principles.yaml", "exception-log.md"], "gates": [], "conditional": "Tier 1 y excepciones al radar"}, {"id": "sdlc-security-engineer", "name": "Security Engineer", "in": ["architecture.md", "data-model.md", "threat-model.md"], "out": ["threat-model.md", "security-requirements.md"], "gates": ["threat-model"], "conditional": ""}, {"id": "sdlc-software-architect", "name": "Software Architect", "in": ["api-contract.yaml", "architecture-proposal.md", "architecture.md", "business-rules.md", "user-stories.md"], "out": ["architecture.md", "api-contract.yaml", "data-model.md", "adr", "test-plan.md", "tech-debt.md"], "gates": ["architecture", "api-contract", "test-plan", "adr"], "conditional": ""}, {"id": "sdlc-solution-architect", "name": "Solution Architect", "in": ["architecture-proposal.md", "backlog.md", "vision.md"], "out": ["architecture-proposal.md", "technical-stories.md"], "gates": ["architecture-proposal", "technical-stories"], "conditional": ""}, {"id": "sdlc-ux-designer", "name": "UX Designer", "in": ["design-system.md", "user-stories.md"], "out": ["ux-flows.md", "design-system.md", "tokens.json", "ux"], "gates": ["ux-flows", "design-system", "screen-inventory"], "conditional": "spec/ux/: iniciativas con UI"}]}, {"id": 4, "title": "Strict TDD", "desc": "Backend y frontend en paralelo consumiendo mocks del contrato. Tests antes que código, siempre.", "gate": null, "skills": [{"id": "sdlc-backend-dev-tdd", "name": "Backend TDD", "in": [], "out": [], "gates": [], "conditional": ""}, {"id": "sdlc-frontend-dev-tdd", "name": "Frontend TDD", "in": [], "out": [], "gates": [], "conditional": ""}, {"id": "sdlc-security-engineer", "name": "Security Engineer", "in": ["architecture.md", "data-model.md", "threat-model.md"], "out": ["threat-model.md", "security-requirements.md"], "gates": ["threat-model"], "conditional": ""}, {"id": "sdlc-technical-writer", "name": "Technical Writer", "in": [], "out": [], "gates": [], "conditional": ""}]}, {"id": 5, "title": "QA & Seguridad", "desc": "E2E desde Gherkin, regresión, carga y DAST. Un bug vuelve al dev con el test exacto que lo reproduce.", "gate": "GATE 2 / 2.5", "skills": [{"id": "sdlc-qa-automation", "name": "QA Automation", "in": ["tests-e2e"], "out": ["qa-report.md"], "gates": ["qa-report"], "conditional": ""}, {"id": "sdlc-security-engineer", "name": "Security Engineer", "in": ["architecture.md", "data-model.md", "threat-model.md"], "out": ["threat-model.md", "security-requirements.md"], "gates": ["threat-model"], "conditional": ""}, {"id": "sdlc-technical-writer", "name": "Technical Writer", "in": [], "out": [], "gates": [], "conditional": ""}]}, {"id": 6, "title": "Release & Operación", "desc": "Deploy con rollback probado, diagramas derivados con recibo, SLOs, postmortems y medición de impacto que realimenta el backlog.", "gate": "GATE 3", "skills": [{"id": "sdlc-cloud-engineer", "name": "Cloud Engineer", "in": [], "out": ["cloud-costs.md", "despliegue.drawio"], "gates": [], "conditional": ""}, {"id": "sdlc-cloud-pricing", "name": "Cloud Pricing", "in": ["architecture-proposal.md"], "out": ["cost-assumptions.yaml", "cost-estimation.md"], "gates": ["cost-estimation"], "conditional": ""}, {"id": "sdlc-devops-engineer", "name": "DevOps Engineer", "in": [], "out": ["pipeline-cicd.md"], "gates": [], "conditional": ""}, {"id": "sdlc-product-analyst", "name": "Product Analyst", "in": [], "out": ["impact-report.md"], "gates": [], "conditional": ""}, {"id": "sdlc-sre", "name": "SRE", "in": ["architecture.md"], "out": ["slo.md"], "gates": ["slo"], "conditional": ""}, {"id": "sdlc-technical-writer", "name": "Technical Writer", "in": [], "out": [], "gates": [], "conditional": ""}]}];const ARTS={"1": ["vision.md"], "3": ["architecture.md"], "6": ["release.md"]};const HREFS={"architecture.md": "../index.html#/id/docs-architecture", "release.md": "../index.html#/id/docs-release", "vision.md": "../index.html#/id/docs-vision"};</script><script>
+document.querySelectorAll('[data-fase]').forEach(function(el){
+  el.addEventListener('click',function(){openF(+el.getAttribute('data-fase'));});
+});
+var _fmodal=document.getElementById('fmodal');
+_fmodal.addEventListener('click',function(e){if(e.target===_fmodal)closeF();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeF();});
+function _e(s){var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+var _curF=null;
+function _chip(name,cls){
+  if(HREFS[name]){var h=HREFS[name],portal=h.indexOf('#/id/')>=0;
+    return '<a class="badge '+cls+' alink" href="'+_e(h)+'"'
+      +(portal?' target="_top" title="Abrir '+_e(name)+' dentro del portal"':' target="_blank" rel="noopener" title="Abrir '+_e(name)+' en otra pestaña"')
+      +'>'+_e(name)+(portal?'':' &#8599;')+'</a>';}
+  return '<span class="badge '+cls+'">'+_e(name)+'</span>';
+}
+function openF(id){
+  var f=null;for(var i=0;i<FASES.length;i++){if(FASES[i].id===id){f=FASES[i];break;}}
+  if(!f)return;
+  _curF=id;
+  var h='<h2>Fase '+f.id+' &middot; '+_e(f.title)+'</h2><p class="mdesc">'+_e(f.desc||'')+'</p>';
+  if(f.gate)h+='<div class="mgate">&#x26D4; '+_e(f.gate)+'</div>';
+  var arts=ARTS[String(id)]||[];
+  if(arts.length){
+    h+='<h3>Generado en este proyecto ('+arts.length+') &mdash; clic para abrirlo en el portal</h3><div>';
+    for(var j=0;j<arts.length;j++)h+=_chip(arts[j],'art');
+    h+='</div>';
+  }
+  h+='<h3>'+f.skills.length+' skills en esta fase &mdash; qué leen (IN) y qué generan (OUT)</h3><div class="sgrid">';
+  for(var k=0;k<f.skills.length;k++){var s=f.skills[k];
+    h+='<div class="scard"><div class="sname">'+_e(s.name)+'</div>'
+      +'<div class="sid">'+_e(s.id)+(s.conditional?' &middot; condicional':'')+'</div>';
+    if(s.in&&s.in.length){h+='<div class="sio"><span class="iol">IN</span>';
+      for(var a=0;a<s.in.length;a++)h+=_chip(s.in[a],'io-in');h+='</div>';}
+    if(s.out&&s.out.length){h+='<div class="sio"><span class="iol">OUT</span>';
+      for(var b=0;b<s.out.length;b++)h+=_chip(s.out[b],'io-out');h+='</div>';}
+    h+='</div>';
+  }
+  h+='</div>';
+  document.getElementById('fbody').innerHTML=h;
+  _fmodal.classList.add('open');
+}
+function closeF(){_fmodal.classList.remove('open');}
+</script></div><h2>Acumulado del proyecto</h2><div class="kpis"><div class="kpi"><div class="v">2</div><div class="k">Sprints completados</div></div><div class="kpi"><div class="v">1</div><div class="k">Releases (GATE 3)</div></div><div class="kpi"><div class="v">3/4</div><div class="k">HU cerradas</div></div><div class="kpi"><div class="v">3</div><div class="k">Recibos vigentes</div></div><div class="kpi"><div class="v">1</div><div class="k">Recibos invalidados</div></div><div class="kpi"><div class="v">75%</div><div class="k">Gates al primer intento</div></div><div class="kpi"><div class="v">1/2</div><div class="k">ADRs (adoptadas)</div></div><div class="kpi"><div class="v">4</div><div class="k">Tecnologías en radar</div></div></div><script>
+(function(){
+  var root=document.documentElement;
+  function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
+  function apl(t){root.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');}
+  apl(saved());
+  window.addEventListener('message',function(e){var d=e.data||{};if(d.portal==='tema'){apl(d.tema);}});
+  var pid=document.body&&document.body.getAttribute('data-page-id');
+  if(pid&&window.parent!==window){
+    try{window.parent.postMessage({portal:'abierto',id:pid},'*');}catch(e){}
+  }
+})();
+</script></body></html>

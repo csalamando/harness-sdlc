@@ -348,11 +348,12 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out = rund("diff", "--old", os.path.join(FIX, "diagram-flow.ir.json"), "--new", p2)
     check("diff detecta nodo agregado (exit 2)", code == 2 and "[nodo] nuevo" in out, out)
 
-# ── 9d. mdview: visor Markdown estático de la spec (v2.18) ──────────────────
-print("\n[9d] mdview.py (visor Markdown de la spec)")
+# ── 9d. mdview: visor Markdown de la spec dentro del portal (v2.18/2.20) ─────
+print("\n[9d] mdview.py (docs Markdown → páginas del portal)")
 MDV = os.path.join(ORCH, "mdview.py")
 sys.path.insert(0, ORCH)
 import mdview
+import portal_lib
 html_md = mdview.render_md(
     "# Titulo\n\nTexto con **negrita** y `codigo`.\n\n"
     "| A | B |\n|---|---|\n| 1 | 2 |\n\n"
@@ -366,14 +367,108 @@ check("mdview doc_name: ruta anidada -> nombre unico",
 with tempfile.TemporaryDirectory() as tmp:
     spec = os.path.join(tmp, "spec")
     os.makedirs(os.path.join(spec, "reports"))
-    open(os.path.join(spec, "vision.md"), "w", encoding="utf-8").write("# Vision\n\nHola **mundo**.")
+    open(os.path.join(spec, "vision.md"), "w", encoding="utf-8").write(
+        "# Vision\n\nHola **mundo**. Ver [review](reports/sprint-review-01.md).")
     open(os.path.join(spec, "reports", "sprint-review-01.md"), "w", encoding="utf-8").write("# S1\n\ncierre.")
-    n = mdview.build(spec, os.path.join(spec, "docs-html"))
-    idx = open(os.path.join(spec, "docs-html", "index.html"), encoding="utf-8").read()
-    pag = open(os.path.join(spec, "docs-html", "vision.html"), encoding="utf-8").read()
-    check("mdview build: genera paginas + index", n == 2 and "vision.html" in idx and "reports__sprint-review-01.html" in idx)
-    check("mdview pagina: estilo propio + backlink al dashboard",
-          "<b>mundo</b>" in pag and "../dashboard.html" in pag)
+    n = mdview.build(spec)
+    docs_dir = os.path.join(spec, "portal", "paginas", "docs")
+    pag = open(os.path.join(docs_dir, "vision.html"), encoding="utf-8").read()
+    check("mdview build: genera paginas en portal/paginas/docs",
+          n == 2 and os.path.isfile(os.path.join(docs_dir, "reports__sprint-review-01.html")))
+    check("mdview pagina: identidad portal (tokens + data-page-id), sin backlink",
+          "<b>mundo</b>" in pag and "data-page-id=" in pag and "--bg:" in pag
+          and "dashboard.html" not in pag)
+    check("mdview: enlaces .md internos reescritos a su pagina",
+          'href="reports__sprint-review-01.html"' in pag)
+    reg = portal_lib._load_registry(spec)
+    check("mdview: cada doc queda registrado en el portal con texto buscable",
+          any(i["ruta"] == "paginas/docs/vision.html" and "mundo" in i["texto"]
+              for i in reg["items"]))
+
+# ── 9f. Portal único del proyecto (v2.20) ────────────────────────────────────
+print("\n[9f] Portal único (shell + registry + búsqueda + drift)")
+PORTAL = os.path.join(FIXTURE, "spec", "portal")
+shell = open(os.path.join(PORTAL, "index.html"), encoding="utf-8").read()
+check("portal: shell con sidebar, buscador Ctrl+K, ayuda, migas y tema compartido",
+      all(t in shell for t in ("PORTAL_MANIFEST", "#/id/", "dir-tema", "Ctrl+K",
+                               "portal-version", "helpbox", "topxtra",
+                               "crumbs", "portal-last-")))
+man = open(os.path.join(PORTAL, "manifest.js"), encoding="utf-8").read()
+check("portal: manifest con páginas densas, docs, diagrama y topbar",
+      all(t in man for t in ('"inicio"', '"metricas"', '"arquitectura"', '"memoria"',
+                             "docs-vision", "diagrams-arquitectura", '"topbar"', "Glosario")))
+check("portal: glosario oculto del menú lateral (solo topbar/buscador)",
+      '"oculto": true' in man)
+idx = open(os.path.join(PORTAL, "search-index.js"), encoding="utf-8").read()
+check("portal: índice de búsqueda cubre docs y métricas (texto plano)",
+      "PORTAL_INDEX" in idx and "PostgreSQL" in idx)
+ini = open(os.path.join(PORTAL, "paginas", "inicio.html"), encoding="utf-8").read()
+check("portal: inicio denso — pipeline compacto + acumulado en una pantalla",
+      "graph-wrap" in ini and "FASES=" in ini and "Acumulado del proyecto" in ini
+      and "data-page-id=" in ini)
+arq = open(os.path.join(PORTAL, "paginas", "arquitectura.html"), encoding="utf-8").read()
+check("portal: arquitectura vincula diagramas y ADR↔radar (data-tech)",
+      "dcard" in arq and "#/id/diagrams-arquitectura" in arq
+      and 'data-tech="postgresql"' in arq and "tr.adr-row" in arq)
+check("portal: artefactos del popup navegan dentro del portal (target _top)",
+      '../index.html#/id/' in ini and "_top" in ini)
+dash = open(os.path.join(FIXTURE, "spec", "dashboard.html"), encoding="utf-8").read()
+check("portal: dashboard.html es redirect pero conserva dashboard-state",
+      "portal/index.html" in dash and "dashboard-state:" in dash)
+code, out = run("portal_lib.py", "--spec", os.path.join(FIXTURE, "spec"), "--check")
+check("portal: check OK tras regenerar", code == 0, out)
+# poda: registrar una página fantasma y reconstruir → desaparece del manifiesto
+portal_lib.register(os.path.join(FIXTURE, "spec"), origen="test", kind="doc",
+                    ruta="paginas/fantasma.html", titulo="Fantasma")
+portal_lib.rebuild_index(os.path.join(FIXTURE, "spec"))
+man = open(os.path.join(PORTAL, "manifest.js"), encoding="utf-8").read()
+check("portal: rebuild poda páginas cuyo archivo ya no existe", "fantasma" not in man)
+code, out = run("portal_lib.py", "--spec", os.path.join(FIXTURE, "spec"), "--check")
+check("portal: check sigue OK tras la poda", code == 0, out)
+# drift detectable: tocar manifest.js debe romper el check
+_man = os.path.join(PORTAL, "manifest.js")
+_orig = open(_man, encoding="utf-8").read()
+try:
+    open(_man, "w", encoding="utf-8").write(_orig.replace('"inicio"', '"inicioX"', 1))
+    code, _ = run("portal_lib.py", "--spec", os.path.join(FIXTURE, "spec"), "--check")
+    check("portal: drift detectado al tocar manifest.js", code == 1)
+finally:
+    open(_man, "w", encoding="utf-8").write(_orig)
+code, out = run("portal_lib.py", "--spec", os.path.join(FIXTURE, "spec"), "--check")
+check("portal: manifest restaurado, check OK de nuevo", code == 0, out)
+
+# ── 9e. pipeline_diagram: lenguaje visual comun (v2.19); drawio retirado (v2.20) ──
+print("\n[9e] Pipeline CI/CD derivado (--tema, labels) + retiro de drawio")
+DIR_SCRIPTS = os.path.join(ROOT, "skills", "sdlc-diagrams", "scripts")
+def rund2(script, *args):
+    p = subprocess.run([sys.executable, script, *args], capture_output=True, text=True, cwd=ROOT)
+    return p.returncode, (p.stdout + p.stderr).strip()
+with tempfile.TemporaryDirectory() as tmp:
+    # workflow mínimo con job de nombre largo
+    wf_dir = os.path.join(tmp, "workflows")
+    os.makedirs(wf_dir)
+    open(os.path.join(wf_dir, "ci.yml"), "w", encoding="utf-8").write(
+        "name: CI\non: [push]\njobs:\n"
+        "  lint-y-unit-tests-backend-frontend:\n    steps:\n      - run: pytest\n"
+        "  contract-e2e:\n    needs: lint-y-unit-tests-backend-frontend\n    steps:\n      - run: e2e\n")
+    pip = os.path.join(DIR_SCRIPTS, "pipeline_diagram.py")
+    out_m = os.path.join(tmp, "pipeline.md")
+    code, out = rund2(pip, "generate", "--workflows-dir", wf_dir, "--out", out_m, "--tema", "oscuro")
+    md = open(out_m, encoding="utf-8").read() if code == 0 else ""
+    check("pipeline_diagram: --tema oscuro emite init dark", code == 0 and "'theme': 'dark'" in md, out)
+    check("pipeline_diagram: labels largos se quiebran con <br/>", "<br/>" in md, "")
+    code, out = rund2(pip, "check", "--workflows-dir", wf_dir, "--out", out_m)
+    check("pipeline_diagram: check detecta el tema grabado (sin drift)", code == 0, out)
+    code, out = rund2(pip, "generate", "--workflows-dir", wf_dir, "--out", out_m)
+    md = open(out_m, encoding="utf-8").read() if code == 0 else ""
+    check("pipeline_diagram: tema auto no emite init (el renderer elige)",
+          code == 0 and "%%{init:" not in md, out)
+    # v2.20: drawio retirado — diagram_render rechaza .drawio y sugiere la via vigente
+    fake = os.path.join(tmp, "viejo.drawio")
+    open(fake, "w", encoding="utf-8").write("<mxfile/>")
+    code, out = rund2(os.path.join(DIR_SCRIPTS, "diagram_render.py"), "render", fake)
+    check("diagram_render: .drawio rechazado con mensaje de retiro (v2.20)",
+          code == 1 and "v2.20" in out, out)
 
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")

@@ -1,0 +1,63 @@
+{
+  "kind": "flow",
+  "titulo": "EAFIT Bike — Arquitectura propuesta (C4 contenedores, Opción A)",
+  "fuente": "spec/architecture.md",
+  "bandas": "hulls",
+  "grupos": {"Cliente": "#38bdf8", "Perimetro": "#2dd4bf", "Edge": "#f59e0b", "Core": "#a78bfa", "Obs": "#f472b6", "Datos": "#34d399"},
+  "nodos": [
+    {"id": "usr",  "titulo": "Usuario (cliente / empleado)", "sub": "navegador HTTPS", "tipo": "ui", "grupo": "Cliente", "ubicacion": "On-premise", "detalle": "Actor humano: estudiante, docente o empleado EAFIT."},
+    {"id": "spa",  "titulo": "Frontend Angular (SPA)", "sub": "servido desde CDN", "tipo": "ui", "grupo": "Cliente", "ubicacion": "IBM Cloud (CDN)", "detalle": "SPA estatica; valida firma JWT localmente con JWKS cacheado."},
+    {"id": "cis",  "titulo": "IBM Cloud Internet Services", "sub": "CDN + Geo-DNS", "tipo": "edge", "grupo": "Perimetro", "ubicacion": "IBM Cloud", "detalle": "CDN para la SPA y descarga de lecturas calientes (catalogo, eventos, tiles)."},
+    {"id": "waf",  "titulo": "WAF + Load Balancer", "sub": "TLS terminado", "tipo": "security", "grupo": "Edge", "ubicacion": "IBM Cloud", "detalle": "Perimetro: filtrado, rate limiting y terminacion TLS."},
+    {"id": "idp",  "titulo": "Firebase Auth (IdP OIDC)", "sub": "login OIDC", "tipo": "security", "grupo": "Edge", "ubicacion": "GCP", "detalle": "Solo IdP por OIDC; sin llamada sincrona inter-nube en el camino caliente."},
+    {"id": "maps", "titulo": "Google Maps / tiles", "sub": "mapas", "tipo": "service", "grupo": "Core", "ubicacion": "Google Cloud (SaaS)", "rank": 3, "detalle": "Servicio periferico reemplazable (anti-lock-in por estandares)."},
+    {"id": "gw",   "titulo": "IBM API Connect (API Gateway)", "sub": "routing mTLS", "tipo": "edge", "grupo": "Core", "ubicacion": "IBM Cloud", "detalle": "Gateway: valida JWT localmente (JWKS cacheado), rate limiting, routing mTLS."},
+    {"id": "usu",  "titulo": "Usuarios", "sub": "Node.js", "tipo": "service", "grupo": "Core", "ubicacion": "IBM Cloud (K8s)", "detalle": "Perfiles y roles. HPA por CPU/latencia."},
+    {"id": "bic",  "titulo": "Bicicletas", "sub": "Node.js", "tipo": "service", "grupo": "Core", "ubicacion": "IBM Cloud (K8s)", "detalle": "Catalogo y disponibilidad de bicicletas."},
+    {"id": "geo",  "titulo": "Geolocalizacion", "sub": "serverless KEDA/Fargate", "tipo": "service", "grupo": "Core", "ubicacion": "IBM Cloud (serverless)", "detalle": "Tracking de bicicletas; escala a cero fuera de evento."},
+    {"id": "res",  "titulo": "Reservas — orquestador Saga", "sub": "Node.js", "tipo": "service", "grupo": "Core", "ubicacion": "IBM Cloud (K8s)", "detalle": "Saga + Outbox: la reserva y el evento se confirman en el mismo commit local; compensacion automatica ante fallo."},
+    {"id": "mesh", "titulo": "Service mesh (Istio)", "sub": "mTLS este-oeste", "tipo": "service", "grupo": "Core", "ubicacion": "IBM Cloud (K8s)", "rank": 3, "detalle": "mTLS en el 100% del trafico este-oeste: ninguna solicitud es confiable por su origen de red."},
+    {"id": "otel", "titulo": "OpenTelemetry Collector", "sub": "trazas/metricas (OTLP)", "tipo": "job", "grupo": "Obs", "ubicacion": "IBM Cloud", "rank": 4, "detalle": "Observabilidad por estandares: trazas, metricas y logs."},
+    {"id": "cdc",  "titulo": "CDC (Transactional Outbox)", "sub": "publica evento de dominio", "tipo": "job", "grupo": "Datos", "ubicacion": "IBM Cloud", "detalle": "Lee el outbox transaccional y publica al broker; reentrega sin duplicar efectos (consumidores idempotentes)."},
+    {"id": "mongo","titulo": "MongoDB Atlas (catalogo)", "sub": "persiste catalogo", "tipo": "db", "grupo": "Datos", "ubicacion": "MongoDB Atlas / IBM Cloud", "detalle": "Catalogo documental; lecturas calientes detras de Redis + CDN."},
+    {"id": "redis","titulo": "Redis (cache)", "sub": "cache catalogo", "tipo": "db", "grupo": "Datos", "ubicacion": "IBM Cloud", "detalle": "Descarga lecturas calientes del catalogo y eventos."},
+    {"id": "sql",  "titulo": "SQL gestionado (reservas)", "sub": "persiste reservas", "tipo": "db", "grupo": "Datos", "ubicacion": "IBM Cloud", "detalle": "Reserva y evento outbox en el mismo commit local."},
+    {"id": "bus",  "titulo": "RabbitMQ (eventos + Outbox)", "sub": "AMQP", "tipo": "db", "grupo": "Datos", "ubicacion": "IBM Cloud", "detalle": "Colas absorben la rafaga de escritura del inicio del evento (50k concurrentes)."}
+  ],
+  "aristas": [
+    {"desde": "usr", "hasta": "spa", "label": "HTTPS"},
+    {"desde": "spa", "hasta": "cis", "label": "servido desde CDN"},
+    {"desde": "spa", "hasta": "waf", "label": "API calls (HTTPS + JWT)"},
+    {"desde": "spa", "hasta": "idp", "label": "login OIDC"},
+    {"desde": "spa", "hasta": "maps", "label": "tiles (HTTPS)"},
+    {"desde": "cis", "hasta": "waf", "label": "trafico dinamico"},
+    {"desde": "waf", "hasta": "gw", "label": "TLS terminado"},
+    {"desde": "gw", "hasta": "usu", "label": "routing mTLS"},
+    {"desde": "gw", "hasta": "bic", "label": "routing mTLS"},
+    {"desde": "gw", "hasta": "geo", "label": "routing mTLS"},
+    {"desde": "gw", "hasta": "res", "label": "routing mTLS"},
+    {"desde": "bic", "hasta": "mongo", "label": "persiste catalogo"},
+    {"desde": "bic", "hasta": "redis", "label": "cache catalogo"},
+    {"desde": "res", "hasta": "sql", "label": "persiste reservas"},
+    {"desde": "res", "hasta": "bus", "label": "marca no disponible (compensacion)"},
+    {"desde": "res", "hasta": "cdc", "label": "outbox mismo commit"},
+    {"desde": "cdc", "hasta": "bus", "label": "publica evento de dominio"},
+    {"desde": "mesh", "hasta": "otel", "label": "trazas/metricas (OTLP)"},
+    {"desde": "idp", "hasta": "spa", "label": "valida firma JWT (JWKS cacheado)", "back": true},
+    {"desde": "cis", "hasta": "spa", "label": "sirve SPA (cache estatica)", "back": true}
+  ],
+  "insights": [
+    {"titulo": "Zero Trust con IdP externo", "color": "#38bdf8", "bullets": [
+      "Firebase (GCP) es solo IdP por OIDC; gateway y cada servicio validan el JWT localmente con JWKS cacheado — sin llamada sincrona inter-nube (latencia y egress minimos).",
+      "mTLS en el 100% del trafico este-oeste via service mesh: ninguna solicitud es confiable por su origen de red."]},
+    {"titulo": "Consistencia sin transaccion distribuida", "color": "#a78bfa", "bullets": [
+      "Saga orquestada por Reservas + Outbox: la reserva y el evento se confirman en el mismo commit local.",
+      "Consumidores idempotentes: la reentrega del broker no duplica efectos; compensacion automatica ante fallo."]},
+    {"titulo": "Elasticidad para 50k concurrentes", "color": "#34d399", "bullets": [
+      "HPA por CPU/latencia + node autoscaling; colas absorben la rafaga de escritura del inicio del evento.",
+      "Redis + CDN descargan lecturas calientes (catalogo, eventos, tiles); rate limiting protege el nucleo."]},
+    {"titulo": "Anti-lock-in por estandares", "color": "#fbbf24", "bullets": [
+      "Kubernetes + Terraform + OIDC + AMQP + OpenTelemetry: las cargas son portables; GCP solo aloja servicios perifericos reemplazables.",
+      "Trigger de re-evaluacion: si el egress inter-nube supera el 15% del OPEX, se reconsidera la consolidacion (Opcion B) con la plataforma ya portable."]}
+  ]
+}

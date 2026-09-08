@@ -157,8 +157,23 @@ quadrants:
     - technology: "Vitest"
       category: "Testing"
   ASSESS: []
-  HOLD: []
+  HOLD:
+    - technology: "PostgreSQL"
+      category: "Base de datos"
 """)
+
+# ── diagrama vivo de ejemplo (aparece en Arquitectura del portal) ──
+import shutil as _sh
+_ir_src = os.path.join(os.path.dirname(ROOT), "demo-arquitectura-ubicaciones.ir.json")
+_ir_dst = os.path.join(ROOT, "spec", "diagrams", "arquitectura.ir.json")
+os.makedirs(os.path.dirname(_ir_dst), exist_ok=True)
+_sh.copyfile(_ir_src, _ir_dst)
+import subprocess as _sp, sys as _sys
+_repo = os.path.dirname(os.path.dirname(HERE))
+_sp.run([_sys.executable,
+         os.path.join(_repo, "skills", "sdlc-diagrams", "scripts", "diagram_ir.py"),
+         "render", "--ir", _ir_dst, "--out", _ir_dst.replace(".ir.json", ".html")],
+        capture_output=True)
 
 # ── trazabilidad HU -> test -> codigo ──
 w("tests/test_hu.py", '''"""Tests del fixture: HU-001, HU-002, HU-003."""

@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-"""mdview.py — visor Markdown estático para la spec (v2.18).
+"""mdview.py — visor Markdown estático para la spec (v2.18, portal v2.20).
 
-Convierte los .md gobernados de spec/ en paginas HTML estilo GitHub (tema oscuro,
-acorde al dashboard), auto-contenidas y SIN red, para leer la spec desde
-spec/dashboard.html sin salir del navegador ni levantar un servidor.
+Convierte los .md gobernados de spec/ en paginas HTML auto-contenidas y SIN
+red, publicadas dentro del portal unico del proyecto (spec/portal/paginas/docs/)
+con la identidad visual compartida (tokens claro/oscuro de portal_lib) y
+registradas en el indice/buscador global del portal.
 
 Inspirado en el patron `grip --export` (joeyespo/grip), pero sin GitHub API:
 renderer propio stdlib — offline, cero dependencias, determinista.
 
 Uso:
-  python mdview.py build --spec <dir_spec> [--out <dir_spec/docs-html>]
+  python mdview.py build --spec <dir_spec> [--out <dir_spec/portal/paginas/docs>]
 
-Genera una pagina por .md (top-level de spec/, spec/reports/, spec/adr/ y
-spec/diagrams/*.md) mas un index.html que las lista. Cada pagina enlaza de
-vuelta al dashboard (../dashboard.html). Es artefacto derivado: se regenera
-en cada `harness_graph.py --proyecto`; nunca se edita a mano.
+Genera una pagina por .md (top-level de spec/, spec/reports/, spec/adr/,
+spec/diagrams/*.md y spec/memory/*.md), reescribe los enlaces .md internos a
+su pagina renderizada y registra cada pagina en el portal (categoria inferida
+de la ruta fuente). El indice visual es el shell del portal; ya no genera un
+index.html propio. Es artefacto derivado: se regenera en cada
+`harness_graph.py --proyecto`; nunca se edita a mano.
 
 Cobertura Markdown (suficiente para doc-as-code de la spec): encabezados ATX,
 parrafos, negrita/cursiva/codigo inline, enlaces, imagenes, listas ul/ol
@@ -23,30 +26,7 @@ codigo con resaltado neutro (mermaid se muestra como codigo, sin render).
 """
 import argparse, glob, html, os, re, sys
 
-VERSION = "1.0.0"
-
-CSS = """
-body{background:#0b1220;color:#dbe4f0;font-family:system-ui,'Segoe UI',sans-serif;
-  max-width:900px;margin:0 auto;padding:2rem 1.4rem 4rem;line-height:1.6;font-size:15px}
-a{color:#58a6ff;text-decoration:none} a:hover{text-decoration:underline}
-h1,h2,h3,h4{color:#f1f5f9;border-bottom:1px solid #1e293b;padding-bottom:.3em;margin-top:1.6em}
-h1{font-size:1.7em} h2{font-size:1.35em} h3{font-size:1.12em} h4{font-size:1em}
-code{background:#1e293b;border-radius:5px;padding:.15em .4em;font-size:.88em;
-  font-family:ui-monospace,'Cascadia Code',Consolas,monospace;color:#a5f3fc}
-pre{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:1rem;
-  overflow-x:auto} pre code{background:none;padding:0;color:#cbd5e1}
-table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.92em;display:block;overflow-x:auto}
-th,td{border:1px solid #1e293b;padding:.45em .8em;text-align:left;vertical-align:top}
-th{background:#0f172a;color:#e2e8f0} tr:nth-child(even) td{background:#0d1526}
-blockquote{border-left:3px solid #334155;margin:1em 0;padding:.2em 1em;color:#94a3b8}
-hr{border:none;border-top:1px solid #1e293b;margin:2em 0}
-img{max-width:100%} li{margin:.2em 0}
-.back{display:inline-block;margin-bottom:1.2rem;background:#0f172a;border:1px solid #334155;
-  border-radius:8px;padding:.4rem .9rem;color:#cbd5e1;font-size:.9em}
-.back:hover{border-color:#3b82f6;color:#e2e8f0;text-decoration:none}
-.meta{color:#64748b;font-size:.82em;margin-top:-.6rem;margin-bottom:1.4rem}
-.idx h2{border:none;margin-top:1.2em} .idx li{margin:.35em 0}
-"""
+VERSION = "2.0.0"
 
 # ── inline ───────────────────────────────────────────────────────────────────
 
@@ -122,15 +102,7 @@ def render_md(text):
         out.append(f"<p>{_inline(' '.join(buf))}</p>")
     return "\n".join(out)
 
-# ── pagina completa ──────────────────────────────────────────────────────────
-
-def page(titulo, body_html, back="../dashboard.html", back_label="← Dashboard"):
-    return ("<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>"
-            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-            f"<title>{html.escape(titulo)}</title><style>{CSS}</style></head><body>"
-            f"<a class='back' href='{back}'>{back_label}</a>"
-            f"<div class='meta'>Render derivado de spec/ (mdview) — no editar a mano; la fuente es el .md</div>"
-            f"{body_html}</body></html>")
+# ── pagina completa (portal) ─────────────────────────────────────────────────
 
 def doc_name(relpath):
     """Nombre de pagina unico por ruta relativa: reports/x.md -> reports__x.html"""
@@ -142,12 +114,32 @@ def collect(spec_dir):
     for pat in pats:
         files += glob.glob(os.path.join(spec_dir, pat))
     return sorted({os.path.relpath(f, spec_dir).replace(os.sep, "/") for f in files
-                   if "docs-html" not in f})
+                   if "docs-html" not in f and "portal" not in f})
 
-def build(spec_dir, out_dir):
+def _rewrite_links(body, rel, rels):
+    """Enlaces .md internos -> pagina renderizada del portal (mismo directorio)."""
+    base = os.path.dirname(rel)
+    def rep(m):
+        href, anchor = m.group(1), m.group(2) or ""
+        if re.match(r"^[a-z]+://", href, re.I) or href.startswith("#"):
+            return m.group(0)
+        tgt = os.path.normpath(os.path.join(base, href)).replace(os.sep, "/")
+        if tgt.lower().endswith(".md") and tgt in rels:
+            return f'href="{doc_name(tgt)}{anchor}"'
+        return m.group(0)
+    return re.sub(r'href="([^"]+?)(#[^"]*)?"', rep, body)
+
+def build(spec_dir, out_dir=None):
+    """Renderiza los .md de la spec al portal y los registra. Devuelve nº docs."""
+    import portal_lib
+    out_dir = out_dir or os.path.join(portal_lib.paginas_dir(spec_dir), "docs")
     rels = collect(spec_dir)
     os.makedirs(out_dir, exist_ok=True)
-    paginas = []
+    # limpieza de paginas derivadas anteriores (se regeneran todas)
+    for viejo in glob.glob(os.path.join(out_dir, "*.html")):
+        os.remove(viejo)
+    nota = "Render derivado de spec/ (mdview) — no editar a mano; la fuente es el .md"
+    n = 0
     for rel in rels:
         src = os.path.join(spec_dir, rel)
         try:
@@ -158,33 +150,27 @@ def build(spec_dir, out_dir):
         m = re.search(r"^#\s+(.+)$", text, re.M)
         if m:
             titulo = m.group(1).strip()
-        # enlaces entre .md de la spec -> pagina renderizada
-        body = render_md(text)
+        body = _rewrite_links(render_md(text), rel, set(rels))
         nombre = doc_name(rel)
+        ruta = "paginas/docs/" + nombre
+        pid = portal_lib.slug(ruta)
         open(os.path.join(out_dir, nombre), "w", encoding="utf-8", newline="\n").write(
-            page(titulo, body))
-        paginas.append((rel, titulo, nombre))
-    grupos = {}
-    for rel, titulo, nombre in paginas:
-        grupos.setdefault(os.path.dirname(rel) or "spec", []).append((titulo, nombre))
-    lis = "".join(
-        f"<h2>{html.escape(g)}</h2><ul>" + "".join(
-            f'<li><a href="{n}">{html.escape(t)}</a></li>' for t, n in sorted(items)) + "</ul>"
-        for g, items in sorted(grupos.items()))
-    open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8", newline="\n").write(
-        page("Documentos de la spec", f"<div class='idx'><h1>📄 Documentos de la spec</h1>{lis}</div>"))
-    return len(paginas)
+            portal_lib.page_wrap(titulo, body, page_id=pid, note=nota))
+        portal_lib.register(spec_dir, origen="mdview", kind="doc", ruta=ruta,
+                            titulo=titulo, grupo=os.path.dirname(rel) or "spec",
+                            tags=[rel], texto=text)
+        n += 1
+    return n
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Visor Markdown estatico de la spec (v2.18)")
+    ap = argparse.ArgumentParser(description="Visor Markdown estatico de la spec (portal v2.20)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("build")
     p.add_argument("--spec", required=True)
     p.add_argument("--out", default=None)
     a = ap.parse_args(argv)
-    out = a.out or os.path.join(a.spec, "docs-html")
-    n = build(a.spec, out)
-    print(f"mdview: {n} documentos renderizados en {out}")
+    n = build(a.spec, a.out)
+    print(f"mdview: {n} documentos renderizados en el portal")
     return 0
 
 if __name__ == "__main__":

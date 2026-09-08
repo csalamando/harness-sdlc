@@ -143,15 +143,41 @@ def validate(wf):
 
 # ---------- Mermaid ----------
 
-def to_mermaid(wf):
-    out = ["flowchart LR"]
+# Lenguaje visual común (v2.19): el tema se fija con una directiva init por
+# bloque; "auto" no la emite y el renderer (GitHub, mmdc) elige.
+TEMA_INIT = {"claro": "%%{init: {'theme': 'default'}}%%",
+             "oscuro": "%%{init: {'theme': 'dark'}}%%"}
+
+
+def wrap_label(s, width=22):
+    """Quiebra ids de job largos por '-'/'_' para que no desborden el nodo."""
+    if len(s) <= width:
+        return s
+    lines, cur = [], ""
+    for part in re.split(r"([-_])", s):
+        if cur and len(cur) + len(part) > width:
+            lines.append(cur)
+            cur = part.lstrip("-_")
+        else:
+            cur += part
+    if cur:
+        lines.append(cur)
+    return "<br/>".join(lines)
+
+
+def to_mermaid(wf, tema="auto"):
+    out = []
+    if tema in TEMA_INIT:
+        out.append(TEMA_INIT[tema])
+    out.append("flowchart LR")
     jobs = wf["jobs"]
     roots = [j for j in jobs if not jobs[j]["needs"]]
     trig = ", ".join(wf["triggers"]) or "trigger"
     out.append(f'    T(["{trig}"])')
     for j in jobs:
         steps = jobs[j]["steps"]
-        label = f"{j}\\n({steps} steps)" if steps else j
+        jid = wrap_label(j)
+        label = f"{jid}<br/>({steps} steps)" if steps else jid
         out.append(f'    {norm_id(j)}["{label}"]')
     for r in roots:
         out.append(f"    T --> {norm_id(r)}")
@@ -166,7 +192,7 @@ def norm_id(s):
     return re.sub(r"[^A-Za-z0-9_]", "_", s)
 
 
-def build_md(workflows):
+def build_md(workflows, tema="auto"):
     parts = ["# Pipeline CI/CD (derivado de .github/workflows/)",
              "",
              "> Generado por `pipeline_diagram.py`. NO editar a mano: regenerar",
@@ -178,7 +204,7 @@ def build_md(workflows):
         parts.append(f"## Workflow: {wf['name']}")
         parts.append("")
         parts.append("```mermaid")
-        parts.append(to_mermaid(wf))
+        parts.append(to_mermaid(wf, tema))
         parts.append("```")
         parts.append("")
         issues = validate(wf)
@@ -208,7 +234,7 @@ def load_workflows(a):
 
 def cmd_generate(a):
     wfs = load_workflows(a)
-    md, errs = build_md(wfs)
+    md, errs = build_md(wfs, a.tema)
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     with open(a.out, "w", encoding="utf-8") as f:
         f.write(md)
@@ -235,7 +261,14 @@ def cmd_check(a):
     if not os.path.isfile(a.out):
         print(f"DRIFT: no existe {a.out} (diagrama nunca generado).", file=sys.stderr)
         return 1
-    md, _ = build_md(load_workflows(a))
+    tema = a.tema
+    if tema == "auto":  # detectar el tema grabado en el propio .md (init mermaid)
+        head = open(a.out, encoding="utf-8").read()
+        if "'theme': 'dark'" in head:
+            tema = "oscuro"
+        elif "'theme': 'default'" in head:
+            tema = "claro"
+    md, _ = build_md(load_workflows(a), tema)
     current = open(a.out, encoding="utf-8").read()
     if md.strip() == current.strip():
         print(f"OK: {a.out} sincronizado con los workflows.")
@@ -255,6 +288,8 @@ def main():
         sp = sub.add_parser(name)
         sp.add_argument("--workflows-dir", default=".github/workflows")
         sp.add_argument("--out", default="spec/diagrams/pipeline-cicd.md")
+        sp.add_argument("--tema", choices=["auto", "claro", "oscuro"], default="auto",
+                        help="Tema mermaid por bloque (auto = el renderer elige)")
         sp.set_defaults(f=fn)
     a = p.parse_args()
     return a.f(a)

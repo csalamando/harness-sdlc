@@ -1,0 +1,42 @@
+{
+  "kind": "flow",
+  "titulo": "Demo verificacion — arquitectura con ubicaciones (C4 contenedores)",
+  "fuente": "demo-manual.ir.json",
+  "bandas": "hulls",
+  "grupos": {"Cliente": "#38bdf8", "Edge": "#2dd4bf", "Core": "#a78bfa", "Datos": "#34d399"},
+  "nodos": [
+    {"id": "usr",  "titulo": "Usuario (cliente / empleado)", "sub": "navegador HTTPS", "tipo": "ui", "grupo": "Cliente", "ubicacion": "On-premise", "detalle": "Actor humano del sistema."},
+    {"id": "spa",  "titulo": "Frontend Angular (SPA)", "sub": "servido desde CDN", "tipo": "ui", "grupo": "Cliente", "ubicacion": "Cloudflare CDN", "detalle": "SPA estatica con cache agresivo."},
+    {"id": "waf",  "titulo": "WAF + Load Balancer", "sub": "TLS terminado", "tipo": "security", "grupo": "Edge", "ubicacion": "IBM Cloud", "detalle": "Perimetro: filtrado y balanceo."},
+    {"id": "gw",   "titulo": "API Gateway (Kong)", "sub": "routing mTLS", "tipo": "edge", "grupo": "Edge", "ubicacion": "AWS us-east-1", "detalle": "Gateway con validacion JWT local (JWKS cacheado)."},
+    {"id": "idp",  "titulo": "Firebase Auth (IdP OIDC)", "sub": "login OIDC", "tipo": "security", "grupo": "Edge", "ubicacion": "GCP", "detalle": "Solo IdP; sin llamada sincrona inter-nube."},
+    {"id": "usr2", "titulo": "Servicio de Usuarios y Perfiles Extendidos", "sub": "Node.js", "tipo": "service", "grupo": "Core", "ubicacion": "AWS us-east-1", "detalle": "Titulo largo a proposito para verificar wrap de 2 lineas."},
+    {"id": "res",  "titulo": "Reservas — orquestador Saga", "sub": "Node.js", "tipo": "service", "grupo": "Core", "ubicacion": "Azure AKS", "detalle": "Saga + Outbox: consistencia sin transaccion distribuida."},
+    {"id": "mongo","titulo": "MongoDB Atlas (catalogo)", "sub": "persiste catalogo", "tipo": "db", "grupo": "Datos", "ubicacion": "MongoDB Atlas / AWS", "detalle": "Catalogo caliente detras de CDN."},
+    {"id": "redis","titulo": "Redis (cache)", "sub": "cache catalogo", "tipo": "db", "grupo": "Datos", "ubicacion": "AWS ElastiCache", "detalle": "Descarga lecturas calientes."},
+    {"id": "bus",  "titulo": "RabbitMQ (eventos + Outbox)", "sub": "publica eventos", "tipo": "db", "grupo": "Datos", "ubicacion": "On-premise DC-2", "detalle": "Bus de eventos con reintentos idempotentes."}
+  ],
+  "aristas": [
+    {"desde": "usr", "hasta": "spa", "label": "HTTPS"},
+    {"desde": "spa", "hasta": "waf", "label": "API calls (HTTPS + JWT)"},
+    {"desde": "waf", "hasta": "gw", "label": "TLS terminado"},
+    {"desde": "spa", "hasta": "idp", "label": "login OIDC"},
+    {"desde": "gw", "hasta": "usr2", "label": "routing mTLS"},
+    {"desde": "gw", "hasta": "res", "label": "routing mTLS"},
+    {"desde": "res", "hasta": "mongo", "label": "persiste reservas"},
+    {"desde": "usr2", "hasta": "redis", "label": "cache catalogo"},
+    {"desde": "res", "hasta": "bus", "label": "publica eventos"},
+    {"desde": "idp", "hasta": "spa", "label": "valida firma JWT (JWKS cacheado)", "back": true}
+  ],
+  "insights": [
+    {"titulo": "Multi-nube + on-prem visible", "color": "#38bdf8", "bullets": [
+      "Cada nodo declara su ubicacion con el campo 'ubicacion' del IR",
+      "El icono distingue nube (☁) de on-premise (⌂) automaticamente"]},
+    {"titulo": "Textos sin desborde", "color": "#34d399", "bullets": [
+      "Titulos largos hacen wrap a 2 lineas; el sub usa elipsis",
+      "Ejemplo: 'Servicio de Usuarios y Perfiles Extendidos'"]},
+    {"titulo": "Tema y fuente", "color": "#fbbf24", "bullets": [
+      "Toolbar arriba a la derecha: toggle claro/oscuro y A− / A / A+",
+      "La preferencia persiste en localStorage entre sesiones"]}
+  ]
+}

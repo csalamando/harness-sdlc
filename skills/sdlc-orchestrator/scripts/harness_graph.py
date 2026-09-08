@@ -577,11 +577,12 @@ def derive_project(project_dir):
         b = os.path.basename(art or "?")
         if art:
             rel = os.path.relpath(art, spec_dir).replace(os.sep, "/")
-            # Los .md se enlazan a su pagina renderizada por mdview (docs-html/);
-            # el resto (json, yaml, drawio...) va al archivo tal cual.
+            # Los .md se enlazan a su pagina del portal (ruta hash del shell);
+            # el resto (json, yaml...) va al archivo tal cual en otra pestaña.
             if rel.lower().endswith(".md"):
-                import mdview
-                rel = "docs-html/" + mdview.doc_name(rel)
+                import mdview, portal_lib
+                pid = portal_lib.slug("paginas/docs/" + mdview.doc_name(rel))
+                rel = "../index.html#/id/" + pid
             artefactos_href[b] = rel
         mac = GATE_MACRO.get(norm_gate(r.get("gate")))
         if mac:
@@ -654,92 +655,86 @@ def derive_project(project_dir):
 
 # ── Render del dashboard (self-contained, sin JS ni dependencias) ─────────────
 
+# CSS de las páginas de métricas del portal (v2.20): todo con las variables de
+# portal_lib.TOKENS_CSS, así el tema claro/oscuro lo cambia el shell sin tocar
+# las páginas. Antes era el CSS del dashboard monolítico con colores fijos.
 DASH_CSS = """
-  :root { color-scheme: dark; }
-  body { background:#0b1220; color:#e2e8f0; font-family:system-ui,sans-serif; margin:0; padding:2rem; max-width:1200px; margin-inline:auto; }
   h1 { font-size:1.3rem; margin-bottom:.2rem; }
-  .sub { color:#94a3b8; font-size:.85rem; margin-bottom:1.5rem; }
-  .panel { background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:1.2rem; margin-bottom:1.5rem; }
-  .panel h2 { font-size:1rem; margin:0 0 1rem; color:#cbd5e1; }
-  details.panel { padding:0; }
-  details.panel > summary { cursor:pointer; list-style:none; padding:1.1rem 1.2rem; font-size:1rem; font-weight:600;
-                            color:#cbd5e1; user-select:none; }
-  details.panel > summary::before { content:"▸"; display:inline-block; margin-right:.6rem; color:#3b82f6; transition:.15s; }
-  details.panel[open] > summary::before { transform:rotate(90deg); }
-  details.panel > summary::-webkit-details-marker { display:none; }
-  details.panel > :not(summary) { margin-left:1.2rem; margin-right:1.2rem; }
-  details.panel > :last-child { margin-bottom:1.2rem; }
-  .legend { display:flex; gap:1.2rem; font-size:.75rem; color:#94a3b8; margin-top:.6rem; flex-wrap:wrap; }
+  .sub { color:var(--sub); font-size:.85rem; margin-bottom:1.5rem; }
+  .panel { background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:12px; padding:1.2rem; margin-bottom:1.5rem; }
+  .panel h2 { font-size:1rem; margin:0 0 1rem; color:var(--fg); }
+  .legend { display:flex; gap:1.2rem; font-size:.75rem; color:var(--sub); margin-top:.6rem; flex-wrap:wrap; }
   .legend span::before { content:"\\25CF"; margin-right:.35rem; }
-  .lg-ok::before { color:#22c55e; } .lg-warn::before { color:#f59e0b; } .lg-none::before { color:#475569; }
-  .lg-cur::before { color:#3b82f6; }
+  .lg-ok::before { color:var(--ok); } .lg-warn::before { color:var(--warn); } .lg-none::before { color:var(--muted); }
+  .lg-cur::before { color:var(--accent); }
   .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.8rem; }
-  .kpi { background:#111c33; border:1px solid #1e293b; border-radius:10px; padding:.9rem; }
+  .kpi { background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:10px; padding:.9rem; }
   .kpi .v { font-size:1.7rem; font-weight:700; }
-  .kpi .k { font-size:.72rem; color:#94a3b8; margin-top:.2rem; }
+  .kpi .k { font-size:.72rem; color:var(--sub); margin-top:.2rem; }
   table { border-collapse:collapse; width:100%; font-size:.8rem; }
-  th, td { text-align:left; padding:.45rem .6rem; border-bottom:1px solid #1e293b; }
-  th { color:#94a3b8; font-weight:600; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; }
-  .bar { height:8px; border-radius:4px; background:#3b82f6; display:inline-block; vertical-align:middle; margin-right:.4rem; }
-  .bar.bad { background:#f59e0b; }
-  .learn { font-size:.82rem; color:#cbd5e1; margin:.4rem 0; }
-  .warn-line { font-size:.75rem; color:#fbbf24; margin-top:.6rem; }
-  .empty { color:#475569; font-size:.82rem; font-style:italic; }
-  footer { font-size:.7rem; color:#475569; margin-top:1rem; }
+  th, td { text-align:left; padding:.45rem .6rem; border-bottom:1px solid var(--panel-bd); }
+  th { color:var(--sub); font-weight:600; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; }
+  .bar { height:8px; border-radius:4px; background:var(--accent); display:inline-block; vertical-align:middle; margin-right:.4rem; }
+  .bar.bad { background:var(--warn); }
+  .learn { font-size:.82rem; color:var(--fg); margin:.4rem 0; }
+  .warn-line { font-size:.75rem; color:var(--warn); margin-top:.6rem; }
+  .empty { color:var(--muted); font-size:.82rem; font-style:italic; }
+  footer { font-size:.7rem; color:var(--muted); margin-top:1rem; }
   .badge { display:inline-block; font-size:.72rem; border-radius:4px; padding:2px 7px; margin:2px; white-space:nowrap; }
-  .st-ok { background:#052e1b; color:#6ee7b7; border:1px solid #065f46; }
-  .st-prop { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; }
-  .st-sup { background:#1c1917; color:#a8a29e; border:1px solid #44403c; }
-  .st-otro { background:#111c33; color:#94a3b8; border:1px solid #334155; }
-  .tier { background:#451a03; color:#fdba74; border:1px solid #9a3412; }
-  .art { background:#0f172a; color:#94a3b8; border:1px solid #334155; }
+  .st-ok { background:rgba(34,197,94,.14); color:var(--ok); border:1px solid rgba(34,197,94,.4); }
+  .st-prop { background:rgba(59,130,246,.15); color:var(--accent); border:1px solid rgba(59,130,246,.45); }
+  .st-sup { background:rgba(100,116,139,.15); color:var(--muted); border:1px solid rgba(100,116,139,.4); }
+  .st-otro { background:var(--card-bg); color:var(--sub); border:1px solid var(--panel-bd); }
+  .tier { background:rgba(249,115,22,.15); color:var(--tier); border:1px solid rgba(249,115,22,.45); }
+  .art { background:var(--panel-bg); color:var(--sub); border:1px solid var(--panel-bd); }
   .quad { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.6rem; margin-top:.8rem; }
   .quad .kpi .v { font-size:1.3rem; }
-  .fase-arts { margin-top:1rem; }
-  .fase-arts h3 { font-size:.78rem; color:#94a3b8; margin:.6rem 0 .2rem; font-weight:600; }
   [data-fase]:hover { opacity:.85; }
   .moverlay { display:none; position:fixed; inset:0; background:rgba(2,6,23,.78); z-index:50;
               align-items:flex-start; justify-content:center; padding:3rem 1rem; }
   .moverlay.open { display:flex; }
-  .mbox { background:#0f172a; border:1px solid #334155; border-radius:14px; max-width:920px; width:100%;
+  .mbox { background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:14px; max-width:920px; width:100%;
           max-height:82vh; overflow-y:auto; padding:1.6rem 1.8rem; position:relative;
           box-shadow:0 20px 60px rgba(0,0,0,.6); }
-  .mclose { position:absolute; top:.7rem; right:.9rem; background:none; border:none; color:#64748b;
+  .mclose { position:absolute; top:.7rem; right:.9rem; background:none; border:none; color:var(--muted);
             font-size:1.6rem; cursor:pointer; line-height:1; }
-  .mclose:hover { color:#e2e8f0; }
-  .mbox h2 { font-size:1.15rem; margin:0 0 .3rem; color:#e2e8f0; }
-  .mdesc { color:#94a3b8; font-size:.92rem; margin:.2rem 0 .6rem; }
-  .mgate { display:inline-block; font-size:.8rem; font-weight:600; color:#fdba74; background:#451a03;
-           border:1px solid #9a3412; border-radius:6px; padding:2px 10px; margin-bottom:.4rem; }
-  .mbox h3 { font-size:.82rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;
+  .mclose:hover { color:var(--fg); }
+  .mbox h2 { font-size:1.15rem; margin:0 0 .3rem; color:var(--txt); }
+  .mdesc { color:var(--sub); font-size:.92rem; margin:.2rem 0 .6rem; }
+  .mgate { display:inline-block; font-size:.8rem; font-weight:600; color:var(--tier); background:rgba(249,115,22,.15);
+           border:1px solid rgba(249,115,22,.45); border-radius:6px; padding:2px 10px; margin-bottom:.4rem; }
+  .mbox h3 { font-size:.82rem; color:var(--sub); text-transform:uppercase; letter-spacing:.05em;
              margin:1.1rem 0 .5rem; }
   .sgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:.7rem; }
-  .scard { background:#111c33; border:1px solid #1e293b; border-radius:10px; padding:.7rem .8rem; }
-  .sname { font-weight:700; font-size:.95rem; color:#e2e8f0; }
-  .sid { font-size:.75rem; color:#64748b; margin:.1rem 0 .45rem; }
+  .scard { background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:10px; padding:.7rem .8rem; }
+  .sname { font-weight:700; font-size:.95rem; color:var(--txt); }
+  .sid { font-size:.75rem; color:var(--muted); margin:.1rem 0 .45rem; }
   .sio { font-size:.78rem; margin-top:.35rem; }
-  .iol { color:#64748b; font-weight:700; margin-right:.3rem; }
-  .io-in { background:#172554; color:#93c5fd; border:1px solid #1d4ed8; }
-  .io-out { background:#052e1b; color:#6ee7b7; border:1px solid #065f46; }
+  .iol { color:var(--muted); font-weight:700; margin-right:.3rem; }
+  .io-in { background:rgba(59,130,246,.15); color:var(--accent); border:1px solid rgba(59,130,246,.45); }
+  .io-out { background:rgba(34,197,94,.14); color:var(--ok); border:1px solid rgba(34,197,94,.4); }
   .alink { text-decoration:none; cursor:pointer; font-size:.72rem; padding:3px 8px; }
-  .alink:hover { color:#e2e8f0; border-color:#3b82f6; }
-  .fzctl { position:fixed; bottom:1rem; right:1rem; z-index:40; display:flex; align-items:center; gap:.35rem;
-           background:#0f172a; border:1px solid #334155; border-radius:8px; padding:.3rem .5rem;
-           font-size:.75rem; color:#94a3b8; }
-  .fzctl button { background:#1e293b; border:1px solid #334155; border-radius:6px; color:#e2e8f0;
-                  font-size:.85rem; font-weight:700; padding:.1rem .55rem; cursor:pointer; }
-  .fzctl button:hover { border-color:#3b82f6; }
-  .mfz { position:absolute; top:.8rem; right:2.9rem; display:flex; gap:.3rem; }
-  .mfz button { background:#1e293b; border:1px solid #334155; border-radius:6px; color:#e2e8f0;
-                font-size:.8rem; font-weight:700; padding:.1rem .5rem; cursor:pointer; }
-  .mfz button:hover { border-color:#3b82f6; }
-  .topbtns { display:flex; gap:.6rem; margin:-0.6rem 0 1.4rem; flex-wrap:wrap; }
-  .topbtns button { background:#0f172a; border:1px solid #334155; border-radius:8px; color:#cbd5e1;
-                    font-size:.82rem; font-weight:600; padding:.4rem .9rem; cursor:pointer; }
-  .topbtns button:hover { border-color:#3b82f6; color:#e2e8f0; }
-  .topbtns a.toplink { background:#0f172a; border:1px solid #334155; border-radius:8px; color:#cbd5e1;
-    padding:.45rem .9rem; font-size:.9rem; cursor:pointer; text-decoration:none; }
-  .topbtns a.toplink:hover { border-color:#3b82f6; color:#e2e8f0; }
+  .alink:hover { color:var(--txt); border-color:var(--accent); }
+  .home-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.8rem; margin:1rem 0 1.4rem; }
+  .home-links li { margin:.35rem 0; }
+  /* Layouts densos del portal (v2.20.1): info relacionada en la misma pantalla */
+  .graph-wrap { max-width:920px; margin:0 auto; }
+  .dense2 { display:grid; grid-template-columns:3fr 2fr; gap:1.4rem; align-items:start; }
+  .dense2eq { display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; align-items:start; }
+  @media (max-width:1150px) { .dense2, .dense2eq { grid-template-columns:1fr; } }
+  .diag-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:.8rem; margin-bottom:1.2rem; }
+  .dcard { display:block; background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:10px;
+           padding:.8rem .9rem; text-decoration:none; color:var(--fg); }
+  .dcard:hover { border-color:var(--accent); text-decoration:none; }
+  .dcard b { display:block; font-size:.88rem; color:var(--txt); margin-bottom:.15rem; }
+  .dcard span { font-size:.72rem; color:var(--sub); }
+  .adr-row { cursor:pointer; }
+  .adr-row:hover td { background:var(--card-bg); }
+  .adr-row.hl td { background:rgba(59,130,246,.16); }
+  [data-tech] { cursor:pointer; }
+  [data-tech].hl circle { stroke:var(--accent); stroke-width:2.5; }
+  [data-tech].hl text { fill:var(--accent); font-weight:700; }
+  .radar-note { font-size:.72rem; color:var(--muted); margin-top:.3rem; }
 """
 
 _STATUS_COLOR = {"ok": "#22c55e", "warn": "#f59e0b", "none": "#475569"}
@@ -915,26 +910,72 @@ def _delta_card(titulo, prev, cur, fmt, invertir=False):
 
 
 def _radar_chart_svg(techs):
-    """Tech Radar como gráfica de cuadrantes 2×2 con blips por tecnología."""
+    """Tech Radar como gráfica de cuadrantes 2×2 con blips por tecnología.
+
+    Cada blip lleva data-tech con el nombre normalizado: la página de
+    Arquitectura lo vincula con las filas de la tabla de ADRs (clic en uno
+    resalta el otro).
+    """
     qcolor = {"ADOPT": "#22c55e", "TRIAL": "#3b82f6", "ASSESS": "#f59e0b", "HOLD": "#ef4444"}
     maxn = max((len(v) for v in techs.values()), default=0)
     cell_w = 300
     cell_h = max(300, 70 + maxn * 26)          # crece si un cuadrante tiene muchas tecnologías
     qpos = {"TRIAL": (0, 0), "ADOPT": (cell_w, 0), "ASSESS": (0, cell_h), "HOLD": (cell_w, cell_h)}
     W, H = cell_w * 2, cell_h * 2
-    parts = [f'<rect x="0" y="0" width="{W}" height="{H}" fill="#0b1220" rx="12"/>',
-             f'<line x1="{cell_w}" y1="10" x2="{cell_w}" y2="{H-10}" stroke="#1e293b" stroke-width="2"/>',
-             f'<line x1="10" y1="{cell_h}" x2="{W-10}" y2="{cell_h}" stroke="#1e293b" stroke-width="2"/>']
+    parts = [f'<rect x="0" y="0" width="{W}" height="{H}" fill="var(--panel-bg)" rx="12"/>',
+             f'<line x1="{cell_w}" y1="10" x2="{cell_w}" y2="{H-10}" stroke="var(--panel-bd)" stroke-width="2"/>',
+             f'<line x1="10" y1="{cell_h}" x2="{W-10}" y2="{cell_h}" stroke="var(--panel-bd)" stroke-width="2"/>']
     for q, (qx, qy) in qpos.items():
         parts.append(f'<text x="{qx+18}" y="{qy+30}" font-size="13" font-weight="700" fill="{qcolor[q]}">{q}</text>')
         for i, t in enumerate(techs.get(q, [])):
             bx, by = qx + 26, qy + 52 + i * 26
             label = t if len(t) <= 38 else t[:36] + "…"
+            key = _norm_tech(t)
             # <title> = tooltip con el nombre completo al pasar el mouse
-            parts.append(f'<g><title>{t}</title><circle cx="{bx}" cy="{by}" r="4.5" fill="{qcolor[q]}"/>'
-                         f'<text x="{bx+10}" y="{by+4}" font-size="11" fill="#cbd5e1">{label}</text></g>')
-    return (f'<svg viewBox="0 0 {W} {H}" style="width:100%;max-width:600px;height:auto;display:block;margin-inline:auto">'
+            parts.append(f'<g data-tech="{key}"><title>{t}</title><circle cx="{bx}" cy="{by}" r="4.5" fill="{qcolor[q]}"/>'
+                         f'<text x="{bx+10}" y="{by+4}" font-size="11" fill="var(--fg)">{label}</text></g>')
+    return (f'<svg viewBox="0 0 {W} {H}" style="width:100%;max-width:520px;height:auto;display:block;margin-inline:auto">'
             + "".join(parts) + "</svg>")
+
+
+def _norm_tech(s):
+    """Clave normalizada para vincular tecnologías radar ↔ ADRs."""
+    import re as _re, unicodedata as _u
+    s = _u.normalize("NFKD", s or "").encode("ascii", "ignore").decode()
+    return _re.sub(r"[^a-z0-9]+", "", s.lower())
+
+
+# Vinculación ADR ↔ Tech Radar (v2.20.1): clic en una fila de ADR resalta los
+# blips de las tecnologías que menciona, y viceversa. Vanilla JS, sin red.
+RADAR_LINK_JS = """
+<script>
+(function(){
+  function clear(){document.querySelectorAll('.hl').forEach(function(e){e.classList.remove('hl');});}
+  function mark(sel,keys){
+    document.querySelectorAll(sel).forEach(function(e){
+      var ks=(e.getAttribute('data-tech')||'').split(' ');
+      if(keys.some(function(k){return ks.indexOf(k)>=0;}))e.classList.add('hl');
+    });
+  }
+  document.querySelectorAll('tr.adr-row').forEach(function(r){
+    r.addEventListener('click',function(){
+      var was=r.classList.contains('hl');clear();
+      if(was)return;
+      var keys=(r.getAttribute('data-tech')||'').split(' ').filter(Boolean);
+      r.classList.add('hl');mark('#radar g[data-tech]',keys);
+    });
+  });
+  document.querySelectorAll('#radar g[data-tech]').forEach(function(g){
+    g.addEventListener('click',function(){
+      var was=g.classList.contains('hl');clear();
+      if(was)return;
+      var k=g.getAttribute('data-tech');
+      g.classList.add('hl');mark('tr.adr-row',[k]);
+    });
+  });
+})();
+</script>
+"""
 
 
 GLOSARIO = [
@@ -957,13 +998,12 @@ GLOSARIO = [
 
 # Popup por fase (v2.14): clic en un nodo del grafo o del stepper. Los datos
 # (skills, entradas, salidas, artefactos generados) viajan incrustados como JSON.
+# (v2.20: sin controles de zoom propios — el zoom y el tema los da el shell del
+# portal de forma global y compartida con los diagramas.)
 MODAL_HTML = """
 <div id="fmodal" class="moverlay">
-  <div class="mbox"><div class="mfz"><button onclick="fz(-1)" title="Reducir fuente">A&minus;</button><button onclick="fz(1)" title="Aumentar fuente">A+</button></div><button class="mclose" onclick="closeF()" title="Cerrar">&times;</button>
+  <div class="mbox"><button class="mclose" onclick="closeF()" title="Cerrar">&times;</button>
   <div id="fbody"></div></div>
-</div>
-<div class="fzctl" title="Tamaño de fuente del dashboard">
-  <button onclick="fz(-1)">A&minus;</button><span id="fz-label">16px</span><button onclick="fz(1)">A+</button>
 </div>
 """
 
@@ -977,7 +1017,10 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeF();});
 function _e(s){var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
 var _curF=null;
 function _chip(name,cls){
-  if(HREFS[name])return '<a class="badge '+cls+' alink" href="'+_e(HREFS[name])+'" target="_blank" rel="noopener" title="Abrir '+_e(name)+' en otra pestaña">'+_e(name)+' &#8599;</a>';
+  if(HREFS[name]){var h=HREFS[name],portal=h.indexOf('#/id/')>=0;
+    return '<a class="badge '+cls+' alink" href="'+_e(h)+'"'
+      +(portal?' target="_top" title="Abrir '+_e(name)+' dentro del portal"':' target="_blank" rel="noopener" title="Abrir '+_e(name)+' en otra pestaña"')
+      +'>'+_e(name)+(portal?'':' &#8599;')+'</a>';}
   return '<span class="badge '+cls+'">'+_e(name)+'</span>';
 }
 function openF(id){
@@ -988,7 +1031,7 @@ function openF(id){
   if(f.gate)h+='<div class="mgate">&#x26D4; '+_e(f.gate)+'</div>';
   var arts=ARTS[String(id)]||[];
   if(arts.length){
-    h+='<h3>Generado en este proyecto ('+arts.length+') &mdash; clic para abrirlo en otra pestaña</h3><div>';
+    h+='<h3>Generado en este proyecto ('+arts.length+') &mdash; clic para abrirlo en el portal</h3><div>';
     for(var j=0;j<arts.length;j++)h+=_chip(arts[j],'art');
     h+='</div>';
   }
@@ -1007,19 +1050,6 @@ function openF(id){
   _fmodal.classList.add('open');
 }
 function closeF(){_fmodal.classList.remove('open');}
-/* Popups de cabecera: aprendizajes y glosario (contenido pre-renderizado oculto) */
-function openBox(title,srcId){
-  document.getElementById('fbody').innerHTML='<h2>'+title+'</h2>'+document.getElementById(srcId).innerHTML;
-  _fmodal.classList.add('open');
-}
-/* Zoom de fuente (A− / A+): escala la raíz, persiste en localStorage */
-var _fz=parseInt(localStorage.getItem('dash-fz')||'16',10);
-function _applyFz(){_fz=Math.min(24,Math.max(12,_fz));
-  document.documentElement.style.fontSize=_fz+'px';
-  localStorage.setItem('dash-fz',String(_fz));
-  var l=document.getElementById('fz-label');if(l)l.textContent=_fz+'px';}
-function fz(d){_fz+=d;_applyFz();}
-_applyFz();
 """
 
 
@@ -1080,7 +1110,9 @@ def _stepper_html(model):
 """
 
 
-def render_dashboard_html(model, state_json=""):
+def _dashboard_blocks(model):
+    """Bloques HTML del portal del proyecto (v2.20): antes era el dashboard
+    monolítico; ahora cada bloque se publica como página del portal (emit_portal)."""
     import html as _html
     esc = _html.escape
     c = model["contadores"]
@@ -1130,6 +1162,7 @@ def render_dashboard_html(model, state_json=""):
                        'de sprint: los puntos anteriores al primer sprint-review son la historia real por fecha, no por sprint.</div>')
 
     # Tendencias: lead time y retrabajo por sprint (serie de sprint-review-NN.md)
+    alert = ""
     gates_lt = sorted({g for s in model["tendencias"] for g in s["lead"]})
     if model["tendencias"]:
         max_lt = max((v for s in model["tendencias"] for v in s["lead"].values()), default=1) or 1
@@ -1170,7 +1203,7 @@ def render_dashboard_html(model, state_json=""):
                               'por fecha aparecen desde el tercer sprint review — con 1-2 puntos no muestran tendencia.</div>')
         else:
             xlabels = [(s.get("fecha") or f'S{s["sprint"]}')[5:] for s in model["tendencias"]]
-            charts = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(480px,1fr));gap:1rem;margin-bottom:1rem">'
+            charts = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:1rem;margin-bottom:1rem">'
             charts += ('<div><h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">Lead time por gate</h3>'
                        + _svg_line_chart([(g, [s["lead"].get(g) for s in model["tendencias"]]) for g in gates_lt],
                                          xlabels, _fmt_span) + "</div>")
@@ -1250,7 +1283,12 @@ def render_dashboard_html(model, state_json=""):
                   + ";const HREFS=" + _js(model.get("artefactos_href") or {})
                   + ";</script><script>" + MODAL_JS + "</script>")
 
-    # Decisiones: ADRs (estado + Risk Tier) y Tech Radar por cuadrante (v2.13)
+    # Decisiones: ADRs (estado + Risk Tier) y Tech Radar por cuadrante (v2.13);
+    # v2.20.1: filas y blips vinculados por tecnología (clic resalta el par).
+    radar = model.get("radar")
+    tech_keys = []
+    if radar:
+        tech_keys = sorted({_norm_tech(t) for ts in radar["techs"].values() for t in ts} - {""})
     adrs = model.get("adrs") or []
     if adrs:
         def st_class(s):
@@ -1266,67 +1304,163 @@ def render_dashboard_html(model, state_json=""):
         for a in adrs:
             tier_badge = (f'<span class="badge tier">Tier {a["tier"]}</span>'
                           if a["tier"] else "-")
-            rows += (f'<tr><td><b>{esc(a["id"])}</b></td><td>{esc(a["title"])}</td>'
+            tnorm = _norm_tech(a["title"])
+            keys = " ".join(k for k in tech_keys if k and k in tnorm)
+            rows += (f'<tr class="adr-row" data-tech="{keys}" '
+                     f'title="Clic para resaltar la tecnología en el radar (y viceversa)">'
+                     f'<td><b>{esc(a["id"])}</b></td><td>{esc(a["title"])}</td>'
                      f'<td><span class="badge {st_class(a["status"])}">{esc(a["status"])}</span></td>'
                      f'<td>{tier_badge}</td></tr>')
         adr_html = (f"<table><tr><th>ADR</th><th>Decisión</th><th>Estado</th><th>Risk Tier</th></tr>{rows}</table>")
     else:
         adr_html = '<div class="empty">Sin ADRs en <code>spec/adr/</code> — las decisiones de 8 pasos aparecerán aquí.</div>'
-    radar = model.get("radar")
     radar_html = ""
     if radar:
         qcolor = {"ADOPT": "#22c55e", "TRIAL": "#3b82f6", "ASSESS": "#f59e0b", "HOLD": "#ef4444"}
-        radar_html = ('<h3 style="font-size:.78rem;color:#94a3b8;margin:1rem 0 .4rem">Tech Radar (paved roads)</h3>'
+        radar_html = ('<div id="radar">'
                       + _radar_chart_svg(radar["techs"])
                       + '<div class="quad">'
                       + "".join(f'<div class="kpi"><div class="v" style="color:{qcolor[q]}">{radar["counts"][q]}</div>'
                                 f'<div class="k">{q}</div></div>' for q in ("ADOPT", "TRIAL", "ASSESS", "HOLD"))
-                      + "</div>")
-    decisiones = adr_html + radar_html
+                      + "</div></div>"
+                      + '<div class="radar-note">Clic en un ADR para resaltar su tecnología en el radar; '
+                        'clic en una tecnología para resaltar sus ADRs.</div>'
+                      + RADAR_LINK_JS)
 
     gloss = "".join(f'<tr><td style="white-space:nowrap"><b>{esc(t)}</b></td><td>{esc(d)}</td></tr>'
                     for t, d in GLOSARIO)
-    diags = "".join(f'<li><a href="{esc(d["href"])}" style="color:#58a6ff">{esc(d["id"])}</a></li>'
-                    for d in model.get("diagramas") or []) or '<li style="color:#64748b">sin diagramas renderizados en spec/diagrams/</li>'
 
-    return f"""<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard — {esc(model["proyecto"])}</title>
-<style>{DASH_CSS}</style></head><body>
-<h1>📊 Dashboard — {esc(model["proyecto"])}</h1>
-<div class="sub">Generado: {model["generado"]} · arnés v{esc(model.get("harness_version", "?"))} · spec/dashboard.html (artefacto derivado — no editar a mano)</div>
-<div class="topbtns">
-  <button onclick="openBox('📚 Aprendizajes recientes (memorias learning)','learn-src')">📚 Aprendizajes</button>
-  <button onclick="openBox('🕓 Últimas sesiones (handoffs)','sess-src')">🕓 Sesiones</button>
-  <button onclick="openBox('📖 Glosario del arnés','gloss-src')">📖 Glosario</button>
-  <button onclick="openBox('🗺 Diagramas del proyecto (clic para abrir)','diag-src')">🗺 Diagramas</button>
-  <a class="toplink" href="docs-html/index.html">📄 Documentos</a>
-</div>
-<div id="learn-src" style="display:none">{learns}</div>
-<div id="sess-src" style="display:none">{sess}</div>
-<div id="gloss-src" style="display:none"><table>{gloss}</table></div>
-<div id="diag-src" style="display:none"><ul style="line-height:2">{diags}</ul></div>
+    pipeline = (_stepper_html(model) + _dash_graph_svg(model)
+                + '<div class="legend"><span class="lg-ok">gate con recibo vigente</span>'
+                  '<span class="lg-warn">recibo invalidado / retrabajo</span>'
+                  '<span class="lg-none">sin recibo aún</span><span class="lg-cur">fase actual</span>'
+                  '<span style="color:var(--muted)">clic en una fase (grafo o stepper) para ver sus skills, '
+                  'entradas y salidas · loops tenues: pasa el cursor para ver su nombre</span></div>'
+                + MODAL_HTML + modal_data)
+    return {
+        "pipeline": pipeline,
+        "acumulado": f'<div class="kpis">{kpi_html}</div>',
+        "tendencias": trends,
+        "tiempos": t_html,
+        "adrs": adr_html,
+        "radar": radar_html,
+        "aprendizajes": learns,
+        "sesiones": sess,
+        "glosario": f"<table>{gloss}</table>",
+        "alerta": alert,
+    }
 
-<details class="panel" open><summary>Pipeline — estado actual</summary>
-{_stepper_html(model)}
-{_dash_graph_svg(model)}
-<div class="legend"><span class="lg-ok">gate con recibo vigente</span><span class="lg-warn">recibo invalidado / retrabajo</span><span class="lg-none">sin recibo aún</span><span class="lg-cur">fase actual</span><span style="color:#64748b">clic en una fase (grafo o stepper) para ver sus skills, entradas y salidas · loops tenues: pasa el cursor para ver su nombre</span></div>
-</details>
 
-<details class="panel" open><summary>Acumulado del proyecto</summary><div class="kpis">{kpi_html}</div></details>
+_NOTA_DERIVADO = ("Artefacto derivado de receipts/ + spec/ + sprint-review-NN.md (ADR-002) — "
+                  "no editar a mano; regenerar: harness_graph.py --proyecto .")
 
-<details class="panel" open><summary>Tendencias por sprint (gráficas + detalle)</summary>{trends}</details>
 
-<details class="panel" open><summary>Tiempos de fase y de ciclo</summary>{t_html}</details>
+def emit_portal(model, spec_dir):
+    """Emite las páginas del portal (spec/portal/paginas/) y las registra.
 
-<details class="panel" open><summary>Decisiones gobernadas — ADRs y Tech Radar</summary>{decisiones}</details>
+    Pocas páginas, densas (v2.20.1): info relacionada en la misma pantalla.
+    Modular: cada página es un archivo independiente y cada generador registra
+    solo lo suyo; rebuild_index() (lo llama main_proyecto) reescribe el menú,
+    el buscador y el shell a partir del registry. Devuelve el nº de páginas
+    emitidas/registradas en esta pasada.
+    """
+    import glob as _g
+    import html as _html
+    import portal_lib
+    esc = _html.escape
+    pag = portal_lib.paginas_dir(spec_dir)
+    os.makedirs(pag, exist_ok=True)
+    # Limpieza de las páginas propias de corridas anteriores (artefactos
+    # derivados; docs/ lo limpia mdview). El registry poda entradas huérfanas.
+    for viejo in _g.glob(os.path.join(pag, "*.html")):
+        os.remove(viejo)
+    blocks = _dashboard_blocks(model)
+    alerta = blocks.get("alerta", "")
+    sub = (f'<div class="sub">Portal del proyecto · arnés v{esc(model.get("harness_version", "?"))} · '
+           f'generado {esc(model["generado"])}</div>')
 
-<footer>Artefacto derivado de receipts/ + spec/ + sprint-review-NN.md (ADR-002) — regenerar: <code>harness_graph.py --proyecto .</code> · drift: <code>--check</code> en CI · La evidencia son los recibos; este tablero es solo visualización.</footer>
-{MODAL_HTML}{modal_data}
-<!-- dashboard-state: __STATE__ -->
-</body></html>
-""".replace("__STATE__", state_json)
+    # Sweep de diagramas vivos (spec/diagrams/*.html): la página de
+    # Arquitectura los enlaza. Si diagram_ir ya los registró con texto rico,
+    # register() conserva ese texto (merge).
+    diags = []
+    for p in sorted(_g.glob(os.path.join(spec_dir, "diagrams", "*.html"))):
+        name = os.path.basename(p)
+        titulo = os.path.splitext(name)[0]
+        ir = p[:-len(".html")] + ".ir.json"
+        if os.path.isfile(ir):
+            try:
+                import json as _j
+                titulo = _j.load(open(ir, encoding="utf-8")).get("titulo", titulo) or titulo
+            except Exception:
+                pass
+        pid = portal_lib.register(spec_dir, origen="harness_graph", kind="diagrama",
+                                  ruta="../diagrams/" + name, titulo=titulo,
+                                  grupo="diagramas")
+        diags.append((pid, titulo))
+
+    if diags:
+        diag_cards = ('<div class="diag-cards">'
+                      + "".join(f'<a class="dcard" href="../index.html#/id/{esc(pid)}" target="_top">'
+                                f'<b>🗺 {esc(t)}</b><span>diagrama interactivo · tema y zoom compartidos</span></a>'
+                                for pid, t in diags)
+                      + "</div>")
+    else:
+        diag_cards = ('<div class="empty">Sin diagramas en <code>spec/diagrams/</code> — '
+                      'los diagramas vivos IR aparecerán aquí (skill sdlc-diagrams).</div>')
+
+    paginas = [
+        # Inicio: de entrada, cómo va el proyecto (pipeline compacto + acumulado)
+        ("inicio.html", f'Inicio — {model["proyecto"]}',
+         f'<h1>🏠 {esc(model["proyecto"])}</h1>' + sub + alerta
+         + '<div class="panel graph-wrap"><h2>Pipeline — estado actual</h2>'
+         + blocks["pipeline"] + "</div>"
+         + "<h2>Acumulado del proyecto</h2>" + blocks["acumulado"],
+         "inicio", "inicio", "home resumen pipeline fase progreso kpis"),
+        # Métricas: tendencias + tiempos en dos columnas (densidad sin scroll)
+        ("metricas.html", "Métricas del proyecto",
+         "<h1>📊 Métricas del proyecto</h1>" + sub
+         + '<div class="dense2"><div class="panel"><h2>Tendencias por sprint</h2>' + blocks["tendencias"]
+         + '</div><div class="panel"><h2>Tiempos de fase y de ciclo</h2>' + blocks["tiempos"]
+         + "</div></div>",
+         "metrica", "metricas",
+         "lead time retrabajo gates primer intento gráficas duración ciclos sprints cierre apertura"),
+        # Arquitectura: diagramas vivos + ADRs ↔ Tech Radar vinculados
+        ("arquitectura.html", "Arquitectura — diagramas y decisiones",
+         "<h1>🏛 Arquitectura</h1>" + sub
+         + "<h2>Diagramas del proyecto</h2>" + diag_cards
+         + '<div class="dense2eq"><div class="panel"><h2>ADRs — decisiones gobernadas</h2>' + blocks["adrs"]
+         + '</div><div class="panel"><h2>Tech Radar (paved roads)</h2>' + blocks["radar"] + "</div></div>",
+         "metrica", "arquitectura",
+         "adr risk tier tech radar adopt trial assess hold diagramas c4 decisiones"),
+        # Memoria: aprendizajes + sesiones lado a lado
+        ("memoria.html", "Memoria del proyecto",
+         "<h1>🧠 Memoria del proyecto</h1>" + sub
+         + '<div class="dense2eq"><div class="panel"><h2>📚 Aprendizajes recientes</h2>' + blocks["aprendizajes"]
+         + '</div><div class="panel"><h2>🕓 Últimas sesiones (handoffs)</h2>' + blocks["sesiones"] + "</div></div>",
+         "doc", "memoria", "memorias learning lecciones handoff sesión contexto mem.py"),
+    ]
+    n = 0
+    for fname, titulo, body, kind, cat, tags in paginas:
+        pid = portal_lib.slug("paginas/" + fname)
+        out = portal_lib.page_wrap(titulo, body, page_id=pid, extra_css=DASH_CSS, note=_NOTA_DERIVADO)
+        open(os.path.join(pag, fname), "w", encoding="utf-8", newline="\n").write(out)
+        portal_lib.register(spec_dir, origen="harness_graph", kind=kind,
+                            ruta="paginas/" + fname, titulo=titulo, categoria=cat,
+                            tags=tags.split(), texto=body)
+        n += 1
+
+    # Glosario: página oculta — se abre desde el topbar (📖) o el buscador
+    pid = portal_lib.slug("paginas/negocio-glosario.html")
+    out = portal_lib.page_wrap("Glosario del arnés", "<h1>📖 Glosario del arnés</h1>" + blocks["glosario"],
+                               page_id=pid, extra_css=DASH_CSS, note=_NOTA_DERIVADO)
+    open(os.path.join(pag, "negocio-glosario.html"), "w", encoding="utf-8", newline="\n").write(out)
+    portal_lib.register(spec_dir, origen="harness_graph", kind="doc",
+                        ruta="paginas/negocio-glosario.html", titulo="Glosario del arnés",
+                        categoria="negocio",
+                        tags="gate recibo risk tier adr drift loop lead time".split(),
+                        texto=blocks["glosario"], oculto=True)
+    portal_lib.set_topbar(spec_dir, [{"id": pid, "icono": "📖", "titulo": "Glosario"}])
+    return n + 1 + len(diags)
 
 
 def main_proyecto(a):
@@ -1362,19 +1496,32 @@ def main_proyecto(a):
         print("DASHBOARD CHECK OK: spec/dashboard.html al día con el proyecto.")
         sys.exit(0)
 
-    html = render_dashboard_html(model, state_json)
+    # spec/dashboard.html queda como redirect al portal (v2.20) pero conserva
+    # el comentario dashboard-state: --check sigue comparando lo mismo.
+    import html as _html
+    html = ("<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>"
+            "<meta http-equiv='refresh' content='0; url=portal/index.html'>"
+            f"<title>Portal — {_html.escape(model['proyecto'])}</title></head>"
+            "<body style='font-family:system-ui;background:#0b1220;color:#e2e8f0;padding:3rem'>"
+            "<p>El dashboard ahora es el <a href='portal/index.html' style='color:#58a6ff'>"
+            "portal del proyecto</a> — redirigiendo…</p></body></html>\n"
+            "<!-- dashboard-state: __STATE__ -->\n").replace("__STATE__", state_json)
     open(out, "w", encoding="utf-8", newline="\n").write(html)
-    # Visor Markdown estatico de la spec (v2.18): los enlaces .md del dashboard
-    # apuntan a spec/docs-html/. Derivado, best-effort: nunca bloquea el dashboard.
+    # Portal único del proyecto (v2.20): páginas de métricas + docs (mdview) +
+    # sweep de diagramas → registry, y un solo rebuild del índice/shell.
+    # Derivado, best-effort: nunca bloquea el dashboard.
     try:
-        import mdview
-        n_docs = mdview.build(spec_dir, os.path.join(spec_dir, "docs-html"))
-        docs_msg = f" · docs-html: {n_docs} docs"
+        import portal_lib, mdview
+        emit_portal(model, spec_dir)
+        n_docs = mdview.build(spec_dir)
+        n_items = portal_lib.rebuild_index(spec_dir, proyecto=model["proyecto"],
+                                           harness_version=model.get("harness_version", "?"))
+        portal_msg = f" · portal: {n_items} páginas ({n_docs} docs)"
     except Exception as e:
-        docs_msg = f" · docs-html OMITIDO ({e})"
-    print(f"Dashboard generado: {out}")
+        portal_msg = f" · portal OMITIDO ({e})"
+    print(f"Dashboard generado: {out} (redirect → portal/index.html)")
     print(f"  fase actual: {model['fase_actual']} · sprints: {model['contadores']['sprints']} "
-          f"· recibos vigentes: {model['contadores']['recibos_vigentes']}{docs_msg}")
+          f"· recibos vigentes: {model['contadores']['recibos_vigentes']}{portal_msg}")
     sys.exit(0)
 
 

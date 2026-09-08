@@ -9,7 +9,7 @@
     {"id": "lint",   "titulo": "Lint + unit",       "sub": "backend · frontend", "tipo": "transform", "grupo": "01 / CI automatico", "detalle": "Ruff + pytest; ng lint + Karma."},
     {"id": "e2e",    "titulo": "Contract + E2E",    "sub": "Playwright",         "tipo": "transform", "grupo": "01 / CI automatico", "detalle": "Contratos OpenAPI + flujos criticos E2E."},
     {"id": "gate",   "titulo": "GATE 3",            "sub": "aprobacion humana",  "tipo": "decision",  "grupo": "01 / CI automatico", "detalle": "Recibo vigente + aprobacion del owner. Sin esto no hay deploy."},
-    {"id": "deploy", "titulo": "Deploy prod",       "sub": "Railway",            "tipo": "service",   "grupo": "01 / CI automatico", "detalle": "Despliegue automatico tras aprobacion."},
+    {"id": "deploy", "titulo": "Deploy prod",       "sub": "Railway",            "tipo": "service",   "grupo": "01 / CI automatico", "ubicacion": "Railway (cloud)", "detalle": "Despliegue automatico tras aprobacion."},
     {"id": "fin",    "titulo": "Release publicado", "sub": "tag + recibo",       "tipo": "terminal",  "grupo": "01 / CI automatico", "detalle": "Tag semver + notas + assets."},
     {"id": "fix",    "titulo": "Correccion",        "sub": "rama hotfix",        "tipo": "job",       "grupo": "02 / Correccion",    "detalle": "Una correccion acotada por gate antes de escalar."}
   ],

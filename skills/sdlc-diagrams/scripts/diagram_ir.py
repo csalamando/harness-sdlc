@@ -11,11 +11,22 @@ Subcomandos:
   check    --ir FILE.ir.json --out FILE.html     exit 1 si el HTML quedo atras (drift)
 
 Tipos: flow (architecture|workflow|dataflow|lifecycle via "bandas") y sequence.
+
+Vista (v1.1):
+  - Tema claro/oscuro con toggle en la toolbar (persiste en localStorage;
+    default: campo "tema" del IR, si no prefers-color-scheme del navegador).
+  - Controles de tamano de fuente A- / A / A+ (zoom del diagrama, persiste).
+  - Campo opcional "ubicacion" en nodos/participantes: pill con icono
+    (nube/on-prem) en la esquina superior — vital en diagramas de arquitectura
+    para mostrar DONDE corre cada componente (AWS, Azure, GCP, on-premise...).
+  - Los textos de los nodos NUNCA desbordan: titulo hasta 2 lineas con wrap y
+    sub con elipsis, calculado de forma determinista (sin medir fuentes).
+
 Python 3 stdlib puro.
 """
 import argparse, html, json, sys
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 TIPO_BASE = {
     "ui": ("#38bdf8", "◉"), "edge": ("#2dd4bf", "⇄"), "service": ("#a78bfa", "⟨⟩"),
@@ -39,6 +50,8 @@ def validate_ir(ir):
     errs = []
     if not ir.get("titulo"):
         errs.append("falta 'titulo'")
+    if ir.get("tema") not in (None, "", "claro", "oscuro"):
+        errs.append(f"tema '{ir.get('tema')}' invalido (claro|oscuro)")
     kind = ir.get("kind", "flow")
     if kind == "sequence":
         ids = set()
@@ -75,6 +88,71 @@ def validate_ir(ir):
         if not c.get("titulo") or not c.get("bullets"):
             errs.append(f"insight sin titulo/bullets: {c!r}")
     return errs
+
+# ════════════════════════ AJUSTE DE TEXTO (sin desborde) ════════════════════════
+
+def _tw(t, fs):
+    """Ancho aproximado del texto en px (determinista, sin medir fuentes)."""
+    w = 0.0
+    for ch in t:
+        if ch in " iljI.,:;|'`":
+            w += 0.30
+        elif ch in "mwMW@":
+            w += 0.82
+        elif ch.isupper() or ch.isdigit():
+            w += 0.60
+        else:
+            w += 0.50
+    return w * fs
+
+def _ellipsize(text, fs, max_w):
+    if _tw(text, fs) <= max_w:
+        return text
+    t = text
+    while t and _tw(t + "…", fs) > max_w:
+        t = t[:-1]
+    return t.rstrip() + "…"
+
+def _wrap(text, fs, max_w, max_lines=2):
+    """Envuelve por palabras; si excede max_lines, la ultima lleva elipsis."""
+    if _tw(text, fs) <= max_w:
+        return [text]
+    lines, cur = [], ""
+    for wd in text.split():
+        trial = (cur + " " + wd).strip()
+        if _tw(trial, fs) <= max_w:
+            cur = trial
+        else:
+            if cur:
+                lines.append(cur)
+            cur = wd
+    if cur:
+        lines.append(cur)
+    if len(lines) > max_lines:
+        resto = " ".join(lines[max_lines - 1:])
+        lines = lines[:max_lines - 1] + [_ellipsize(resto, fs, max_w)]
+    return lines
+
+# ════════════════════════ UBICACION (cloud / on-prem) ════════════════════════
+
+def _ubi_icon(ub):
+    u = ub.lower()
+    if any(k in u for k in ("on-prem", "onprem", "on premise", "datacenter", "data center", "local", "edge")):
+        return "⌂"
+    if any(k in u for k in ("aws", "azure", "gcp", "google", "cloud", "ibm", "oracle", "oci",
+                            "saas", "railway", "vercel", "render", "fly.io", "heroku", "akamai", "cloudflare")):
+        return "☁"
+    return "◈"
+
+def _badge(x, y, w_node, ub, c):
+    """Pill de ubicacion en la esquina superior derecha del nodo."""
+    label = f"{_ubi_icon(ub)} {ub}"
+    w = _tw(label, 9) + 16
+    bx = x + w_node - w - 5
+    return (f'<g class="ubadge"><rect x="{bx:.0f}" y="{y - 8}" width="{w:.0f}" height="16" rx="8" '
+            f'style="fill:var(--chip-bg)" stroke="{c}" stroke-width="0.9"/>'
+            f'<text x="{bx + w / 2:.0f}" y="{y + 3.4}" font-size="9" text-anchor="middle" '
+            f'style="fill:var(--sub)">{html.escape(label)}</text></g>')
 
 # ════════════════════════ MOTOR DE FLUJO ════════════════════════
 
@@ -204,13 +282,13 @@ function aplicar(focus){
 function panel(id){
   const p=document.getElementById('det'), d=DATOS[id];
   if(!id){p.style.display='none';return;}
-  const rel=(RELS[id]||[]).map(r=>`<li>${r[0]} <b>${DATOS[r[1]].titulo}</b> <span style="color:#64748b">· ${r[2]}</span></li>`).join('');
+  const rel=(RELS[id]||[]).map(r=>`<li>${r[0]} <b>${DATOS[r[1]].titulo}</b> <span style="color:var(--muted)">· ${r[2]}</span></li>`).join('');
   p.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
     <b style="color:${COLORES[d.tipo]}">${d.titulo}</b>
-    <span style="cursor:pointer;color:#64748b" onclick="foco(null)">✕</span></div>
-    <div style="color:#8ea0b8;font-size:12px;margin:.2rem 0">${d.sub} — ${d.grupo||''} · tipo ${d.tipo}</div>
+    <span style="cursor:pointer;color:var(--muted)" onclick="foco(null)">✕</span></div>
+    <div style="color:var(--sub);font-size:12px;margin:.2rem 0">${d.sub} — ${d.grupo||''} · tipo ${d.tipo}${d.ubicacion?' · 📍 '+d.ubicacion:''}</div>
     <div style="font-size:12.5px;margin:.4rem 0">${d.detalle||''}</div>
-    <ul style="margin:.3rem 0 0;padding-left:1.1rem;font-size:12px;color:#cbd5e1">${rel}</ul>`;
+    <ul style="margin:.3rem 0 0;padding-left:1.1rem;font-size:12px;color:var(--fg)">${rel}</ul>`;
   p.style.display='block';
 }
 function foco(id){ window._f=id; aplicar(id); panel(id);
@@ -229,17 +307,52 @@ if(h.startsWith('#lens=')){ lens=h.slice(6).split('~'); aplicar(null); }
 """
 
 _CSS_BASE = (
-    "body{background:#0b1220;margin:0;padding:2.2rem;font-family:system-ui;color:#e2e8f0}"
+    ":root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;"
+    "--edge-label:#a5b4c9;--chip-bg:#0b1220;--chip-bd:#1e293b;--panel-bg:#0f172a;--panel-bd:#1e293b;"
+    "--life:#334155;--act-bg:#1e293b;--act-bd:#475569;--seq-msg:#cbd5e1;--seq-ret:#64748b;--shadow:rgba(0,0,0,.35)}"
+    ":root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;--edge:#64748b;"
+    "--edge-label:#475569;--chip-bg:#ffffff;--chip-bd:#cbd5e1;--panel-bg:#ffffff;--panel-bd:#e2e8f0;"
+    "--life:#cbd5e1;--act-bg:#e2e8f0;--act-bd:#94a3b8;--seq-msg:#334155;--seq-ret:#94a3b8;--shadow:rgba(15,23,42,.10)}"
+    "body{background:var(--bg);margin:0;padding:2.2rem;font-family:system-ui;color:var(--fg)}"
     "svg{width:100%;max-width:1180px;height:auto;display:block;margin:0 auto}"
     ".node,.edge,.chip,.hull,.msg,.life,.act{transition:opacity .18s}"
     ".insights{display:flex;gap:1rem;max-width:1180px;margin:1.2rem auto 0;flex-wrap:wrap}"
-    ".ins{flex:1;min-width:250px;background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:1rem 1.2rem}"
-    ".ins b{display:flex;align-items:center;gap:.5rem;font-size:13.5px;color:#e2e8f0}"
+    ".ins{flex:1;min-width:250px;background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:12px;padding:1rem 1.2rem}"
+    ".ins b{display:flex;align-items:center;gap:.5rem;font-size:13.5px;color:var(--txt)}"
     ".ins .dot{width:9px;height:9px;border-radius:50%;flex:none}"
-    ".ins ul{margin:.55rem 0 0;padding-left:1.1rem;font-size:12.5px;color:#94a3b8;line-height:1.45}"
+    ".ins ul{margin:.55rem 0 0;padding-left:1.1rem;font-size:12.5px;color:var(--sub);line-height:1.45}"
     ".ins li{margin:.28rem 0}"
-    "#det{display:none;position:fixed;left:2rem;bottom:2rem;max-width:360px;background:#0f172a;"
-    "border:1px solid #1e293b;border-radius:12px;padding:1rem 1.2rem;box-shadow:0 8px 30px #000a;z-index:9}")
+    "#det{display:none;position:fixed;left:2rem;bottom:2rem;max-width:360px;background:var(--panel-bg);"
+    "border:1px solid var(--panel-bd);border-radius:12px;padding:1rem 1.2rem;box-shadow:0 8px 30px var(--shadow);z-index:9}"
+    "#toolbar{position:fixed;top:1rem;right:1rem;display:flex;gap:.35rem;z-index:10}"
+    "#toolbar button{background:var(--panel-bg);border:1px solid var(--panel-bd);color:var(--fg);"
+    "border-radius:8px;padding:.28rem .55rem;cursor:pointer;font-size:12.5px;font-weight:650}"
+    "#toolbar button:hover{border-color:var(--edge)}")
+
+_TOOLBAR = ("<div id='toolbar'>"
+            "<button id='btn-tema' title='Tema claro/oscuro'>☀</button>"
+            "<button id='btn-zmenos' title='Reducir tamano de fuente'>A−</button>"
+            "<button id='btn-zreset' title='Tamano original'>A</button>"
+            "<button id='btn-zmas' title='Aumentar tamano de fuente'>A+</button></div>")
+
+_JS_UI = """
+(function(){
+  const root=document.documentElement;
+  let tema=localStorage.getItem('dir-tema')||%s||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');
+  let z=parseFloat(localStorage.getItem('dir-zoom')||'1');
+  function aplTema(){root.dataset.theme=tema;
+    document.getElementById('btn-tema').textContent=tema==='claro'?'🌙':'☀️';
+    localStorage.setItem('dir-tema',tema);}
+  function aplZoom(){document.getElementById('stage').style.zoom=z;localStorage.setItem('dir-zoom',z);}
+  document.getElementById('btn-tema').onclick=ev=>{ev.stopPropagation();tema=tema==='claro'?'oscuro':'claro';aplTema();};
+  document.getElementById('btn-zmas').onclick=ev=>{ev.stopPropagation();z=Math.min(1.8,+(z+0.1).toFixed(2));aplZoom();};
+  document.getElementById('btn-zmenos').onclick=ev=>{ev.stopPropagation();z=Math.max(0.6,+(z-0.1).toFixed(2));aplZoom();};
+  document.getElementById('btn-zreset').onclick=ev=>{ev.stopPropagation();z=1;aplZoom();};
+  window.addEventListener('message',ev=>{const d=ev.data||{};
+    if(d.portal==='tema'){tema=d.tema==='claro'?'claro':'oscuro';aplTema();}});
+  aplTema();aplZoom();
+})();
+"""
 
 def _insights_html(ir):
     ins = ir.get("insights") or []
@@ -253,21 +366,22 @@ def _insights_html(ir):
     return '<div class="insights">' + "".join(cards) + "</div>"
 
 def _page(ir, svg, js, css_extra=""):
+    js_ui = _JS_UI % json.dumps(ir.get("tema", ""))
     return ("<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>"
             f"<title>{html.escape(ir['titulo'])}</title><style>" + _CSS_BASE + css_extra +
-            "</style></head><body>" + svg + _insights_html(ir) +
-            "<div id='det'></div><script>" + js + "</script></body></html>")
+            "</style></head><body>" + _TOOLBAR + "<div id='stage'>" + svg + _insights_html(ir) +
+            "</div><div id='det'></div><script>" + js_ui + js + "</script></body></html>")
 
 def render_flow(ir):
     TIPO = {**TIPO_BASE, **(ir.get("tipos") or {})}
     pos, W, H, rk = _layout(ir)
     s = [f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" font-family="system-ui">']
     s.append('<defs><marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">'
-             '<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" fill="#94a3b8"/></marker>'
+             '<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" style="fill:var(--edge)"/></marker>'
              '<marker id="arrb" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">'
              '<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" fill="#f472b6"/></marker></defs>')
-    s.append(f'<text x="{MX}" y="48" fill="#f1f5f9" font-size="23" font-weight="700">{html.escape(ir["titulo"])}</text>')
-    s.append(f'<text x="{MX}" y="70" fill="#64748b" font-size="12">derivado de {html.escape(ir.get("fuente", "IR"))} · no editar a mano · clic en un elemento para su detalle</text>')
+    s.append(f'<text x="{MX}" y="48" style="fill:var(--txt)" font-size="23" font-weight="700">{html.escape(ir["titulo"])}</text>')
+    s.append(f'<text x="{MX}" y="70" style="fill:var(--muted)" font-size="12">derivado de {html.escape(ir.get("fuente", "IR"))} · no editar a mano · clic en un elemento para su detalle</text>')
     s.append(_bandas(ir, pos, W, H))
     backi = 0
     for e in ir["aristas"]:
@@ -290,7 +404,7 @@ def render_flow(ir):
             w = len(e["label"]) * 6.2 + 14
             s.append(f'<g class="edge" data-f="{e["desde"]}" data-t="{e["hasta"]}">'
                      f'<path d="{d}" fill="none" stroke="#f472b6" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrb)"/>'
-                     f'<rect x="{(x1+x2)/2+NW/2-w/2:.0f}" y="{chan-9}" width="{w:.0f}" height="18" rx="9" fill="#0b1220" stroke="#f472b655"/>'
+                     f'<rect x="{(x1+x2)/2+NW/2-w/2:.0f}" y="{chan-9}" width="{w:.0f}" height="18" rx="9" style="fill:var(--chip-bg)" stroke="#f472b655"/>'
                      f'<text x="{(x1+x2)/2+NW/2:.0f}" y="{chan+4}" fill="#f9a8d4" font-size="10.5" text-anchor="middle">{html.escape(e["label"])}</text></g>')
             continue
         dx, dy = x2 - x1, y2 - y1
@@ -305,27 +419,43 @@ def render_flow(ir):
         mx, my = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
         w = len(e["label"]) * 6.2 + 14
         s.append(f'<g class="edge" data-f="{e["desde"]}" data-t="{e["hasta"]}">'
-                 f'<path d="{d}" fill="none" stroke="#94a3b8" stroke-width="1.5"{dash} marker-end="url(#arr)"/>'
-                 f'<rect x="{mx-w/2:.0f}" y="{my-19}" width="{w:.0f}" height="18" rx="9" fill="#0b1220" stroke="#1e293b"/>'
-                 f'<text x="{mx:.0f}" y="{my-6}" fill="#a5b4c9" font-size="10.5" text-anchor="middle">{html.escape(e["label"])}</text></g>')
+                 f'<path d="{d}" fill="none" style="stroke:var(--edge)" stroke-width="1.5"{dash} marker-end="url(#arr)"/>'
+                 f'<rect x="{mx-w/2:.0f}" y="{my-19}" width="{w:.0f}" height="18" rx="9" style="fill:var(--chip-bg);stroke:var(--chip-bd)"/>'
+                 f'<text x="{mx:.0f}" y="{my-6}" style="fill:var(--edge-label)" font-size="10.5" text-anchor="middle">{html.escape(e["label"])}</text></g>')
     for n in ir["nodos"]:
         x, y = pos[n["id"]]
         c, icon = TIPO.get(n["tipo"], ("#a78bfa", "?"))
         if n["tipo"] == "decision":
             cxp, cyp = x + NW / 2, y + NH / 2
+            tit = _ellipsize(n["titulo"], 12.5, NW - 64)
+            sub = _ellipsize(n.get("sub", ""), 10.5, NW - 64)
             s.append(f'<g class="node" data-id="{n["id"]}" data-tipo="{n["tipo"]}" style="cursor:pointer">'
                      f'<polygon class="card" points="{cxp},{y} {x+NW},{cyp} {cxp},{y+NH} {x},{cyp}" fill="{c}14" stroke="{c}" stroke-width="1.5"/>'
-                     f'<text x="{cxp}" y="{cyp-3}" fill="#f1f5f9" font-size="13" font-weight="650" text-anchor="middle">{html.escape(n["titulo"])}</text>'
-                     f'<text x="{cxp}" y="{cyp+15}" fill="#8ea0b8" font-size="10.5" text-anchor="middle">{html.escape(n.get("sub", ""))}</text></g>')
+                     f'<text x="{cxp}" y="{cyp-3}" style="fill:var(--txt)" font-size="12.5" font-weight="650" text-anchor="middle">{html.escape(tit)}</text>'
+                     f'<text x="{cxp}" y="{cyp+15}" style="fill:var(--sub)" font-size="10.5" text-anchor="middle">{html.escape(sub)}</text></g>')
             continue
         outer = f'<rect x="{x-4}" y="{y-4}" width="{NW+8}" height="{NH+8}" rx="14" fill="none" stroke="{c}" stroke-width="1.2"/>' if n["tipo"] == "terminal" else ""
-        s.append(f'<g class="node" data-id="{n["id"]}" data-tipo="{n["tipo"]}" style="cursor:pointer">'
-                 f'<rect x="{x+2}" y="{y+3}" width="{NW}" height="{NH}" rx="12" fill="#000" opacity=".3"/>{outer}'
-                 f'<rect class="card" x="{x}" y="{y}" width="{NW}" height="{NH}" rx="12" fill="{c}14" stroke="{c}" stroke-width="1.4"/>'
-                 f'<circle cx="{x+22}" cy="{y+24}" r="11" fill="{c}26" stroke="{c}99"/>'
-                 f'<text x="{x+22}" y="{y+28.5}" fill="{c}" font-size="11" text-anchor="middle">{icon}</text>'
-                 f'<text x="{x+42}" y="{y+29}" fill="#f1f5f9" font-size="14.5" font-weight="650">{html.escape(n["titulo"])}</text>'
-                 f'<text x="{x+42}" y="{y+50}" fill="#8ea0b8" font-size="11.5">{html.escape(n.get("sub", ""))}</text></g>')
+        g = [f'<g class="node" data-id="{n["id"]}" data-tipo="{n["tipo"]}" style="cursor:pointer">'
+             f'<rect x="{x+2}" y="{y+3}" width="{NW}" height="{NH}" rx="12" style="fill:var(--shadow)"/>{outer}'
+             f'<rect class="card" x="{x}" y="{y}" width="{NW}" height="{NH}" rx="12" fill="{c}14" stroke="{c}" stroke-width="1.4"/>'
+             f'<circle cx="{x+22}" cy="{y+24}" r="11" fill="{c}26" stroke="{c}99"/>'
+             f'<text x="{x+22}" y="{y+28.5}" fill="{c}" font-size="11" text-anchor="middle">{icon}</text>']
+        lineas = _wrap(n["titulo"], 13.5, NW - 54, 2)
+        fs_t = 13.5
+        if len(lineas) > 1:
+            lineas = _wrap(n["titulo"], 12.5, NW - 54, 2)
+            fs_t = 12.5
+        if len(lineas) == 1:
+            g.append(f'<text x="{x+42}" y="{y+29}" style="fill:var(--txt)" font-size="{fs_t + 0.5}" font-weight="650">{html.escape(lineas[0])}</text>'
+                     f'<text x="{x+42}" y="{y+50}" style="fill:var(--sub)" font-size="11.5">{html.escape(_ellipsize(n.get("sub", ""), 11.5, NW - 54))}</text>')
+        else:
+            g.append(f'<text x="{x+42}" y="{y+22}" style="fill:var(--txt)" font-size="12.5" font-weight="650">{html.escape(lineas[0])}</text>'
+                     f'<text x="{x+42}" y="{y+37}" style="fill:var(--txt)" font-size="12.5" font-weight="650">{html.escape(lineas[1])}</text>'
+                     f'<text x="{x+42}" y="{y+55}" style="fill:var(--sub)" font-size="10.5">{html.escape(_ellipsize(n.get("sub", ""), 10.5, NW - 54))}</text>')
+        if n.get("ubicacion"):
+            g.append(_badge(x, y, NW, n["ubicacion"], c))
+        g.append("</g>")
+        s.append("".join(g))
     usados = []
     for n in ir["nodos"]:
         if n["tipo"] not in usados:
@@ -336,10 +466,10 @@ def render_flow(ir):
         n_ = sum(1 for n in ir["nodos"] if n["tipo"] == t)
         s.append(f'<g class="chip" data-tipo="{t}" style="cursor:pointer">'
                  f'<rect x="{lx-6}" y="58" width="15" height="15" rx="5" fill="{c}26" stroke="{c}"/>'
-                 f'<text x="{lx+15}" y="70" fill="#94a3b8" font-size="11.5">{t} {n_}</text></g>')
+                 f'<text x="{lx+15}" y="70" style="fill:var(--sub)" font-size="11.5">{t} {n_}</text></g>')
         lx += 96
     s.append("</svg>")
-    datos = {n["id"]: {k: n.get(k, "") for k in ("titulo", "sub", "tipo", "grupo", "detalle")} for n in ir["nodos"]}
+    datos = {n["id"]: {k: n.get(k, "") for k in ("titulo", "sub", "tipo", "grupo", "detalle", "ubicacion")} for n in ir["nodos"]}
     rels = {}
     for e in ir["aristas"]:
         rels.setdefault(e["desde"], []).append(("→", e["hasta"], e["label"]))
@@ -383,10 +513,10 @@ function panel(id){
       return `<li><b>#${i}</b> ${g.dataset.f===id?'→':'←'} <b>${DATOS[o].titulo}</b></li>`;}).join('');
   p.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
     <b style="color:${COLORES[d.tipo]}">${d.titulo}</b>
-    <span style="cursor:pointer;color:#64748b" onclick="foco(null)">✕</span></div>
-    <div style="color:#8ea0b8;font-size:12px;margin:.2rem 0">${d.sub} · tipo ${d.tipo}</div>
+    <span style="cursor:pointer;color:var(--muted)" onclick="foco(null)">✕</span></div>
+    <div style="color:var(--sub);font-size:12px;margin:.2rem 0">${d.sub} · tipo ${d.tipo}${d.ubicacion?' · 📍 '+d.ubicacion:''}</div>
     <div style="font-size:12.5px;margin:.4rem 0">${d.detalle||''}</div>
-    <ul style="margin:.3rem 0 0;padding-left:1.1rem;font-size:12px;color:#cbd5e1">${rel}</ul>`;
+    <ul style="margin:.3rem 0 0;padding-left:1.1rem;font-size:12px;color:var(--fg)">${rel}</ul>`;
   p.style.display='block';
 }
 function foco(id){ window._f=id; aplicar(id); panel(id);
@@ -414,22 +544,28 @@ def render_sequence(ir):
     H = TOP_S + HEAD_S + len(ir["mensajes"]) * STEP_S + 80
     s = [f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" font-family="system-ui">']
     s.append('<defs><marker id="a1" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto">'
-             '<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" fill="#cbd5e1"/></marker>'
+             '<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" style="fill:var(--seq-msg)"/></marker>'
              '<marker id="a2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto">'
-             '<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" fill="#64748b"/></marker></defs>')
-    s.append(f'<text x="{MX_S}" y="48" fill="#f1f5f9" font-size="23" font-weight="700">{html.escape(ir["titulo"])}</text>')
-    s.append(f'<text x="{MX_S}" y="70" fill="#64748b" font-size="12">derivado de {html.escape(ir.get("fuente", "IR"))} · no editar a mano · clic en un participante para su detalle</text>')
+             '<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" style="fill:var(--seq-ret)"/></marker></defs>')
+    s.append(f'<text x="{MX_S}" y="48" style="fill:var(--txt)" font-size="23" font-weight="700">{html.escape(ir["titulo"])}</text>')
+    s.append(f'<text x="{MX_S}" y="70" style="fill:var(--muted)" font-size="12">derivado de {html.escape(ir.get("fuente", "IR"))} · no editar a mano · clic en un participante para su detalle</text>')
     for p in ir["participantes"]:
         c, icon = TIPO.get(p["tipo"], ("#a78bfa", "?"))
         x = cx[p["id"]] - PW_S / 2
-        s.append(f'<g class="node" data-id="{p["id"]}" data-tipo="{p["tipo"]}" style="cursor:pointer">'
-                 f'<rect x="{x+2}" y="{TOP_S-57}" width="{PW_S}" height="{PH_S}" rx="12" fill="#000" opacity=".3"/>'
-                 f'<rect class="card" x="{x}" y="{TOP_S-60}" width="{PW_S}" height="{PH_S}" rx="12" fill="{c}14" stroke="{c}" stroke-width="1.4"/>'
-                 f'<circle cx="{x+21}" cy="{TOP_S-38}" r="10" fill="{c}26" stroke="{c}99"/>'
-                 f'<text x="{x+21}" y="{TOP_S-34}" fill="{c}" font-size="10.5" text-anchor="middle">{icon}</text>'
-                 f'<text x="{x+40}" y="{TOP_S-34}" fill="#f1f5f9" font-size="13.5" font-weight="650">{html.escape(p["titulo"])}</text>'
-                 f'<text x="{x+40}" y="{TOP_S-17}" fill="#8ea0b8" font-size="11">{html.escape(p.get("sub", ""))}</text></g>')
-        s.append(f'<line class="life" data-id="{p["id"]}" x1="{cx[p["id"]]}" y1="{TOP_S-4}" x2="{cx[p["id"]]}" y2="{H-46}" stroke="#334155" stroke-width="1.2" stroke-dasharray="4 5"/>')
+        tit = _ellipsize(p["titulo"], 13, PW_S - 50)
+        sub = _ellipsize(p.get("sub", ""), 10.5, PW_S - 50)
+        g = [f'<g class="node" data-id="{p["id"]}" data-tipo="{p["tipo"]}" style="cursor:pointer">'
+             f'<rect x="{x+2}" y="{TOP_S-57}" width="{PW_S}" height="{PH_S}" rx="12" style="fill:var(--shadow)"/>'
+             f'<rect class="card" x="{x}" y="{TOP_S-60}" width="{PW_S}" height="{PH_S}" rx="12" fill="{c}14" stroke="{c}" stroke-width="1.4"/>'
+             f'<circle cx="{x+21}" cy="{TOP_S-38}" r="10" fill="{c}26" stroke="{c}99"/>'
+             f'<text x="{x+21}" y="{TOP_S-34}" fill="{c}" font-size="10.5" text-anchor="middle">{icon}</text>'
+             f'<text x="{x+40}" y="{TOP_S-34}" style="fill:var(--txt)" font-size="13" font-weight="650">{html.escape(tit)}</text>'
+             f'<text x="{x+40}" y="{TOP_S-17}" style="fill:var(--sub)" font-size="10.5">{html.escape(sub)}</text>']
+        if p.get("ubicacion"):
+            g.append(_badge(x, TOP_S - 60, PW_S, p["ubicacion"], c))
+        g.append("</g>")
+        s.append("".join(g))
+        s.append(f'<line class="life" data-id="{p["id"]}" x1="{cx[p["id"]]}" y1="{TOP_S-4}" x2="{cx[p["id"]]}" y2="{H-46}" style="stroke:var(--life)" stroke-width="1.2" stroke-dasharray="4 5"/>')
     activo = {}
     for i, m in enumerate(ir["mensajes"]):
         y = TOP_S + HEAD_S + i * STEP_S
@@ -437,20 +573,20 @@ def render_sequence(ir):
         ret = m.get("retorno")
         if not ret and m["hasta"] not in activo:
             activo[m["hasta"]] = y
-        color = "#64748b" if ret else "#cbd5e1"
+        color = "var(--seq-ret)" if ret else "var(--seq-msg)"
         dash = ' stroke-dasharray="5 4"' if ret else ""
         d_ = 1 if x2 > x1 else -1
         s.append(f'<g class="msg" data-f="{m["desde"]}" data-t="{m["hasta"]}">'
-                 f'<line x1="{x1 + d_*9}" y1="{y}" x2="{x2 - d_*9}" y2="{y}" stroke="{color}" stroke-width="1.6"{dash} marker-end="url(#{"a2" if ret else "a1"})"/>')
+                 f'<line x1="{x1 + d_*9}" y1="{y}" x2="{x2 - d_*9}" y2="{y}" style="stroke:{color}" stroke-width="1.6"{dash} marker-end="url(#{"a2" if ret else "a1"})"/>')
         mx = (x1 + x2) / 2
         w = len(m["label"]) * 6.4 + 30
-        s.append(f'<rect x="{mx-w/2:.0f}" y="{y-26}" width="{w:.0f}" height="19" rx="9.5" fill="#0b1220" stroke="#1e293b"/>'
+        s.append(f'<rect x="{mx-w/2:.0f}" y="{y-26}" width="{w:.0f}" height="19" rx="9.5" style="fill:var(--chip-bg);stroke:var(--chip-bd)"/>'
                  f'<circle cx="{mx-w/2+12:.0f}" cy="{y-16.5}" r="7.5" fill="#38bdf822" stroke="#38bdf8"/>'
                  f'<text x="{mx-w/2+12:.0f}" y="{y-13}" fill="#38bdf8" font-size="9.5" font-weight="700" text-anchor="middle">{i+1}</text>'
-                 f'<text x="{mx-w/2+25:.0f}" y="{y-12.5}" fill="#a5b4c9" font-size="10.5">{html.escape(m["label"].strip())}</text></g>')
+                 f'<text x="{mx-w/2+25:.0f}" y="{y-12.5}" style="fill:var(--edge-label)" font-size="10.5">{html.escape(m["label"].strip())}</text></g>')
     for pid, y0 in activo.items():
         yend = max(TOP_S + HEAD_S + i * STEP_S for i, m in enumerate(ir["mensajes"]) if m["desde"] == pid or m["hasta"] == pid)
-        s.append(f'<rect class="act" data-id="{pid}" x="{cx[pid]-5}" y="{y0}" width="10" height="{yend-y0}" rx="3" fill="#1e293b" stroke="#475569"/>')
+        s.append(f'<rect class="act" data-id="{pid}" x="{cx[pid]-5}" y="{y0}" width="10" height="{yend-y0}" rx="3" style="fill:var(--act-bg);stroke:var(--act-bd)"/>')
     usados = sorted({p["tipo"] for p in ir["participantes"]})
     lx = MX_S
     for t in usados:
@@ -458,10 +594,10 @@ def render_sequence(ir):
         n_ = sum(1 for p in ir["participantes"] if p["tipo"] == t)
         s.append(f'<g class="chip" data-tipo="{t}" style="cursor:pointer">'
                  f'<rect x="{lx-6}" y="{H-34}" width="15" height="15" rx="5" fill="{c}26" stroke="{c}"/>'
-                 f'<text x="{lx+15}" y="{H-22}" fill="#94a3b8" font-size="11.5">{t} {n_}</text></g>')
+                 f'<text x="{lx+15}" y="{H-22}" style="fill:var(--sub)" font-size="11.5">{t} {n_}</text></g>')
         lx += 96
     s.append("</svg>")
-    datos = {p["id"]: {k: p.get(k, "") for k in ("titulo", "sub", "tipo", "detalle")} for p in ir["participantes"]}
+    datos = {p["id"]: {k: p.get(k, "") for k in ("titulo", "sub", "tipo", "detalle", "ubicacion")} for p in ir["participantes"]}
     js = _JS_SEQ % (json.dumps(datos, ensure_ascii=False),
                     json.dumps({k: v[0] for k, v in TIPO.items()}))
     return _page(ir, "".join(s), js)
@@ -472,7 +608,7 @@ def _elements(ir):
     """Elementos comparables: {(clase, id): dict-normalizado}."""
     out = {}
     for n in ir.get("nodos", []) + ir.get("participantes", []):
-        out[("nodo", n["id"])] = {k: n.get(k) for k in ("titulo", "sub", "tipo", "grupo", "detalle")}
+        out[("nodo", n["id"])] = {k: n.get(k) for k in ("titulo", "sub", "tipo", "grupo", "detalle", "ubicacion")}
     for e in ir.get("aristas", []):
         out[("arista", f'{e["desde"]}→{e["hasta"]}:{e.get("label")}')] = {"dash": bool(e.get("dash")), "back": bool(e.get("back"))}
     for m in ir.get("mensajes", []):
@@ -492,6 +628,43 @@ def diff_ir(old, new):
 
 def render(ir):
     return render_sequence(ir) if ir.get("kind") == "sequence" else render_flow(ir)
+
+def _portal_register(ir_path, out_path, ir):
+    """Auto-registro en el portal del proyecto (v2.20), best-effort.
+
+    Localiza spec/ subiendo desde --out (los diagramas viven en
+    spec/diagrams/), importa portal_lib del arnés (sdlc-orchestrator/scripts)
+    y registra la página para el menú lateral y el buscador global. Nunca
+    bloquea el render: cualquier fallo se ignora (el HTML ya quedó escrito).
+    """
+    try:
+        import re as _re
+        parts = os.path.normpath(os.path.abspath(out_path)).split(os.sep)
+        if "spec" not in parts:
+            return
+        spec_dir = os.sep.join(parts[:parts.index("spec") + 1]) or os.sep
+        scripts = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                               "..", "..", "sdlc-orchestrator", "scripts"))
+        if scripts not in sys.path:
+            sys.path.insert(0, scripts)
+        import portal_lib
+        titulo = ir.get("titulo", os.path.basename(out_path))
+        tipo = ir.get("kind", "flow")
+        texto = " ".join(
+            [titulo, tipo]
+            + [d for n in ir.get("nodos", []) for d in (n.get("titulo", ""), n.get("detalle", ""))]
+            + [b for c in ir.get("insights", []) for b in c.get("bullets", [])])
+        cat = ("operacion" if _re.search(r"pipeline|ci.?cd|deploy|workflow", titulo, _re.I)
+               else "arquitectura")
+        pid = portal_lib.register(spec_dir, origen="diagram_ir", kind="diagrama",
+                                  ruta=os.path.abspath(out_path), titulo=titulo,
+                                  categoria=cat, grupo="diagramas",
+                                  tags=[tipo, "diagrama"], texto=texto)
+        portal_lib.rebuild_index(spec_dir)
+        print(f"portal: registrado como '{pid}'")
+    except Exception:
+        pass
+
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Diagramas interactivos desde IR JSON (ADR-003)")
@@ -536,6 +709,7 @@ def main(argv=None):
         with open(args.out, "w", encoding="utf-8") as f:
             f.write(html_out)
         print(f"OK {args.out} ({len(html_out)} bytes)")
+        _portal_register(args.ir, args.out, ir)
         return 0
     # check: drift
     try:
