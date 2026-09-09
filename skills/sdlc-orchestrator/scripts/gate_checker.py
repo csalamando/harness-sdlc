@@ -336,7 +336,39 @@ def check_proposal_diagrams(artefacto):
     return failures
 
 
+def check_contract_compat(artefacto):
+    """N10 (v2.21): si el contrato tiene versión previa en git y cambió, la
+    compatibilidad debe pasar — un breaking change sin bump mayor bloquea el gate.
+    Sin versión previa (primer commit del contrato) no hay nada que comparar."""
+    try:
+        import contract_diff as cd
+    except ImportError:
+        return ["contract_diff.py no encontrado junto a gate_checker.py"]
+    old_text = cd.git_show_head(artefacto)
+    if old_text is None:
+        return []
+    new_text = open(artefacto, encoding="utf-8").read()
+    if old_text == new_text:
+        return []
+    try:
+        old, new = cd.load_spec(old_text, "contrato anterior"), cd.load_spec(new_text)
+    except SystemExit:
+        return ["No se pudo verificar la compatibilidad del contrato "
+                "(PyYAML ausente o YAML inválido) — correr contract_diff.py a mano"]
+    breaking, _ = cd.diff_specs(old, new)
+    if not breaking:
+        return []
+    mo, mn = cd.major_of(old), cd.major_of(new)
+    if mo is not None and mn is not None and mn > mo:
+        return []
+    return [f"Contrato con {len(breaking)} breaking change(s) y versión mayor sin "
+            f"subir ({mo or '?'} → {mn or '?'}): {breaking[0]}"
+            + (" …" if len(breaking) > 1 else "")
+            + " — declarar el bump en info.version o revertir (contract_diff.py)"]
+
+
 def main():
+
 
     ap = argparse.ArgumentParser()
     ap.add_argument("artefacto")
@@ -371,6 +403,8 @@ def main():
         semantic += check_architecture_diagrams(a.artefacto)
     if a.tipo == "architecture-proposal":
         semantic += check_proposal_diagrams(a.artefacto)
+    if a.tipo == "api-contract":
+        semantic += check_contract_compat(a.artefacto)
     if missing or semantic:
         print(f"GATE NO PASADO ({a.tipo}):")
         for m in missing: print(f"  - patrón no encontrado: {m}")

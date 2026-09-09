@@ -782,6 +782,81 @@ forbidden:
           len(lint_ev) == 1 and lint_ev[0].get("resultado") == "ok"
           and lint_ev[0].get("harness_version"), str(lint_ev))
 
+# ── 10e. N10: contract_diff — breaking changes no declarados bloquean ────────
+print("\n[10e] contract_diff: la interfaz pública blindada")
+with tempfile.TemporaryDirectory() as tmp:
+    V1 = """openapi: 3.0.3
+info: {title: API, version: 1.2.0}
+paths:
+  /pedidos:
+    get:
+      parameters:
+        - {name: page, schema: {type: integer}}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {properties: {id: {type: string}, total: {type: number}}}
+  /legacy:
+    get:
+      responses: {'200': {description: ok}}
+components: {}
+"""
+    V2_COMPAT = V1.replace("version: 1.2.0", "version: 1.3.0").replace(
+        "  /legacy:", """  /nuevo:
+    post:
+      responses: {'201': {description: creado}}
+  /legacy:""")
+    V2_BREAK = V1.replace("  /legacy:\n    get:\n      responses: {'200': {description: ok}}\n", "") \
+                 .replace("- {name: page, schema: {type: integer}}",
+                          "- {name: page, schema: {type: string}}") \
+                 .replace(", total: {type: number}", "")
+    V2_BREAK_BUMP = V2_BREAK.replace("version: 1.2.0", "version: 2.0.0")
+
+    def w2(name, content):
+        p = os.path.join(tmp, name)
+        open(p, "w", encoding="utf-8").write(content)
+        return p
+
+    old_f = w2("old.yaml", V1)
+    def runc(*args):
+        return run("contract_diff.py", "--spec-dir", os.path.join(tmp, "spec"), *args, cwd=tmp)
+
+    code, out = runc("--old", old_f, "--new", w2("compat.yaml", V2_COMPAT))
+    check("N10: cambios compatibles pasan (exit 0)", code == 0 and "0 breaking" in out, out)
+    code, out = runc("--old", old_f, "--new", w2("break.yaml", V2_BREAK))
+    check("N10: breaking sin bump de mayor bloquea (exit 1)",
+          code == 1 and "GATE BLOQUEADO" in out and "path eliminado" in out, out)
+    code, out = runc("--old", old_f, "--new", w2("bump.yaml", V2_BREAK_BUMP))
+    check("N10: breaking declarado con bump mayor pasa", code == 0, out)
+
+    # integración con el gate api-contract vía git
+    repo = os.path.join(tmp, "repo")
+    os.makedirs(os.path.join(repo, "spec"))
+    apif = os.path.join(repo, "spec", "api-contract.yaml")
+    open(apif, "w", encoding="utf-8").write(V1)
+    for c in (["git", "init", "-q"], ["git", "add", "."],
+              ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "v1"]):
+        subprocess.run(c, cwd=repo, capture_output=True)
+    open(apif, "w", encoding="utf-8").write(V2_BREAK)
+    code, out = run("gate_checker.py", apif, "--tipo", "api-contract", cwd=repo)
+    check("N10: gate api-contract bloquea breaking sin declarar (contra git)",
+          code == 1 and "breaking change" in out, out)
+    open(apif, "w", encoding="utf-8").write(V2_BREAK_BUMP)
+    code, out = run("gate_checker.py", apif, "--tipo", "api-contract", cwd=repo)
+    check("N10: gate api-contract pasa con bump mayor declarado", code == 0, out)
+
+    # evento en la auditoría
+    os.makedirs(os.path.join(tmp, "spec"), exist_ok=True)
+    run("audit_log.py", "--spec-dir", os.path.join(tmp, "spec"), "init",
+        "--proyecto", "contratos", cwd=tmp)
+    runc("--old", old_f, "--new", old_f)
+    evs = [_j2.loads(l) for l in
+           open(os.path.join(tmp, "spec", "audit", "events.jsonl"), encoding="utf-8")]
+    cd_ev = [e for e in evs if e["evento"] == "contract_diff"]
+    check("N10: cada comparación registra evento contract_diff en la auditoría",
+          len(cd_ev) == 1 and cd_ev[0].get("resultado") == "ok", str(cd_ev))
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:
