@@ -482,6 +482,84 @@ with tempfile.TemporaryDirectory() as tmp:
     check("diagram_render: .drawio rechazado con mensaje de retiro (v2.20)",
           code == 1 and "v2.20" in out, out)
 
+# ── 10. Memoria de auditoría (ADR-004, v2.21) ────────────────────────────────
+print("\n[10] Memoria de auditoría: append-only, cadena de hash, ts UTC + harness_version")
+with tempfile.TemporaryDirectory() as tmp:
+    os.makedirs(os.path.join(tmp, "spec"))
+    def runa(script, *args):
+        p = subprocess.run([sys.executable, os.path.join(ORCH, script), "--spec-dir", "spec/",
+                            *args], capture_output=True, text=True, cwd=tmp)
+        return p.returncode, (p.stdout + p.stderr).strip()
+    def events():
+        p = os.path.join(tmp, "spec", "audit", "events.jsonl")
+        if not os.path.isfile(p):
+            return []
+        return [json.loads(l) for l in open(p, encoding="utf-8") if l.strip()]
+
+    code, out = runa("audit_log.py", "append", "--evento", "emit")
+    check("audit: append antes de init rechazado (exit 1)", code == 1, out)
+    code, out = runa("audit_log.py", "init", "--proyecto", "demo")
+    evs = events()
+    check("audit: init crea génesis audit_init con hash y versión",
+          code == 0 and len(evs) == 1 and evs[0]["evento"] == "audit_init"
+          and evs[0]["prev_hash"] == "0" * 64 and "harness_version" in evs[0], out)
+    check("audit: ts del génesis es UTC ISO-8601 con zona",
+          bool(evs) and re.search(r"\+\d{2}:\d{2}$|Z$", evs[0]["ts"]) is not None,
+          evs[0]["ts"] if evs else "sin eventos")
+    code, out = runa("audit_log.py", "init", "--proyecto", "demo")
+    check("audit: doble init rechazado (exit 1)", code == 1, out)
+
+    art = os.path.join(tmp, "spec", "vision.md")
+    open(art, "w", encoding="utf-8").write("# visión\n")
+    code, out = runa("receipt.py", "emit", art, "--gate", "GATE 0",
+                     "--role", "product-owner", "--approved-by", "Karlo")
+    evs = events()
+    emit_ev = [e for e in evs if e["evento"] == "emit"]
+    check("audit: receipt emit registra evento con aprobador y ruta relativa",
+          code == 0 and len(emit_ev) == 1
+          and emit_ev[0].get("approved_by") == "Karlo"
+          and emit_ev[0].get("artefacto") == "spec/vision.md", out)
+
+    open(art, "a", encoding="utf-8").write("cambio\n")
+    code, out = runa("receipt.py", "verify", art)
+    inv_ev = [e for e in events() if e["evento"] == "invalidado"]
+    check("audit: verify ante cambio registra 'invalidado' con hashes anterior/nuevo",
+          code == 1 and len(inv_ev) == 1
+          and inv_ev[0].get("sha256_anterior") and inv_ev[0].get("sha256_nuevo"), out)
+
+    code, out = runa("receipt.py", "revoke", art)
+    check("audit: revoke sin --reason rechazado (ADR-004)", code != 0, out)
+    code, out = runa("receipt.py", "revoke", art, "--reason", "cambio de spec",
+                     "--relation", "supersedes")
+    rev_ev = [e for e in events() if e["evento"] == "revocado"]
+    check("audit: revoke con razón registra evento revocado",
+          code == 0 and len(rev_ev) == 1 and rev_ev[0].get("reason") == "cambio de spec", out)
+
+    code, out = runa("receipt.py", "emit", art, "--gate", "GATE 0", "--role", "product-owner")
+    reem = [e for e in events() if e["evento"] == "emit"]
+    check("audit: re-emisión tras revocación queda marcada como retrabajo",
+          code == 0 and len(reem) == 2 and "re-emision" in reem[1].get("nota", ""), out)
+
+    code, out = runa("audit_verify.py")
+    check("audit: verify acepta la traza íntegra (exit 0)", code == 0, out)
+
+    # tamper 1: modificar el contenido de un evento pasado rompe su hash
+    logp = os.path.join(tmp, "spec", "audit", "events.jsonl")
+    orig = open(logp, encoding="utf-8").read().splitlines()
+    lines = list(orig)
+    ev2 = json.loads(lines[1]); ev2["gate"] = "GATE 99"
+    lines[1] = json.dumps(ev2, ensure_ascii=False)
+    open(logp, "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    code, out = runa("audit_verify.py")
+    check("audit: verify detecta evento manipulado (exit 1)", code == 1 and "manipulado" in out, out)
+
+    # restaurar y tamper 2: eliminar un evento intermedio rompe seq + cadena
+    lines = list(orig)
+    del lines[2]
+    open(logp, "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    code, out = runa("audit_verify.py")
+    check("audit: verify detecta evento intermedio eliminado (exit 1)", code == 1, out)
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

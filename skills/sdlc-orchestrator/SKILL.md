@@ -4,7 +4,7 @@ description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pi
 harness-role: orchestrator
 harness-phases: "transversal"
 harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/"
-harness-version: "2.20.1"
+harness-version: "2.21.0"
 ---
 
 
@@ -79,11 +79,13 @@ Cada artefacto de `spec/` tiene **un solo rol dueño**, declarado en `spec/autho
 
 Cuando un gate pasa, `receipt.py emit` guarda el SHA-256 exacto del artefacto en `spec/receipts/`. Antes de que cualquier fase downstream consuma ese artefacto, `receipt.py verify` comprueba que el contenido no cambió ni un byte desde la aprobación. Si cambió, el recibo se invalida solo y el gate debe re-ejecutarse. Un cambio de spec (`spec_diff_impact.py`) implica revocar los recibos de todos los artefactos impactados. Un artefacto nunca se aprueba dos veces sin nueva evidencia; una sola corrección acotada por gate antes de escalar a humano.
 
+**Memoria de auditoría (v2.21, ADR-004):** toda emisión, invalidación y revocación deja un hecho append-only en `spec/audit/events.jsonl` (cadena de hash SHA-256, `ts` UTC con zona, `harness_version` obligatorios) — separada de la memoria de trabajo (`sdlc-memory`, evolutiva). Los `.receipt.json` son el estado derivado; la verdad histórica es el log: una re-aprobación ya no borra el retrabajo. Reglas: `revoke` exige `--reason` (y `--relation` cuando el motivo es un cambio de spec); los gates humanos registran `--approved-by`; inicializar una vez por proyecto con `audit_log.py init --proyecto <nombre>`; verificar la traza en CI y Fase 8 con `audit_verify.py` (exit 1 si la cadena se reescribió).
+
 ## Gestión de cambios de spec
 
 1. Declarar la relación del cambio: **supersedes** (reemplaza a la versión anterior — flujo normal) o **conflicts_with** (contradice — requiere resolución humana antes de continuar, bloquea GATE 1).
 2. `spec_diff_impact.py --cambiado <artefacto> --relation <rel>` lista el downstream invalidado.
-3. `receipt.py revoke` sobre cada artefacto impactado; re-ejecutar solo sus fases.
+3. `receipt.py revoke --reason "<causa>" [--relation supersedes|conflicts_with]` sobre cada artefacto impactado; re-ejecutar solo sus fases. La revocación queda en la memoria de auditoría (v2.21).
 4. Nueva versión de spec + entrada en CHANGELOG.
 
 ## Fase 8: Archivo (cierre del ciclo SDD)
@@ -122,7 +124,9 @@ En GATE 2, `code_intel.py tests <símbolo>` es evidencia de qué tests debían c
 Ejecutar con `python3 scripts/<nombre>.py`:
 
 - `gate_checker.py <artefacto> --tipo <tipo>`: valida checklist de salida de un artefacto. Exit 0 = pasa gate.
-- `receipt.py emit|verify|status|revoke`: recibos de aprobación vinculados al SHA-256 del artefacto. `emit` acepta telemetría opcional: `--tokens-in/-out --tokens-src reportado|estimado --attempts K`.
+- `receipt.py emit|verify|status|revoke`: recibos de aprobación vinculados al SHA-256 del artefacto. `emit` acepta telemetría opcional: `--tokens-in/-out --tokens-src reportado|estimado --attempts K`; los gates humanos registran `--approved-by` (v2.21). `revoke` exige `--reason` y acepta `--relation` (v2.21, ADR-004).
+- `audit_log.py init|append` (v2.21, ADR-004): memoria de auditoría append-only (`spec/audit/events.jsonl`) con cadena de hash, `ts` UTC con zona y `harness_version` por evento. `init --proyecto` una sola vez por proyecto; los scripts del arnés anexan sus hechos automáticamente.
+- `audit_verify.py [--spec-dir spec/]` (v2.21): verifica la integridad de la traza (cadena de hash, campos obligatorios, seq monotónico, génesis válido). Exit 1 = traza reescrita o incompleta. Correr en CI y en Fase 8.
 - `skill_metrics.py use|report`: telemetría de skills — `use` registra la activación de un rol (append-only en `spec/metrics/usage.jsonl`); `report` genera `spec/METRICS.md` (tablero vivo) con aporte, cobertura (freestyle detector) y señales.
 - `sprint_review.py --sprint <N>`: genera `spec/reports/sprint-review-NN.md` al cerrar el sprint — snapshot versionado con avance, desempeño del arnés, lead times por gate, tendencia vs sprint anterior y aprendizajes.
 - `context_packager.py --rol <rol> --spec-dir spec/`: lista mínima de archivos que ese rol necesita.

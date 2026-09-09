@@ -21,10 +21,44 @@ Uso:
       Exit 0 si el recibo existe y el hash coincide. Exit 1 si falta o esta invalidado.
   python3 receipt.py status [--spec-dir spec/]
       Lista recibos y su vigencia.
-  python3 receipt.py revoke <artefacto>
-      Revoca manualmente (p. ej. ante change-request).
+  python3 receipt.py revoke <artefacto> --reason "<causa>" [--relation supersedes|conflicts_with]
+      Revoca manualmente (p. ej. ante change-request). La razón es OBLIGATORIA
+      (ADR-004, v2.21): queda en la memoria de auditoría spec/audit/events.jsonl.
+
+ADR-004 (v2.21): emit/invalidado/revocado anexan un hecho append-only con cadena
+de hash a la memoria de auditoría (audit_log.py). Los .receipt.json son el estado
+operativo derivado; la verdad histórica es el log.
 """
 import os, sys, json, hashlib, argparse, datetime, subprocess
+
+# ADR-004 (v2.21): toda emision/invalidacion/revocacion deja un hecho en la
+# memoria de auditoria (spec/audit/events.jsonl, append-only con cadena de hash).
+try:
+    from audit_log import append_event
+except ImportError:
+    append_event = None
+
+def _audit(spec_dir, evento, **fields):
+    """Best-effort visible: si el log no esta disponible/inicializado, se advierte
+    (nunca silencioso). El drift de scripts vendored queda expuesto aqui hasta
+    que harness_doctor --check-vendored lo vuelva bloqueante."""
+    if append_event is None:
+        print("  ⚠ audit_log.py no encontrado junto a receipt.py — el hecho NO queda "
+              "en la memoria de auditoria (scripts del arnes incompletos o desactualizados).")
+        return
+    try:
+        append_event(spec_dir, evento, **fields)
+    except RuntimeError as e:
+        print(f"  ⚠ hecho '{evento}' no registrado en auditoria: {e}")
+
+def _rel(spec_dir, artefacto):
+    """Ruta relativa al proyecto con '/' — portable y sin filtrar rutas locales
+    (leccion v2.20.1). El recibo historico conserva la absoluta; el evento usa esta."""
+    root = os.path.dirname(os.path.abspath(spec_dir))
+    try:
+        return os.path.relpath(os.path.abspath(artefacto), root).replace(os.sep, "/")
+    except ValueError:
+        return os.path.basename(artefacto)
 
 def harness_version():
     """Versión del arnés instalado (frontmatter del orquestador); None si no se puede leer."""
@@ -100,8 +134,20 @@ def cmd_emit(a):
     if a.attempts and int(a.attempts) > 1:
         rec["attempts"] = int(a.attempts)
     p = receipt_path(a.spec_dir, a.artefacto)
+    prev_estado = None
+    if os.path.isfile(p):
+        try:
+            prev_estado = json.load(open(p, encoding="utf-8")).get("estado")
+        except (json.JSONDecodeError, OSError):
+            pass
     open(p, "w", encoding="utf-8").write(json.dumps(rec, indent=2, ensure_ascii=False))
     print(f"RECIBO EMITIDO ({a.gate}): {a.artefacto}\n  sha256: {rec['sha256'][:16]}...  -> {p}")
+    # ADR-004: hecho en la memoria de auditoria. Si habia un recibo previo no
+    # vigente, esta emision es una RE-emision (retrabajo) — queda explícito.
+    _audit(a.spec_dir, "emit", artefacto=_rel(a.spec_dir, a.artefacto), gate=a.gate,
+           rol=a.role or "", sha256=rec["sha256"], approved_by=a.approved_by or "",
+           attempts=str(a.attempts) if a.attempts and int(a.attempts) > 1 else "",
+           nota="re-emision (recibo previo no vigente)" if prev_estado in ("invalidado", "revocado") else "")
     # v2.16: auto-registro de la activacion en usage.jsonl — el recibo ES evidencia
     # de que la skill produjo; cierra la brecha de metricas muertas cuando el agente
     # olvida 'skill_metrics.py use'. skill_metrics report deduplica contra usos manuales.
@@ -129,6 +175,9 @@ def cmd_verify(a):
         rec["estado"] = "invalidado"
         rec["invalidado"] = datetime.datetime.now().isoformat(timespec="seconds")
         open(p, "w", encoding="utf-8").write(json.dumps(rec, indent=2, ensure_ascii=False))
+        _audit(a.spec_dir, "invalidado", artefacto=_rel(a.spec_dir, a.artefacto),
+               gate=rec.get("gate", ""), rol=rec.get("rol", ""),
+               sha256_anterior=rec["sha256"], sha256_nuevo=actual)
         print(f"RECIBO INVALIDADO: el contenido de {a.artefacto} cambio desde la aprobacion ({rec['gate']}).")
         print("  El gate debe volver a ejecutarse y emitirse un recibo nuevo.")
         sys.exit(1)
@@ -160,6 +209,9 @@ def cmd_status(a):
         print(f"| {os.path.basename(art)} | {rec['gate']} | {rec.get('rol', '-')} | {rec['estado']} | {match} |")
 
 def cmd_revoke(a):
+    if not a.reason:
+        print("FALLO: revocar exige --reason (ADR-004: una revocación sin causa "
+              "declarada no es auditoría, es ruido)."); sys.exit(1)
     p = receipt_path(a.spec_dir, a.artefacto)
     if not os.path.isfile(p):
         print(f"Sin recibo que revocar para {a.artefacto}"); sys.exit(1)
@@ -167,7 +219,11 @@ def cmd_revoke(a):
     rec["estado"] = "revocado"
     rec["revocado"] = datetime.datetime.now().isoformat(timespec="seconds")
     open(p, "w", encoding="utf-8").write(json.dumps(rec, indent=2, ensure_ascii=False))
-    print(f"RECIBO REVOCADO: {a.artefacto}")
+    _audit(a.spec_dir, "revocado", artefacto=_rel(a.spec_dir, a.artefacto),
+           gate=rec.get("gate", ""), rol=rec.get("rol", ""), reason=a.reason,
+           relation=a.relation or "", approved_by=a.approved_by or "",
+           sha256_anterior=rec.get("sha256", ""))
+    print(f"RECIBO REVOCADO: {a.artefacto} — razón registrada en la memoria de auditoría.")
 
 def main():
     ap = argparse.ArgumentParser()
@@ -177,9 +233,13 @@ def main():
     p.add_argument("--tokens-in", type=int, default=0); p.add_argument("--tokens-out", type=int, default=0)
     p.add_argument("--tokens-src", choices=["reportado", "estimado"], default="")
     p.add_argument("--attempts", type=int, default=1)
+    p.add_argument("--approved-by", default="", help="identidad del aprobador humano (gates humanos)")
     p = sub.add_parser("verify"); p.add_argument("artefacto")
     sub.add_parser("status")
     p = sub.add_parser("revoke"); p.add_argument("artefacto")
+    p.add_argument("--reason", required=True, help="causa de la revocación (obligatoria, ADR-004)")
+    p.add_argument("--relation", choices=["supersedes", "conflicts_with"], default="")
+    p.add_argument("--approved-by", default="")
     a = ap.parse_args()
     {"emit": cmd_emit, "verify": cmd_verify, "status": cmd_status, "revoke": cmd_revoke}[a.cmd](a)
 
