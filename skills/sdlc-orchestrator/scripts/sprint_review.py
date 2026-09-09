@@ -97,13 +97,17 @@ def metrics_section(spec_dir):
     """Ejecuta skill_metrics report --stdout y devuelve el cuerpo (sin el titulo)."""
     sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "skill_metrics.py")
     r = subprocess.run([sys.executable, sp, "--spec-dir", spec_dir, "report", "--stdout"],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
     body = r.stdout.strip()
     body = re.sub(r"^# METRICS[^\n]*\n", "", body)  # sin titulo (se integra como seccion)
     return body
 
 
 def main():
+    try:  # salida UTF-8 segura aun en consolas cp1252 (Windows) — '→', '⚠'
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, OSError):
+        pass
     ap = argparse.ArgumentParser()
     ap.add_argument("--sprint", type=int, required=True)
     ap.add_argument("--spec-dir", default="spec/")
@@ -113,11 +117,29 @@ def main():
 
     recs = skill_metrics.load_receipts(spec_dir)
     events = skill_metrics.load_usage(spec_dir)
+    # v2.21 (ADR-004, N8): con memoria de auditoria, el retrabajo y los intentos
+    # se cuentan como HECHOS (eventos) — una re-aprobacion ya no borra el historial.
+    audit = skill_metrics.load_audit(spec_dir)
+    emits = [e for e in audit if e.get("evento") == "emit"]
+    rehechos_ev = [e for e in audit if e.get("evento") in ("invalidado", "revocado")]
+
+    def gate_norm(g):
+        return (g or "?").upper().replace("-", " ").strip()
+
     vigentes = [r for r in recs if r.get("estado") == "vigente"]
-    rehechos = [r for r in recs if r.get("estado") in ("invalidado", "revocado")]
     artefactos = len(vigentes)
-    intentos = sum(int(r.get("attempts") or 1) for r in recs)
-    gates_1er = round(100 * artefactos / max(len(recs), 1)) if recs else 0
+    if emits:
+        intentos = sum(int(e.get("attempts") or 1) for e in emits)
+        primeras = sum(1 for e in emits if int(e.get("attempts") or 1) == 1)
+        gates_1er = round(100 * primeras / len(emits))
+        n_emisiones = len(emits)
+        rehechos = rehechos_ev
+        detalle_intentos = f"{primeras} a la primera / {n_emisiones} emisiones"
+    else:  # proyecto sin memoria de auditoria (pre-v2.21): comportamiento historico
+        intentos = sum(int(r.get("attempts") or 1) for r in recs)
+        gates_1er = round(100 * artefactos / max(len(recs), 1)) if recs else 0
+        rehechos = [r for r in recs if r.get("estado") in ("invalidado", "revocado")]
+        detalle_intentos = f"{intentos} intentos / {len(recs)} recibos"
     tok_rep = sum(int(r.get("tokens_in") or 0) + int(r.get("tokens_out") or 0)
                   for r in recs if r.get("tokens_src") == "reportado")
     tok_est = sum(int(r.get("tokens_in") or 0) + int(r.get("tokens_out") or 0)
@@ -161,7 +183,7 @@ def main():
         "## 1. Resumen ejecutivo",
         "",
         f"- Artefactos aprobados (recibos vigentes): **{artefactos}**",
-        f"- Gates al primer intento: **{gates_1er}%** ({intentos} intentos / {len(recs)} recibos)",
+        f"- Gates al primer intento: **{gates_1er}%** ({detalle_intentos})",
         f"- Trabajo rehecho (recibos invalidados/revocados): **{len(rehechos)}**",
         f"- Activaciones de skills: **{len(events)}** | Roles en freestyle: **{len(freestyle)}**"
         + (f" ({', '.join(sorted(freestyle))})" if freestyle else ""),
@@ -174,11 +196,11 @@ def main():
         "| Gate | Artefactos vigentes | Rehechos |",
         "|---|---|---|",
     ]
-    por_gate_v = collections.Counter(r.get("gate") for r in vigentes)
-    por_gate_r = collections.Counter(r.get("gate") for r in rehechos)
+    por_gate_v = collections.Counter(gate_norm(r.get("gate")) for r in vigentes)
+    por_gate_r = collections.Counter(gate_norm(r.get("gate")) for r in rehechos)
     for g in sorted(set(por_gate_v) | set(por_gate_r)):
         out.append(f"| {g} | {por_gate_v.get(g, 0)} | {por_gate_r.get(g, 0)} |")
-    if not recs:
+    if not recs and not emits:
         out.append("| - | 0 | 0 |")
     out += [
         "",
@@ -195,9 +217,11 @@ def main():
         "| Gate | Primer recibo | Ultimo recibo | Recibos | Span |",
         "|---|---|---|---|---|",
     ]
-    for gate, d0, d1, n, delta in lead_times(recs):
+    lt_src = ([{"gate": gate_norm(e.get("gate")), "emitido": e.get("ts", "")} for e in emits]
+              if emits else recs)
+    for gate, d0, d1, n, delta in lead_times(lt_src):
         out.append(f"| {gate} | {d0} | {d1} | {n} | {delta} |")
-    if not recs:
+    if not recs and not emits:
         out.append("| - | - | - | 0 | - |")
 
     prev_name, prev = load_previous_review(spec_dir, a.sprint)

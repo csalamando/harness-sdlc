@@ -21,6 +21,12 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 ### Changed
 - **`receipt.py revoke` exige `--reason`** (breaking menor): una revocación sin causa declarada no es auditoría. Acepta además `--relation supersedes|conflicts_with` y `--approved-by`.
 - Si `audit_log.py` no acompaña a `receipt.py` (vendoring incompleto en proyectos), la emisión lo **advierte en consola** — el drift de scripts copiados queda visible hasta que `--check-vendored` (plan N5) lo vuelva bloqueante.
+- **Métricas derivadas del log (N8)**: `skill_metrics.py` y `sprint_review.py` leen la memoria de auditoría como fuente primaria (fallback a archivos de recibo en proyectos pre-v2.21). Consecuencias directas del diagnóstico:
+  - **"Trabajo rehecho" cuenta hechos** (eventos `invalidado`/`revocado`), no estados de archivo: re-aprobar ya no resetea la métrica a cero.
+  - **"Gates al primer intento" con fórmula única** (emisiones con `attempts==1` / total de emisiones) en ambos reportes — antes METRICS y sprint review se contradecían.
+  - **Catálogo único gate→fase** (`audit_log.gate_fase`): normaliza `GATE-1` ≡ `GATE 1`, mapea `SPRINT-*` → fase 8 y `FASE-N` → N; la fila "?" de falsos "adorno" desaparece.
+  - Las activaciones auto-registradas por `receipt.py` quedan **también** como eventos `use` en el log (primer paso de la absorción de `usage.jsonl`); `skill_metrics` fusiona y deduplica ambas fuentes.
+  - `sprint_review.py` endurecido para consolas Windows cp1252 (salida UTF-8 segura con `→`/`⚠`).
 
 ### Notas
 - Retrocompatible salvo el `--reason` de `revoke`. `usage.jsonl` se mantiene (las métricas migran al log en la siguiente iteración del plan, N8); los `.receipt.json` siguen siendo el estado operativo y ahora son estado derivado del log.

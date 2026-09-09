@@ -31,7 +31,8 @@ def fail(name, detail=""):
 def run(script, *args, cwd=None):
     """Corre un script del arnés. Devuelve (exit_code, stdout+stderr)."""
     p = subprocess.run([sys.executable, os.path.join(ORCH, script), *args],
-                       capture_output=True, text=True, cwd=cwd or ROOT)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       cwd=cwd or ROOT)
     return p.returncode, (p.stdout + p.stderr).strip()
 
 def check(name, cond, detail=""):
@@ -559,6 +560,41 @@ with tempfile.TemporaryDirectory() as tmp:
     open(logp, "w", encoding="utf-8").write("\n".join(lines) + "\n")
     code, out = runa("audit_verify.py")
     check("audit: verify detecta evento intermedio eliminado (exit 1)", code == 1, out)
+
+# ── 10b. N8: métricas derivadas del log de auditoría (hechos, no estados) ────
+print("\n[10b] Métricas desde la memoria de auditoría: el retrabajo ya no vuelve a cero")
+with tempfile.TemporaryDirectory() as tmp:
+    os.makedirs(os.path.join(tmp, "spec"))
+    def runm(script, *args):
+        return run(script, "--spec-dir", "spec/", *args, cwd=tmp)
+    runm("audit_log.py", "init", "--proyecto", "demo")
+    art = os.path.join(tmp, "spec", "vision.md")
+    open(art, "w", encoding="utf-8").write("# v1\n")
+    runm("receipt.py", "emit", art, "--gate", "GATE 0", "--role", "product-owner")
+    open(art, "a", encoding="utf-8").write("cambio\n")
+    runm("receipt.py", "verify", art)                       # -> invalidado
+    runm("receipt.py", "revoke", art, "--reason", "supersedes de vision")
+    runm("receipt.py", "emit", art, "--gate", "GATE 0", "--role", "product-owner",
+         "--attempts", "2")                                  # re-emision (retrabajo)
+    art2 = os.path.join(tmp, "spec", "backlog.md")
+    open(art2, "w", encoding="utf-8").write("# b\n")
+    runm("receipt.py", "emit", art2, "--gate", "GATE-0", "--role", "product-owner")  # variante
+
+    code, out = runm("skill_metrics.py", "report", "--stdout")
+    check("N8 metrics: declara la memoria de auditoría como fuente",
+          code == 0 and "Fuente: memoria de auditoria" in out, out)
+    check("N8 metrics: retrabajo visible por skill (invalidado+revocado)",
+          "2 retrabajo(s)" in out, out)
+    check("N8 metrics: activaciones use del log fusionadas (1 auto, sin duplicar)",
+          "| product-owner | 1 | 3 |" in out, out)
+
+    code, out = runm("sprint_review.py", "--sprint", "1", "--stdout")
+    check("N8 sprint: retrabajo cuenta eventos tras re-aprobar (**2**, antes 0)",
+          code == 0 and "Trabajo rehecho (recibos invalidados/revocados): **2**" in out, out)
+    check("N8 sprint: 'primer intento' con fórmula única (67% = 2/3 emisiones)",
+          "Gates al primer intento: **67%**" in out, out)
+    check("N8 sprint: variantes de gate normalizadas (GATE-0 ≡ GATE 0, una fila)",
+          out.count("| GATE 0 |") == 2 and "GATE-0" not in out, out)
 
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")

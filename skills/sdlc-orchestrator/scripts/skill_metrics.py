@@ -42,8 +42,20 @@ EXPECTED = {
     "6": ["devops-engineer", "cloud-engineer"],
     "7": ["sre", "product-analyst"],
 }
-# Gate -> fase aproximada (para ubicar recibos en el pipeline)
+# Gate -> fase: catalogo unico en audit_log.gate_fase (v2.21, N8). Fallback local
+# para instalaciones vendored antiguas sin audit_log.py.
+try:
+    import sys as _sys, os as _os
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    from audit_log import gate_fase as _gate_fase
+except ImportError:
+    _gate_fase = None
 GATE_FASE = {"GATE 0": "0", "GATE 1": "3", "GATE 2": "5", "GATE 2.5": "5", "GATE 3": "6"}
+
+def gate_a_fase(gate):
+    if _gate_fase:
+        return _gate_fase(gate)
+    return GATE_FASE.get((gate or "").upper().replace("-", " ").strip(), "?")
 
 
 def norm(skill):
@@ -54,6 +66,23 @@ def metrics_dir(spec_dir):
     d = os.path.join(spec_dir, "metrics")
     os.makedirs(d, exist_ok=True)
     return d
+
+
+def load_audit(spec_dir):
+    """Eventos de la memoria de auditoria (spec/audit/events.jsonl, ADR-004).
+    Lista vacia si el proyecto aun no inicializa el log (pre-v2.21)."""
+    p = os.path.join(spec_dir, "audit", "events.jsonl")
+    events = []
+    if os.path.isfile(p):
+        with open(p, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    try:
+                        events.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        pass
+    return events
 
 
 def load_usage(spec_dir):
@@ -68,6 +97,14 @@ def load_usage(spec_dir):
                         events.append(json.loads(line))
                     except json.JSONDecodeError:
                         pass
+    # v2.21 (ADR-004): las activaciones tambien viven como eventos 'use' en la
+    # memoria de auditoria — se fusionan aqui (la dedup de abajo colapsa los
+    # duplicados auto que receipt.py escribe en ambas fuentes).
+    for e in load_audit(spec_dir):
+        if e.get("evento") == "use" and e.get("skill"):
+            events.append({"ts": e.get("ts", ""), "tipo": "use",
+                           "skill": e["skill"], "fase": str(e.get("fase", "?")),
+                           "modo": e.get("modo", ""), "auto": e.get("auto", "")})
     # v2.16: deduplicar auto-registros de receipt.py — colapsar a uno por
     # skill+fase+dia, y descartarlos donde ya existe un uso manual del mismo
     # skill+fase (el manual manda; el auto es respaldo contra el olvido).
@@ -129,25 +166,51 @@ def cmd_report(a):
     spec_dir = a.spec_dir
     events = load_usage(spec_dir)
     recs = load_receipts(spec_dir)
+    # v2.21 (N8): fuente primaria = memoria de auditoria (eventos de hechos);
+    # los archivos .receipt.json quedan como fallback (proyectos pre-v2.21) y
+    # como fuente de tokens (los valores viven en el recibo).
+    audit = load_audit(spec_dir)
+    emits = [e for e in audit if e.get("evento") == "emit"]
+    rehechos_ev = [e for e in audit if e.get("evento") in ("invalidado", "revocado")]
 
     uses = collections.Counter(norm(e["skill"]) for e in events)
     fases_usadas = collections.defaultdict(set)
     for e in events:
         fases_usadas[str(e.get("fase", "?"))].add(norm(e["skill"]))
 
-    # agregado por rol desde recibos
+    # agregado por rol: emit events si hay log; si no, archivos de recibo
     por_rol = collections.defaultdict(lambda: {
-        "artefactos": 0, "intentos": 0, "tok_rep": 0, "tok_est": 0, "gates": set()})
-    for r in recs:
-        rol = norm(r.get("rol") or "(sin rol)")
-        agg = por_rol[rol]
-        agg["artefactos"] += 1
-        agg["intentos"] += int(r.get("attempts") or 1)
-        if r.get("tokens_src") == "reportado":
-            agg["tok_rep"] += int(r.get("tokens_in") or 0) + int(r.get("tokens_out") or 0)
-        elif r.get("tokens_src") == "estimado":
-            agg["tok_est"] += int(r.get("tokens_in") or 0) + int(r.get("tokens_out") or 0)
-        agg["gates"].add(r.get("gate", "?"))
+        "artefactos": 0, "intentos": 0, "tok_rep": 0, "tok_est": 0, "gates": set(),
+        "rehechos": 0})
+    if emits:
+        for e in emits:
+            rol = norm(e.get("rol") or "(sin rol)")
+            agg = por_rol[rol]
+            agg["artefactos"] += 1
+            agg["intentos"] += int(e.get("attempts") or 1)
+            agg["gates"].add(e.get("gate", "?"))
+        for r in recs:  # tokens: solo estan en los recibos
+            rol = norm(r.get("rol") or "(sin rol)")
+            agg = por_rol[rol]
+            if r.get("tokens_src") == "reportado":
+                agg["tok_rep"] += int(r.get("tokens_in") or 0) + int(r.get("tokens_out") or 0)
+            elif r.get("tokens_src") == "estimado":
+                agg["tok_est"] += int(r.get("tokens_in") or 0) + int(r.get("tokens_out") or 0)
+        for e in rehechos_ev:
+            por_rol[norm(e.get("rol") or "(sin rol)")]["rehechos"] += 1
+    else:
+        for r in recs:
+            rol = norm(r.get("rol") or "(sin rol)")
+            agg = por_rol[rol]
+            agg["artefactos"] += 1
+            agg["intentos"] += int(r.get("attempts") or 1)
+            if r.get("tokens_src") == "reportado":
+                agg["tok_rep"] += int(r.get("tokens_in") or 0) + int(r.get("tokens_out") or 0)
+            elif r.get("tokens_src") == "estimado":
+                agg["tok_est"] += int(r.get("tokens_in") or 0) + int(r.get("tokens_out") or 0)
+            agg["gates"].add(r.get("gate", "?"))
+            if r.get("estado") in ("invalidado", "revocado"):
+                agg["rehechos"] += 1
 
     skills = sorted(set(uses) | set(por_rol))
     out = [
@@ -155,6 +218,10 @@ def cmd_report(a):
         "",
         f"Generado: {datetime.datetime.now().isoformat(timespec='seconds')} — "
         f"activaciones: {sum(uses.values())}, recibos: {len(recs)}.",
+        ("Fuente: memoria de auditoria (spec/audit/events.jsonl) — hechos, no estados."
+         if emits else
+         "Fuente: archivos de recibo (proyecto sin memoria de auditoria — inicializar "
+         "con audit_log.py init para metricas historicas completas)."),
         "Digest informativo: NO se inyecta en paquetes de contexto; consultar bajo demanda",
         "(el orquestador lo genera en Fase 8 y guarda las señales como memoria `learning`).",
         "",
@@ -197,7 +264,7 @@ def cmd_report(a):
             fases_con_recibos[sorted(fases_por_rol[rol], key=lambda x: (len(x), x))[0]].add(rol)
         else:
             freestyle.add(rol)
-            f = GATE_FASE.get(r.get("gate", ""), "?")
+            f = gate_a_fase(r.get("gate", ""))
             fases_con_recibos[f].add(rol)
     n_alertas = len(freestyle)
     for fase in sorted(set(EXPECTED) | set(fases_con_recibos) | set(fases_usadas),
@@ -233,6 +300,9 @@ def cmd_report(a):
             rechazos = agg["intentos"] - agg["artefactos"]
             senales.append(f"- **{s}**: {rechazos} rechazo(s) de gate — revisar su SKILL.md/plantillas "
                            f"o el gate que falla.")
+        if agg and agg["rehechos"]:
+            senales.append(f"- **{s}**: {agg['rehechos']} retrabajo(s) (invalidaciones/revocaciones) "
+                           f"— causas y razones en spec/audit/events.jsonl.")
         if agg and agg["tok_est"] + agg["tok_rep"] > 0:
             tot = agg["tok_est"] + agg["tok_rep"]
             if agg["artefactos"] and tot // agg["artefactos"] > 100_000:

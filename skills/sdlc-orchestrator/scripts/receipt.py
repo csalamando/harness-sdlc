@@ -151,15 +151,26 @@ def cmd_emit(a):
     # v2.16: auto-registro de la activacion en usage.jsonl — el recibo ES evidencia
     # de que la skill produjo; cierra la brecha de metricas muertas cuando el agente
     # olvida 'skill_metrics.py use'. skill_metrics report deduplica contra usos manuales.
+    # v2.21 (ADR-004): la activacion TAMBIEN queda como evento 'use' en la memoria de
+    # auditoria, con la fase derivada del catalogo unico gate_fase (adios fase '?').
     if a.role:
-        GATE_FASE = {"GATE 0": "0", "GATE 1": "3", "GATE 2": "5", "GATE 2.5": "5", "GATE 3": "6"}
+        try:
+            from audit_log import gate_fase as _gate_fase
+        except ImportError:
+            _gate_fase = None
+        if _gate_fase:
+            fase = _gate_fase(a.gate)
+        else:
+            GATE_FASE = {"GATE 0": "0", "GATE 1": "3", "GATE 2": "5", "GATE 2.5": "5", "GATE 3": "6"}
+            fase = GATE_FASE.get(a.gate, "?")
+        skill = a.role.replace("sdlc-", "")
         ev = {"ts": datetime.datetime.now().isoformat(timespec="seconds"), "tipo": "use",
-              "skill": a.role.replace("sdlc-", ""), "fase": GATE_FASE.get(a.gate, "?"),
-              "modo": "", "auto": "receipt"}
+              "skill": skill, "fase": fase, "modo": "", "auto": "receipt"}
         md = os.path.join(a.spec_dir, "metrics")
         os.makedirs(md, exist_ok=True)
         with open(os.path.join(md, "usage.jsonl"), "a", encoding="utf-8") as fh:
             fh.write(json.dumps(ev, ensure_ascii=False) + "\n")
+        _audit(a.spec_dir, "use", skill=skill, fase=fase, auto="receipt")
 
 def cmd_verify(a):
     p = receipt_path(a.spec_dir, a.artefacto)

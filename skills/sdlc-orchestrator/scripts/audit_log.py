@@ -31,6 +31,22 @@ GENESIS_PREV = "0" * 64
 EVENTOS_NUCLEO = {"audit_init", "emit", "invalidado", "revocado", "use",
                   "bootstrap", "harness_upgrade", "freestyle"}
 
+
+def gate_fase(gate):
+    """Catalogo unico gate -> fase (v2.21, N8): una sola fuente para receipt.py,
+    skill_metrics.py y sprint_review.py. Normaliza variantes ('GATE-1' == 'GATE 1'),
+    SPRINT-* -> fase 8 (archivo) y FASE-N -> N. Desconocido -> '?'."""
+    g = (gate or "").upper().replace("-", " ").strip()
+    m = {"GATE 0": "0", "GATE 1": "3", "GATE 2": "5", "GATE 2.5": "5", "GATE 3": "6"}
+    if g in m:
+        return m[g]
+    if re.match(r"SPRINT\s*\d+", g):
+        return "8"
+    f = re.match(r"FASE\s*(\d+)", g)
+    if f:
+        return f.group(1)
+    return "?"
+
 # Campos opcionales reconocidos (se omiten si llegan vacios)
 CAMPOS = ("artefacto", "gate", "rol", "reason", "relation", "approved_by",
           "nota", "source", "sha256", "sha256_anterior", "sha256_nuevo",
