@@ -24,6 +24,7 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
   - `gate_checker.py --tipo architecture`: el patrón `mermaid` se reemplaza por verificación real — exige ≥1 IR referenciado (`diagrams/*.ir.json`), que exista, que pase `validate`, y —si el proyecto ya gobierna con recibos— que tenga **recibo vigente con hash coincidente** (un diagrama editado sin re-aprobar bloquea el gate).
   - `gate_checker.py --tipo architecture-proposal`: cada opción (A, B, …) debe referenciar su propio IR — comparar sin ver no es comparar.
   - Plantilla `architecture.md` migrada de bloque mermaid a IR referenciado, con IR mínimo de ejemplo en `assets/diagrams/architecture-c4.ir.json`; guías de `sdlc-software-architect` y `sdlc-diagrams` actualizadas (fuera la referencia obsoleta a draw.io MCP).
+- **`arch_lint.py` (N9) — la arquitectura deja de ser prosa y pasa a ser política binaria**: si el proyecto declara `spec/architecture-rules.yaml` (capas + dependencias `forbidden` entre ellas, owner `software-architect`, con recibo), el linter verifica que el código la respete — Python vía `ast` (imports absolutos y relativos), JS/TS vía patrones sobre rutas relativas; librerías externas se ignoran. Exit 1 por violación o configuración inválida (capa sin paths, regla que cita capa no declarada, política sin `forbidden`); exit 0 si el proyecto no declara reglas (condicional). Cada corrida registra evento `arch_lint` en la memoria de auditoría (reglas + hash, archivos analizados, violaciones, resultado). GATE 2 lo exige en verde cuando las reglas existen. Plantilla de ejemplo en `assets/architecture-rules.yaml`.
 - **ADR-004** (`docs/decisions/`): la decisión de las dos memorias (trabajo vs auditoría) y sus modelos de consistencia opuestos.
 
 ### Changed
@@ -39,7 +40,7 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 
 ### Notas
 - Retrocompatible salvo dos endurecimientos deliberados: el `--reason` de `revoke` y el `--approved-by` exigible en gates humanos (flujos que emitían `GATE 0/1/3` o `SPRINT-*` sin aprobador ahora fallan con un mensaje claro). `usage.jsonl` se mantiene (las métricas migran al log en la siguiente iteración del plan, N8); los `.receipt.json` siguen siendo el estado operativo y ahora son estado derivado del log.
-- Self-test: memoria de auditoría + métricas sobre el log + catálogo de gates + gates de diagramas IR (validate con ubicacion exigible, architecture sin IR no pasa, IR editado tras recibo bloquea, propuesta exige diagrama por opción). 175 checks.
+- Self-test: memoria de auditoría + métricas sobre el log + catálogo de gates + gates de diagramas IR (validate con ubicacion exigible, architecture sin IR no pasa, IR editado tras recibo bloquea, propuesta exige diagrama por opción) + arch_lint (violaciones Python ast y JS, config inválida, política vacía, evento en auditoría). 183 checks.
 - Roadmap del diagnóstico: v2.21 continúa con aprobador humano exigible, métricas sobre el log, gates de diagramas IR, `arch_lint` y `contract_diff`; v2.22 con init/gate_verify, hash de dependencias, check-vendored, pipeline-state derivado y HITL portable ([núcleo recomendado](docs/nucleo-recomendado-control.md)).
 
 ## [2.20.1] - 2026-09-07

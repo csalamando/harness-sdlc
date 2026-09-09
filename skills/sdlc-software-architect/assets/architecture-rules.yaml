@@ -1,0 +1,28 @@
+# Invariantes arquitectónicos del proyecto — owner: software-architect (v2.21, N9)
+#
+# Este archivo convierte la arquitectura aprobada en política ejecutable:
+# `arch_lint.py` (GATE 2 / CI) falla si el código la viola. Cambiarlo es una
+# decisión de arquitectura: va por PR y con recibo propio
+# (`receipt.py emit spec/architecture-rules.yaml --gate FASE-2 --role software-architect`).
+#
+# Es CONDICIONAL: solo proyectos con arquitectura por capas lo declaran.
+# Si existe, debe ser coherente — arch_lint falla ante capas sin paths o
+# reglas que citen capas no declaradas.
+version: 1
+
+layers:
+  - name: ui
+    paths: ["frontend/", "src/web/"]
+  - name: api
+    paths: ["src/api/", "backend/api/"]
+  - name: domain
+    paths: ["src/domain/", "backend/domain/"]
+  - name: infra
+    paths: ["src/infra/", "backend/infra/", "src/adapters/"]
+
+# Dependencias prohibidas entre capas ("origen -> destino", "*" = cualquiera).
+# El ejemplo clásico de arquitectura hexagonal / capas:
+forbidden:
+  - "domain -> *"     # el dominio no conoce infra, api ni ui (regla de dependencia)
+  - "ui -> domain"    # la UI siempre pasa por la API
+  - "ui -> infra"     # la UI nunca toca infraestructura directamente

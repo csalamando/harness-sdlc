@@ -54,6 +54,7 @@ Para cada decisión técnica significativa, ejecutar el flujo de 8 pasos de Nata
 - [ ] Toda regla BR-xxx tiene dueño en el modelo de datos
 - [ ] Toda decisión no trivial tiene ADR
 - [ ] `architecture.md` referencia diagrama(s) IR válidos (`diagram_ir.py validate`) y con recibo vigente
+- [ ] Si la arquitectura es por capas: `spec/architecture-rules.yaml` declarado y `arch_lint.py` en verde (GATE 2/CI)
 - [ ] NFRs cuantificados (no "debe ser rápido")
 - [ ] test-plan.md mapea 100% de historias del sprint
 - [ ] Spec consolidada sin contradicciones (GATE 1 lista)
@@ -64,7 +65,7 @@ Para cada decisión técnica significativa, ejecutar el flujo de 8 pasos de Nata
 - **Diagramas vivos IR** (skill `sdlc-diagrams`) en `spec/diagrams/*.ir.json` — **obligatorios** en `architecture.md` (v2.21): el gate exige IR referenciado, válido (`diagram_ir.py validate`, con `ubicacion` en todo nodo cuando `"tipo": "architecture"`) y con **recibo vigente** propio. Mermaid inline es complementario, no sustituto.
 - Plantillas ADR (assets): `adr-template-8steps.md` (Tier 1-2) y `ADR-000-template.md` (Tier 3)
 - Plantilla de arquitectura: `assets/architecture.md` + `assets/diagrams/architecture-c4.ir.json` (IR mínimo de ejemplo)
-- Scripts del orquestador: `decision_sizing.py`, `advisor.py`, `arch_signoff.py`
+- Scripts del orquestador: `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `arch_lint.py` (invariantes por capas: verifica que el código respete `spec/architecture-rules.yaml` — la arquitectura deja de ser prosa y pasa a ser política binaria en GATE 2/CI)
 - Scripts del Decision Engine: `decision_engine.py` (validar ADR, cargar packages), `scorecard_calculator.py`
 
 ## Contrato del rol

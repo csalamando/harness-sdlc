@@ -80,7 +80,8 @@ def gate_es_humano(gate):
 CAMPOS = ("artefacto", "gate", "rol", "reason", "relation", "approved_by",
           "nota", "source", "sha256", "sha256_anterior", "sha256_nuevo",
           "skill", "fase", "modo", "auto", "attempts", "tokens_src",
-          "version_anterior", "version_nueva", "proyecto")
+          "version_anterior", "version_nueva", "proyecto",
+          "reglas", "archivos", "violaciones", "resultado")
 
 
 def harness_version():

@@ -702,6 +702,86 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out = run("gate_checker.py", prop, "--tipo", "architecture-proposal", cwd=tmp)
     check("N6: propuesta con diagrama por opción pasa el gate", code == 0, out)
 
+# ── 10d. N9: arch_lint — invariantes arquitectónicos ejecutables ─────────────
+print("\n[10d] arch_lint: la arquitectura por capas es política binaria")
+with tempfile.TemporaryDirectory() as tmp:
+    def w(rel, content):
+        p = os.path.join(tmp, rel)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        open(p, "w", encoding="utf-8").write(content)
+        return p
+
+    def runl(*args):
+        return run("arch_lint.py", "--root", tmp, "--spec-dir",
+                   os.path.join(tmp, "spec"), *args, cwd=tmp)
+
+    # sin reglas declaradas: condicional, exit 0
+    code, out = runl()
+    check("N9: sin architecture-rules.yaml no hay nada que verificar (exit 0)",
+          code == 0 and "nada que verificar" in out, out)
+
+    w("spec/architecture-rules.yaml", """version: 1
+layers:
+  - {name: ui, paths: ["frontend/"]}
+  - {name: domain, paths: ["src/domain/"]}
+  - {name: infra, paths: ["src/infra/"]}
+forbidden:
+  - "domain -> *"
+  - "ui -> domain"
+""")
+    # código limpio → verde
+    w("src/domain/model.py", "class Pedido:\n    pass\n")
+    w("src/infra/repo.py", "from src.domain.model import Pedido\n")
+    code, out = runl()
+    check("N9: dependencias permitidas pasan (infra -> domain)", code == 0, out)
+
+    # violación Python: domain importa infra
+    w("src/domain/service.py", "from src.infra.repo import Pedido\n")
+    code, out = runl()
+    check("N9: domain importando infra es violación (exit 1, 'domain -> *')",
+          code == 1 and "domain" in out and "infra" in out, out)
+    os.remove(os.path.join(tmp, "src", "domain", "service.py"))
+
+    # violación JS: ui importa domain directo
+    w("frontend/app.js", "import { Pedido } from '../src/domain/model.js';\n")
+    w("src/domain/model.js", "export class Pedido {}\n")
+    code, out = runl()
+    check("N9: ui importando domain en JS es violación ('ui -> domain')",
+          code == 1 and "app.js" in out, out)
+    os.remove(os.path.join(tmp, "frontend", "app.js"))
+
+    # config inválida: regla que cita capa no declarada
+    w("spec/architecture-rules.yaml", """layers:
+  - {name: a, paths: ["src/a/"]}
+forbidden:
+  - "a -> fantasmas"
+""")
+    code, out = runl()
+    check("N9: regla que cita capa no declarada = config inválida (exit 1)",
+          code == 1 and "no declarada" in out, out)
+
+    # reglas declaradas sin forbidden: política vacía, falla
+    w("spec/architecture-rules.yaml", "layers:\n  - {name: a, paths: ['src/a/']}\n")
+    code, out = runl()
+    check("N9: reglas sin 'forbidden' no controlan nada (exit 1)",
+          code == 1 and "forbidden" in out, out)
+
+    # evento en la memoria de auditoría (ADR-004)
+    w("spec/architecture-rules.yaml", """layers:
+  - {name: a, paths: ["src/a/"]}
+forbidden:
+  - "a -> *"
+""")
+    run("audit_log.py", "--spec-dir", os.path.join(tmp, "spec"), "init",
+        "--proyecto", "lint", cwd=tmp)
+    runl()
+    evs = [_j2.loads(l) for l in
+           open(os.path.join(tmp, "spec", "audit", "events.jsonl"), encoding="utf-8")]
+    lint_ev = [e for e in evs if e["evento"] == "arch_lint"]
+    check("N9: cada corrida registra evento arch_lint en la auditoría",
+          len(lint_ev) == 1 and lint_ev[0].get("resultado") == "ok"
+          and lint_ev[0].get("harness_version"), str(lint_ev))
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:
