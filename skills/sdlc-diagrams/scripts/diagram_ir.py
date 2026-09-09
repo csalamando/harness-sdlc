@@ -46,12 +46,22 @@ def load_ir(path):
         ir["kind"] = "sequence" if "participantes" in ir else "flow"
     return ir
 
+# Categoria semantica del diagrama (campo top-level opcional "tipo").
+# "architecture" activa una regla de gobierno: todo nodo/participante debe
+# declarar DONDE corre ("ubicacion") — un diagrama de arquitectura sin
+# ubicaciones no pasa validate (v2.21, N6).
+TIPOS_IR = {"architecture", "sequence", "workflow", "dataflow", "lifecycle"}
+
 def validate_ir(ir):
     errs = []
     if not ir.get("titulo"):
         errs.append("falta 'titulo'")
     if ir.get("tema") not in (None, "", "claro", "oscuro"):
         errs.append(f"tema '{ir.get('tema')}' invalido (claro|oscuro)")
+    tipo_doc = ir.get("tipo")
+    if tipo_doc is not None and tipo_doc not in TIPOS_IR:
+        errs.append(f"tipo '{tipo_doc}' desconocido ({'|'.join(sorted(TIPOS_IR))})")
+    exige_ubicacion = tipo_doc == "architecture"
     kind = ir.get("kind", "flow")
     if kind == "sequence":
         ids = set()
@@ -61,6 +71,10 @@ def validate_ir(ir):
             ids.add(p.get("id"))
             if p.get("tipo") not in TIPO_BASE:
                 errs.append(f"participante '{p.get('id')}' tipo desconocido '{p.get('tipo')}'")
+            if exige_ubicacion and not p.get("ubicacion"):
+                errs.append(f"participante '{p.get('id')}' sin 'ubicacion' — obligatorio en "
+                            "diagramas tipo architecture (donde corre cada componente)")
+
         for i, m in enumerate(ir.get("mensajes", []), 1):
             if m.get("desde") not in ids or m.get("hasta") not in ids:
                 errs.append(f"mensaje #{i} referencia participante inexistente: {m.get('desde')}→{m.get('hasta')}")
@@ -74,6 +88,9 @@ def validate_ir(ir):
             ids.add(n.get("id"))
             if n.get("tipo") not in TIPO_BASE and n.get("tipo") not in (ir.get("tipos") or {}):
                 errs.append(f"nodo '{n.get('id')}' tipo desconocido '{n.get('tipo')}'")
+            if exige_ubicacion and not n.get("ubicacion"):
+                errs.append(f"nodo '{n.get('id')}' sin 'ubicacion' — obligatorio en "
+                            "diagramas tipo architecture (donde corre cada componente)")
             g = n.get("grupo")
             if g and ir.get("grupos") and g not in ir["grupos"]:
                 errs.append(f"nodo '{n.get('id')}' grupo '{g}' no declarado en 'grupos'")

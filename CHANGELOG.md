@@ -19,6 +19,11 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **Catálogo cerrado de gates (N3)**: `audit_log.gate_valido()` define el catálogo — fijos `GATE 0/1/2/2.5/3` + dinámicos `SPRINT-N`/`FASE-N` — con normalización (`GATE-0` ≡ `GATE 0`). `receipt.py emit` **rechaza gates fuera del catálogo** (adiós a `gate2` inventado que colaba texto libre al pipeline).
 - **`--approved-by` exigible en gates humanos (N3)**: `GATE 0`, `GATE 1`, `GATE 3` y `SPRINT-*` son gates de decisión humana — `emit` falla con exit 1 si no declara aprobador ("el agente no puede auto-aprobarse"). Gates automáticos (`GATE 2/2.5`, `FASE-N`) no lo exigen.
 - **`receipt.py status --strict`**: veredicto ejecutable para CI — exit 1 si hay recibos no vigentes, artefactos faltantes o hashes que no coinciden. Sin `--strict`, `status` sigue siendo solo informativo.
+- **Gates de diagramas IR exigibles (N6)** — los diagramas vuelven a ser parte fundamental y *verificable* de la propuesta de arquitectura:
+  - `diagram_ir.py validate` reconoce el campo top-level `"tipo"` (`architecture|sequence|workflow|dataflow|lifecycle`) y, en `architecture`, **exige `ubicacion` en todo nodo/participante** — cada componente declara dónde corre. IRs sin `tipo` (pre-v2.21) siguen validando.
+  - `gate_checker.py --tipo architecture`: el patrón `mermaid` se reemplaza por verificación real — exige ≥1 IR referenciado (`diagrams/*.ir.json`), que exista, que pase `validate`, y —si el proyecto ya gobierna con recibos— que tenga **recibo vigente con hash coincidente** (un diagrama editado sin re-aprobar bloquea el gate).
+  - `gate_checker.py --tipo architecture-proposal`: cada opción (A, B, …) debe referenciar su propio IR — comparar sin ver no es comparar.
+  - Plantilla `architecture.md` migrada de bloque mermaid a IR referenciado, con IR mínimo de ejemplo en `assets/diagrams/architecture-c4.ir.json`; guías de `sdlc-software-architect` y `sdlc-diagrams` actualizadas (fuera la referencia obsoleta a draw.io MCP).
 - **ADR-004** (`docs/decisions/`): la decisión de las dos memorias (trabajo vs auditoría) y sus modelos de consistencia opuestos.
 
 ### Changed
@@ -34,7 +39,7 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 
 ### Notas
 - Retrocompatible salvo dos endurecimientos deliberados: el `--reason` de `revoke` y el `--approved-by` exigible en gates humanos (flujos que emitían `GATE 0/1/3` o `SPRINT-*` sin aprobador ahora fallan con un mensaje claro). `usage.jsonl` se mantiene (las métricas migran al log en la siguiente iteración del plan, N8); los `.receipt.json` siguen siendo el estado operativo y ahora son estado derivado del log.
-- Self-test: memoria de auditoría (génesis, append sin init, tamper-evidence de la cadena) + métricas sobre el log (retrabajo que no vuelve a cero, primer intento con fórmula única, gates normalizados) + catálogo de gates (gate inventado rechazado, gate humano sin aprobador rechazado, `GATE-0`→`GATE 0`, `status --strict` verde y rojo). 163 checks.
+- Self-test: memoria de auditoría + métricas sobre el log + catálogo de gates + gates de diagramas IR (validate con ubicacion exigible, architecture sin IR no pasa, IR editado tras recibo bloquea, propuesta exige diagrama por opción). 175 checks.
 - Roadmap del diagnóstico: v2.21 continúa con aprobador humano exigible, métricas sobre el log, gates de diagramas IR, `arch_lint` y `contract_diff`; v2.22 con init/gate_verify, hash de dependencias, check-vendored, pipeline-state derivado y HITL portable ([núcleo recomendado](docs/nucleo-recomendado-control.md)).
 
 ## [2.20.1] - 2026-09-07

@@ -35,7 +35,8 @@ Sirve a: Architect (C4/arquitectura), Cloud Engineer (despliegue), BA (flujos), 
 **Vista (v1.1 del renderer)**:
 - **Tema claro/oscuro**: toggle ☀/🌙 en la toolbar; persiste en `localStorage`. Default: campo opcional `"tema": "claro"|"oscuro"` del IR, si no, `prefers-color-scheme` del navegador.
 - **Tamaño de fuente**: botones `A− / A / A+` en la toolbar (zoom 0.6–1.8, persiste en `localStorage`).
-- **Ubicación de despliegue** (`"ubicacion"` en nodos/participantes): pill en la esquina superior del nodo con icono automático — ☁ nube (AWS/Azure/GCP/IBM/SaaS…), ⌂ on-premise/datacenter, ◈ otro. **Obligatorio en diagramas de arquitectura**: cada componente declara DÓNDE corre (qué nube, región, on-prem). También aparece en el panel de detalle y en el `diff`.
+- **Ubicación de despliegue** (`"ubicacion"` en nodos/participantes): pill en la esquina superior del nodo con icono automático — ☁ nube (AWS/Azure/GCP/IBM/SaaS…), ⌂ on-premise/datacenter, ◈ otro. **Exigible por validate en diagramas de arquitectura** (v2.21): si el IR declara `"tipo": "architecture"`, todo nodo/participante sin `ubicacion` es error de validación — cada componente declara DÓNDE corre. También aparece en el panel de detalle y en el `diff`.
+- **Categoría del diagrama** (campo top-level opcional `"tipo"`): `architecture` | `sequence` | `workflow` | `dataflow` | `lifecycle`. `validate` rechaza valores fuera del catálogo; `architecture` activa la regla de `ubicacion`.
 - **Textos sin desborde**: los títulos hacen wrap a máximo 2 líneas y los subtítulos usan elipsis, calculado de forma determinista (sin medir fuentes); el texto nunca sale del nodo.
 
 ```bash
@@ -51,7 +52,7 @@ python diagram_ir.py check    --ir x.ir.json --out x.html       # exit 1 si el H
 
 - Todo nodo usa el término canónico de `spec/glossary.md`; toda relación declara protocolo/etiqueta.
 - Los diagramas de despliegue reflejan `infra/` (IaC): si el IaC cambia, el IR queda impactado (el orquestador lo marca vía `spec_diff_impact`).
-- Mermaid embebido en los `.md` de la spec sigue válido para bocetos (Gantt, GitFlow, secuencias rápidas); los IR son para diagramas vivos de seguimiento y presentación a stakeholders.
+- Mermaid embebido en los `.md` de la spec sigue válido para bocetos (Gantt, GitFlow, secuencias rápidas); los IR son para diagramas vivos de seguimiento y presentación a stakeholders. **Desde v2.21, el gate de `architecture.md` exige IR referenciado, válido y con recibo vigente** — un bloque mermaid suelto ya no cumple el gate, y la propuesta de arquitectura (GATE 0) exige un IR referenciado por opción.
 
 ## Dos direcciones y aprobación (v2.6)
 

@@ -626,6 +626,82 @@ with tempfile.TemporaryDirectory() as tmp:
     check("N3: status --strict falla (exit 1) con un recibo invalidado",
           code == 1 and "invalidado" in out, out)
 
+# ── 10c. N6: diagramas IR exigibles — validate con ubicacion + gates ─────────
+print("\n[10c] Gates de diagramas IR: la arquitectura vuelve a exigir diagramas")
+import json as _j2
+with tempfile.TemporaryDirectory() as tmp:
+    os.makedirs(os.path.join(tmp, "spec", "diagrams"))
+    # 1. validate: tipo architecture exige ubicacion en todos los nodos
+    ir = {"kind": "flow", "tipo": "architecture", "titulo": "t",
+          "nodos": [{"id": "a", "titulo": "A", "tipo": "service"},
+                    {"id": "b", "titulo": "B", "tipo": "db", "ubicacion": "AWS"}],
+          "aristas": [{"desde": "a", "hasta": "b", "label": "SQL"}]}
+    p = os.path.join(tmp, "sin-ubi.ir.json")
+    open(p, "w", encoding="utf-8").write(_j2.dumps(ir))
+    code, out = rund("validate", "--ir", p)
+    check("N6: IR tipo architecture con nodo sin 'ubicacion' NO pasa validate",
+          code == 1 and "ubicacion" in out, out)
+    ir["nodos"][0]["ubicacion"] = "Azure"
+    open(p, "w", encoding="utf-8").write(_j2.dumps(ir))
+    code, out = rund("validate", "--ir", p)
+    check("N6: IR tipo architecture con ubicaciones pasa validate", code == 0, out)
+    ir["tipo"] = "foo"
+    open(p, "w", encoding="utf-8").write(_j2.dumps(ir))
+    code, out = rund("validate", "--ir", p)
+    check("N6: 'tipo' fuera del catálogo rechazado por validate", code == 1, out)
+    # sin tipo (IRs antiguos) sigue validando: retrocompatible
+    del ir["tipo"]; ir["nodos"][0].pop("ubicacion")
+    open(p, "w", encoding="utf-8").write(_j2.dumps(ir))
+    code, out = rund("validate", "--ir", p)
+    check("N6: IR sin 'tipo' (pre-v2.21) sigue validando", code == 0, out)
+
+    # 2. gate architecture: mermaid suelto ya no cumple; IR + recibo vigente sí
+    arch = os.path.join(tmp, "spec", "architecture.md")
+    open(arch, "w", encoding="utf-8").write(
+        "# Arq\n```mermaid\nflowchart LR\n A-->B\n```\n## Componentes\n## Requisitos no funcionales\n")
+    code, out = run("gate_checker.py", arch, "--tipo", "architecture", cwd=tmp)
+    check("N6: architecture con solo mermaid NO pasa el gate",
+          code == 1 and "Sin diagrama IR" in out, out)
+    open(arch, "a", encoding="utf-8").write("\nVer `diagrams/c4.ir.json`\n")
+    code, out = run("gate_checker.py", arch, "--tipo", "architecture", cwd=tmp)
+    check("N6: IR referenciado inexistente NO pasa el gate",
+          code == 1 and "no existe" in out, out)
+    irpath = os.path.join(tmp, "spec", "diagrams", "c4.ir.json")
+    ir["tipo"] = "architecture"
+    ir["nodos"][0]["ubicacion"] = "AWS"
+    open(irpath, "w", encoding="utf-8").write(_j2.dumps(ir))
+    code, out = run("gate_checker.py", arch, "--tipo", "architecture", cwd=tmp)
+    check("N6: IR referenciado y válido pasa (proyecto aún sin recibos)",
+          code == 0, out)
+    os.makedirs(os.path.join(tmp, "spec", "receipts"))   # el proyecto ya gobierna
+    code, out = run("gate_checker.py", arch, "--tipo", "architecture", cwd=tmp)
+    check("N6: con recibos activos, IR sin recibo NO pasa el gate",
+          code == 1 and "sin recibo" in out, out)
+    run("receipt.py", "--spec-dir", "spec/", "emit", irpath, "--gate", "FASE-2",
+        "--role", "software-architect", cwd=tmp)
+    code, out = run("gate_checker.py", arch, "--tipo", "architecture", cwd=tmp)
+    check("N6: IR con recibo vigente pasa el gate", code == 0, out)
+    open(irpath, "a", encoding="utf-8").write(" ")        # edición sin re-aprobar
+    code, out = run("gate_checker.py", arch, "--tipo", "architecture", cwd=tmp)
+    check("N6: IR editado tras su recibo NO pasa (hash no coincide)",
+          code == 1 and "hash no coincide" in out, out)
+
+    # 3. architecture-proposal: cada opción exige su diagrama IR
+    prop = os.path.join(tmp, "spec", "architecture-proposal.md")
+    base = ("# Propuesta\n## Contexto y objetivo de negocio\nx\n"
+            "### Opción A: mono\n- Diagrama: `spec/diagrams/prop-a.ir.json`\n- ADR-P-001\n"
+            "### Opción B: micro\n- Componentes: sin diagrama\n- ADR-P-002\n"
+            "## Comparativa\n## Recomendación\n## Estimación de costos\n")
+    open(prop, "w", encoding="utf-8").write(base)
+    code, out = run("gate_checker.py", prop, "--tipo", "architecture-proposal", cwd=tmp)
+    check("N6: opción sin diagrama IR NO pasa la propuesta",
+          code == 1 and "Opción B sin diagrama IR" in out, out)
+    open(prop, "w", encoding="utf-8").write(
+        base.replace("- Componentes: sin diagrama",
+                     "- Diagrama: `spec/diagrams/prop-b.ir.json`"))
+    code, out = run("gate_checker.py", prop, "--tipo", "architecture-proposal", cwd=tmp)
+    check("N6: propuesta con diagrama por opción pasa el gate", code == 0, out)
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

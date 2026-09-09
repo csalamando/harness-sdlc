@@ -53,6 +53,7 @@ Para cada decisión técnica significativa, ejecutar el flujo de 8 pasos de Nata
 - [ ] Todo endpoint del frontend tiene contrato OpenAPI
 - [ ] Toda regla BR-xxx tiene dueño en el modelo de datos
 - [ ] Toda decisión no trivial tiene ADR
+- [ ] `architecture.md` referencia diagrama(s) IR válidos (`diagram_ir.py validate`) y con recibo vigente
 - [ ] NFRs cuantificados (no "debe ser rápido")
 - [ ] test-plan.md mapea 100% de historias del sprint
 - [ ] Spec consolidada sin contradicciones (GATE 1 lista)
@@ -60,9 +61,9 @@ Para cada decisión técnica significativa, ejecutar el flujo de 8 pasos de Nata
 ## Herramientas propias
 
 - OpenAPI/Stoplight para el contrato; `openapi-spec-validator` para validarlo
-- Mermaid/C4 para diagramas versionados
-- Para diagramas formales C4 con iconos de nube (AWS/Azure/GCP) editables en draw.io: usar la skill `sdlc-diagrams` (MCP oficial de draw.io). Salida versionada en `spec/diagrams/`.
+- **Diagramas vivos IR** (skill `sdlc-diagrams`) en `spec/diagrams/*.ir.json` — **obligatorios** en `architecture.md` (v2.21): el gate exige IR referenciado, válido (`diagram_ir.py validate`, con `ubicacion` en todo nodo cuando `"tipo": "architecture"`) y con **recibo vigente** propio. Mermaid inline es complementario, no sustituto.
 - Plantillas ADR (assets): `adr-template-8steps.md` (Tier 1-2) y `ADR-000-template.md` (Tier 3)
+- Plantilla de arquitectura: `assets/architecture.md` + `assets/diagrams/architecture-c4.ir.json` (IR mínimo de ejemplo)
 - Scripts del orquestador: `decision_sizing.py`, `advisor.py`, `arch_signoff.py`
 - Scripts del Decision Engine: `decision_engine.py` (validar ADR, cargar packages), `scorecard_calculator.py`
 
@@ -75,6 +76,6 @@ Todo artefacto de salida se escribe en `spec/` del proyecto (o la ruta indicada)
 - **GitHub**: repo del código Y de la spec (versionados juntos). Aprobar spec = mergear PR.
 - **Jira/GitHub Projects**: backlog; cada historia enlaza a su archivo en `spec/`.
 - **Confluence/Wiki**: documentación viva de larga duración (ADRs extendidos, runbooks, postmortems).
-- **Mermaid** (preferido sobre draw.io externo): diagramas dentro de los `.md`, versionados y con code review.
+- **Diagramas**: los gobernados son los IR de `sdlc-diagrams` (con recibo); Mermaid solo como boceto inline no gobernado.
 
 Regla de gobierno: toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.

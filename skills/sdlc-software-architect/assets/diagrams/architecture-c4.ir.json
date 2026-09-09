@@ -1,0 +1,28 @@
+{
+  "kind": "flow",
+  "tipo": "architecture",
+  "titulo": "Arquitectura de contenedores (C4) — <proyecto>",
+  "bandas": "hulls",
+  "grupos": {"Cliente": "#38bdf8", "Core": "#a78bfa", "Datos": "#34d399"},
+  "tipos": {"external": ["#f59e0b", "☁"]},
+  "nodos": [
+    {"id": "usr", "titulo": "Usuario", "sub": "navegador HTTPS", "tipo": "ui", "grupo": "Cliente", "ubicacion": "<nube | on-prem>", "detalle": "Actor humano del sistema."},
+    {"id": "fe",  "titulo": "Frontend SPA", "sub": "<framework>", "tipo": "ui", "grupo": "Cliente", "ubicacion": "<CDN / hosting>", "detalle": "Interfaz web."},
+    {"id": "api", "titulo": "API Backend", "sub": "<stack>", "tipo": "service", "grupo": "Core", "ubicacion": "<nube/región u on-prem>", "detalle": "Lógica de negocio y reglas dueñas."},
+    {"id": "db",  "titulo": "Base de datos", "sub": "<motor>", "tipo": "db", "grupo": "Datos", "ubicacion": "<servicio gestionado / servidor>", "detalle": "Persistencia principal."},
+    {"id": "ext", "titulo": "Servicio externo", "sub": "<API tercero>", "tipo": "external", "grupo": "Core", "ubicacion": "SaaS externo", "detalle": "Dependencia externa."}
+  ],
+  "aristas": [
+    {"desde": "usr", "hasta": "fe",  "label": "usa"},
+    {"desde": "fe",  "hasta": "api", "label": "HTTPS/JSON"},
+    {"desde": "api", "hasta": "db",  "label": "SQL"},
+    {"desde": "api", "hasta": "ext", "label": "API"}
+  ],
+  "insights": [
+    {"titulo": "Cómo evolucionar este diagrama", "bullets": [
+      "Edita SOLO este IR; el HTML se regenera con diagram_ir.py render.",
+      "Cada nodo declara 'ubicacion' (obligatorio en tipo architecture): dónde corre.",
+      "Valida con diagram_ir.py validate y emite recibo sobre el IR antes del GATE 1."
+    ]}
+  ]
+}
