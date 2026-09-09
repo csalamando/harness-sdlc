@@ -320,7 +320,9 @@ El aprendizaje "el proceso funcionó" también queda registrado.
         # 3. Cierre guiado: los dos comandos que dejan la evidencia y el tablero al día.
         print("\nCierre de sprint (v2.15) — ejecutar para dejar la evidencia al día:")
         print(f"  python3 gate_checker.py {p} --tipo sprint-review")
-        print(f"  python3 receipt.py emit {os.path.abspath(p)} --gate gate2 --tipo sprint-review --role orchestrator")
+        print(f"  python3 receipt.py emit {os.path.abspath(p)} --gate SPRINT-{a.sprint:02d} "
+              f"--tipo sprint-review --role orchestrator --approved-by <quien-cierra>  "
+              f"(v2.21: gate del catalogo + aprobador humano registrado)")
         print("  python3 harness_graph.py --proyecto .   # dashboard al día")
     return 0
 

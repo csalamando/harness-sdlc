@@ -16,6 +16,9 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **`audit_verify.py`**: verifica la integridad de la traza (JSON válido, campos obligatorios, `ts` con zona, `seq` monotónico desde 1, génesis `audit_init`, cadena `prev_hash`→`hash` continua y recalculable). Exit 1 listando cada manipulación. Para CI y Fase 8.
 - **`receipt.py` escribe en la auditoría automáticamente**: `emit` registra `emit` (con `approved_by` opcional y nota de *re-emisión* cuando el recibo previo no estaba vigente — el retrabajo queda explícito); `verify` registra `invalidado` con hashes anterior/nuevo; `revoke` registra `revocado` con razón, relación y aprobador. Los eventos guardan el artefacto con **ruta relativa y separadores `/`** (portable, sin filtrar rutas locales).
 - **`receipt.py emit --approved-by <identidad>`**: los gates humanos (0/1/3) pueden registrar quién aprobó — la aprobación humana deja de ser solo narración.
+- **Catálogo cerrado de gates (N3)**: `audit_log.gate_valido()` define el catálogo — fijos `GATE 0/1/2/2.5/3` + dinámicos `SPRINT-N`/`FASE-N` — con normalización (`GATE-0` ≡ `GATE 0`). `receipt.py emit` **rechaza gates fuera del catálogo** (adiós a `gate2` inventado que colaba texto libre al pipeline).
+- **`--approved-by` exigible en gates humanos (N3)**: `GATE 0`, `GATE 1`, `GATE 3` y `SPRINT-*` son gates de decisión humana — `emit` falla con exit 1 si no declara aprobador ("el agente no puede auto-aprobarse"). Gates automáticos (`GATE 2/2.5`, `FASE-N`) no lo exigen.
+- **`receipt.py status --strict`**: veredicto ejecutable para CI — exit 1 si hay recibos no vigentes, artefactos faltantes o hashes que no coinciden. Sin `--strict`, `status` sigue siendo solo informativo.
 - **ADR-004** (`docs/decisions/`): la decisión de las dos memorias (trabajo vs auditoría) y sus modelos de consistencia opuestos.
 
 ### Changed
@@ -27,10 +30,11 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
   - **Catálogo único gate→fase** (`audit_log.gate_fase`): normaliza `GATE-1` ≡ `GATE 1`, mapea `SPRINT-*` → fase 8 y `FASE-N` → N; la fila "?" de falsos "adorno" desaparece.
   - Las activaciones auto-registradas por `receipt.py` quedan **también** como eventos `use` en el log (primer paso de la absorción de `usage.jsonl`); `skill_metrics` fusiona y deduplica ambas fuentes.
   - `sprint_review.py` endurecido para consolas Windows cp1252 (salida UTF-8 segura con `→`/`⚠`).
+  - El **cierre guiado de sprint** de `sprint_review.py` ya no sugiere un gate inventado (`--gate gate2`): ahora imprime el comando real `--gate SPRINT-{NN} --tipo sprint-review --role orchestrator --approved-by <quien-cierra>` — la guía del arnés no puede contradecir su propio catálogo.
 
 ### Notas
-- Retrocompatible salvo el `--reason` de `revoke`. `usage.jsonl` se mantiene (las métricas migran al log en la siguiente iteración del plan, N8); los `.receipt.json` siguen siendo el estado operativo y ahora son estado derivado del log.
-- Self-test: nueva sección de memoria de auditoría (génesis, append sin init rechazado, doble init rechazado, emit/invalidado/revocado con eventos, revoke sin razón rechazado, tamper-evidence de la cadena).
+- Retrocompatible salvo dos endurecimientos deliberados: el `--reason` de `revoke` y el `--approved-by` exigible en gates humanos (flujos que emitían `GATE 0/1/3` o `SPRINT-*` sin aprobador ahora fallan con un mensaje claro). `usage.jsonl` se mantiene (las métricas migran al log en la siguiente iteración del plan, N8); los `.receipt.json` siguen siendo el estado operativo y ahora son estado derivado del log.
+- Self-test: memoria de auditoría (génesis, append sin init, tamper-evidence de la cadena) + métricas sobre el log (retrabajo que no vuelve a cero, primer intento con fórmula única, gates normalizados) + catálogo de gates (gate inventado rechazado, gate humano sin aprobador rechazado, `GATE-0`→`GATE 0`, `status --strict` verde y rojo). 163 checks.
 - Roadmap del diagnóstico: v2.21 continúa con aprobador humano exigible, métricas sobre el log, gates de diagramas IR, `arch_lint` y `contract_diff`; v2.22 con init/gate_verify, hash de dependencias, check-vendored, pipeline-state derivado y HITL portable ([núcleo recomendado](docs/nucleo-recomendado-control.md)).
 
 ## [2.20.1] - 2026-09-07

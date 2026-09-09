@@ -32,11 +32,16 @@ EVENTOS_NUCLEO = {"audit_init", "emit", "invalidado", "revocado", "use",
                   "bootstrap", "harness_upgrade", "freestyle"}
 
 
+def gate_norm(gate):
+    """Forma canonica: mayusculas, guiones a espacios ('GATE-0' -> 'GATE 0')."""
+    return (gate or "").upper().replace("-", " ").strip()
+
+
 def gate_fase(gate):
     """Catalogo unico gate -> fase (v2.21, N8): una sola fuente para receipt.py,
     skill_metrics.py y sprint_review.py. Normaliza variantes ('GATE-1' == 'GATE 1'),
     SPRINT-* -> fase 8 (archivo) y FASE-N -> N. Desconocido -> '?'."""
-    g = (gate or "").upper().replace("-", " ").strip()
+    g = gate_norm(gate)
     m = {"GATE 0": "0", "GATE 1": "3", "GATE 2": "5", "GATE 2.5": "5", "GATE 3": "6"}
     if g in m:
         return m[g]
@@ -46,6 +51,30 @@ def gate_fase(gate):
     if f:
         return f.group(1)
     return "?"
+
+
+# ── Catalogo de gates validos (v2.21, N3) ────────────────────────────────────
+# Un recibo solo puede emitirse para un gate del catalogo: nada de gates
+# inventados ('gate2', 'SPRINT-5' mal escrito, etc.) que burlaban la gobernanza.
+GATES_FIJOS = {"GATE 0", "GATE 1", "GATE 2", "GATE 2.5", "GATE 3"}
+# Gates que exigen aprobador humano registrado (--approved-by): la aprobacion
+# humana deja de ser narracion. SPRINT-* (cierre de sprint) tambien es humano.
+GATES_HUMANOS = {"GATE 0", "GATE 1", "GATE 3"}
+
+
+def gate_valido(gate):
+    """Devuelve el gate normalizado si pertenece al catalogo; None si no."""
+    g = gate_norm(gate)
+    if g in GATES_FIJOS:
+        return g
+    if re.fullmatch(r"SPRINT\s*\d+", g) or re.fullmatch(r"FASE\s*\d+", g):
+        return re.sub(r"\s+", " ", g)
+    return None
+
+
+def gate_es_humano(gate):
+    g = gate_norm(gate)
+    return g in GATES_HUMANOS or re.fullmatch(r"SPRINT\s*\d+", g) is not None
 
 # Campos opcionales reconocidos (se omiten si llegan vacios)
 CAMPOS = ("artefacto", "gate", "rol", "reason", "relation", "approved_by",

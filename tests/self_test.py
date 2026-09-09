@@ -536,7 +536,8 @@ with tempfile.TemporaryDirectory() as tmp:
     check("audit: revoke con razón registra evento revocado",
           code == 0 and len(rev_ev) == 1 and rev_ev[0].get("reason") == "cambio de spec", out)
 
-    code, out = runa("receipt.py", "emit", art, "--gate", "GATE 0", "--role", "product-owner")
+    code, out = runa("receipt.py", "emit", art, "--gate", "GATE 0", "--role", "product-owner",
+                     "--approved-by", "Karlo")
     reem = [e for e in events() if e["evento"] == "emit"]
     check("audit: re-emisión tras revocación queda marcada como retrabajo",
           code == 0 and len(reem) == 2 and "re-emision" in reem[1].get("nota", ""), out)
@@ -570,15 +571,36 @@ with tempfile.TemporaryDirectory() as tmp:
     runm("audit_log.py", "init", "--proyecto", "demo")
     art = os.path.join(tmp, "spec", "vision.md")
     open(art, "w", encoding="utf-8").write("# v1\n")
-    runm("receipt.py", "emit", art, "--gate", "GATE 0", "--role", "product-owner")
+
+    # N3: catálogo de gates + aprobador humano exigible
+    code, out = runm("receipt.py", "emit", art, "--gate", "gate2", "--role", "product-owner")
+    check("N3: gate inventado ('gate2') rechazado — catálogo cerrado",
+          code == 1 and "catalogo" in out, out)
+    code, out = runm("receipt.py", "emit", art, "--gate", "GATE 0", "--role", "product-owner")
+    check("N3: gate humano sin --approved-by rechazado (anti auto-aprobación)",
+          code == 1 and "auto-aprobarse" in out, out)
+
+    runm("receipt.py", "emit", art, "--gate", "GATE 0", "--role", "product-owner",
+         "--approved-by", "Karlo")
     open(art, "a", encoding="utf-8").write("cambio\n")
     runm("receipt.py", "verify", art)                       # -> invalidado
     runm("receipt.py", "revoke", art, "--reason", "supersedes de vision")
     runm("receipt.py", "emit", art, "--gate", "GATE 0", "--role", "product-owner",
-         "--attempts", "2")                                  # re-emision (retrabajo)
+         "--attempts", "2", "--approved-by", "Karlo")       # re-emision (retrabajo)
     art2 = os.path.join(tmp, "spec", "backlog.md")
     open(art2, "w", encoding="utf-8").write("# b\n")
-    runm("receipt.py", "emit", art2, "--gate", "GATE-0", "--role", "product-owner")  # variante
+    runm("receipt.py", "emit", art2, "--gate", "GATE-0", "--role", "product-owner",
+         "--approved-by", "Karlo")                           # variante GATE-0
+    import json as _j
+    evs = [_j.loads(l) for l in open(os.path.join(tmp, "spec", "audit", "events.jsonl"), encoding="utf-8") if l.strip()]
+    emit_gates = [e.get("gate") for e in evs if e["evento"] == "emit"]
+    check("N3: 'GATE-0' se normaliza y se registra como 'GATE 0'",
+          emit_gates == ["GATE 0", "GATE 0", "GATE 0"], str(emit_gates))
+
+    # N3: status --strict en verde (aún sin invalidaciones extra)
+    code, out = runm("receipt.py", "status", "--strict")
+    check("N3: status --strict en verde con todos los recibos vigentes",
+          code == 0 and "STRICT" in out, out)
 
     code, out = runm("skill_metrics.py", "report", "--stdout")
     check("N8 metrics: declara la memoria de auditoría como fuente",
@@ -595,6 +617,14 @@ with tempfile.TemporaryDirectory() as tmp:
           "Gates al primer intento: **67%**" in out, out)
     check("N8 sprint: variantes de gate normalizadas (GATE-0 ≡ GATE 0, una fila)",
           out.count("| GATE 0 |") == 2 and "GATE-0" not in out, out)
+
+    # N3: status --strict falla cuando aparece un recibo no vigente (al final,
+    # para no contaminar los conteos de retrabajo de los checks N8 anteriores)
+    open(art2, "a", encoding="utf-8").write("cambio sin gate\n")
+    runm("receipt.py", "verify", art2)                       # invalida backlog.md
+    code, out = runm("receipt.py", "status", "--strict")
+    check("N3: status --strict falla (exit 1) con un recibo invalidado",
+          code == 1 and "invalidado" in out, out)
 
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")

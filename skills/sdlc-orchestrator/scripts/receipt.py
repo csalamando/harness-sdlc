@@ -34,9 +34,10 @@ import os, sys, json, hashlib, argparse, datetime, subprocess
 # ADR-004 (v2.21): toda emision/invalidacion/revocacion deja un hecho en la
 # memoria de auditoria (spec/audit/events.jsonl, append-only con cadena de hash).
 try:
-    from audit_log import append_event
+    from audit_log import append_event, gate_valido, gate_es_humano
 except ImportError:
     append_event = None
+    gate_valido = gate_es_humano = None
 
 def _audit(spec_dir, evento, **fields):
     """Best-effort visible: si el log no esta disponible/inicializado, se advierte
@@ -90,6 +91,25 @@ def sha256(path):
 def cmd_emit(a):
     if not os.path.isfile(a.artefacto):
         print(f"FALLO: no existe {a.artefacto}"); sys.exit(1)
+    # Catalogo de gates (v2.21, N3): nada de gates inventados; los gates humanos
+    # (0/1/3 y cierres SPRINT-*) exigen aprobador registrado — la aprobacion
+    # humana deja de ser narracion.
+    if gate_valido is not None:
+        gn = gate_valido(a.gate)
+        if gn is None:
+            print(f"FALLO: gate '{a.gate}' no esta en el catalogo del arnes "
+                  f"(GATE 0/1/2/2.5/3, SPRINT-N, FASE-N). Un recibo solo puede "
+                  f"emitirse para un gate reconocido."); sys.exit(1)
+        if gn != a.gate:
+            print(f"  (gate normalizado: '{a.gate}' -> '{gn}')")
+            a.gate = gn
+        if gate_es_humano(gn) and not a.approved_by:
+            print(f"FALLO: {gn} es un gate HUMANO — exige --approved-by <identidad> "
+                  f"del aprobador. El agente no puede auto-aprobarse."); sys.exit(1)
+    else:
+        print("  ⚠ audit_log.py no encontrado junto a receipt.py — emitiendo SIN "
+              "validar el catalogo de gates ni registrar auditoria (scripts "
+              "incompletos o desactualizados).")
     # Autoridad: si la matriz cubre el artefacto, el rol emisor debe ser el owner
     try:
         from authority_check import owner_of, load_matrix
@@ -211,13 +231,28 @@ def cmd_status(a):
         print("Sin recibos emitidos."); return
     print("| Artefacto | Gate | Rol | Estado | Hash coincide |")
     print("|---|---|---|---|---|")
+    problemas = []
     for f in sorted(files):
         rec = json.load(open(os.path.join(d, f), encoding="utf-8"))
         art = rec["artefacto"]
         match = "-"
         if os.path.isfile(art):
             match = "si" if sha256(art) == rec["sha256"] else "NO (invalidado)"
+        else:
+            problemas.append(f"{os.path.basename(art)}: artefacto no existe")
+        if rec["estado"] != "vigente":
+            problemas.append(f"{os.path.basename(art)}: estado {rec['estado']}")
+        if match.startswith("NO"):
+            problemas.append(f"{os.path.basename(art)}: hash no coincide (invalidado sin re-emitir)")
         print(f"| {os.path.basename(art)} | {rec['gate']} | {rec.get('rol', '-')} | {rec['estado']} | {match} |")
+    # v2.21 (N3): --strict convierte el estado en veredicto ejecutable para CI
+    if getattr(a, "strict", False):
+        if problemas:
+            print(f"\nSTRICT: {len(problemas)} problema(s) — los gates no estan en verde:")
+            for p_ in problemas:
+                print(f"  - {p_}")
+            sys.exit(1)
+        print("\nSTRICT: todos los recibos vigentes y coincidentes.")
 
 def cmd_revoke(a):
     if not a.reason:
@@ -246,7 +281,8 @@ def main():
     p.add_argument("--attempts", type=int, default=1)
     p.add_argument("--approved-by", default="", help="identidad del aprobador humano (gates humanos)")
     p = sub.add_parser("verify"); p.add_argument("artefacto")
-    sub.add_parser("status")
+    p = sub.add_parser("status"); p.add_argument("--strict", action="store_true",
+        help="exit 1 si hay recibos no vigentes, artefactos faltantes o hashes que no coinciden (CI)")
     p = sub.add_parser("revoke"); p.add_argument("artefacto")
     p.add_argument("--reason", required=True, help="causa de la revocación (obligatoria, ADR-004)")
     p.add_argument("--relation", choices=["supersedes", "conflicts_with"], default="")
