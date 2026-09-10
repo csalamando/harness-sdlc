@@ -195,6 +195,12 @@ check("harness-version declarada y coincide con el CHANGELOG",
 # receipt.py estampa la versión en los recibos nuevos
 _receipt_src = open(os.path.join(ORCH, "receipt.py"), encoding="utf-8").read()
 check("receipt.py estampa harness_version", 'rec["harness_version"]' in _receipt_src)
+# FALLBACK_VERSION de audit_log (usada al correr vendorado) no puede desactualizarse
+_al = open(os.path.join(ORCH, "audit_log.py"), encoding="utf-8").read()
+_fb = re.search(r'FALLBACK_VERSION\s*=\s*"([^"]+)"', _al)
+check("audit_log.FALLBACK_VERSION coincide con harness-version",
+      bool(_fb) and bool(_hv) and _fb.group(1) == _hv,
+      f"fallback={_fb.group(1) if _fb else '?'} frontmatter={_hv}")
 
 # Grafo interactivo derivado (v2.11): docs/graph.html no puede quedar desactualizado
 code, out = run("harness_graph.py", "--check")

@@ -85,14 +85,24 @@ CAMPOS = ("artefacto", "gate", "rol", "reason", "relation", "approved_by",
           "reglas", "archivos", "violaciones", "resultado")
 
 
+# Version embebida de respaldo: se usa cuando el script corre vendorado en un
+# proyecto (scripts/ plano, sin SKILL.md junto). Actualizar en cada release;
+# el self-test verifica que coincide con el frontmatter del orquestador.
+FALLBACK_VERSION = "2.22.0"
+
+
 def harness_version():
-    """Version del arnes instalado (frontmatter del orquestador); None si no se puede leer."""
+    """Version del arnes instalado (frontmatter del orquestador).
+
+    Fallback: version embebida — un script vendorado no encuentra SKILL.md
+    y la auditoria exige harness_version en TODO evento (audit_verify)."""
     md = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SKILL.md")
-    if not os.path.isfile(md):
-        return None
-    m = re.search(r'^harness-version:\s*"?([^"\n]+)"?\s*$',
-                  open(md, encoding="utf-8", errors="replace").read(), re.M)
-    return m.group(1).strip() if m else None
+    if os.path.isfile(md):
+        m = re.search(r'^harness-version:\s*"?([^"\n]+)"?\s*$',
+                      open(md, encoding="utf-8", errors="replace").read(), re.M)
+        if m:
+            return m.group(1).strip()
+    return FALLBACK_VERSION
 
 
 def log_path(spec_dir):

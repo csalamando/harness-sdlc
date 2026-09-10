@@ -242,16 +242,18 @@ def check_screens_refs(inventory_path, stories_path):
 
 
 def _find_diagram_ir():
-    """Importa diagram_ir de la skill hermana sdlc-diagrams (mismo vendoring)."""
+    """Importa diagram_ir: primero de la skill hermana sdlc-diagrams (instalación
+    completa), luego del mismo directorio (vendoring plano en el proyecto)."""
     import importlib.util
-    p = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                     "..", "..", "sdlc-diagrams", "scripts", "diagram_ir.py")
-    if not os.path.isfile(p):
-        return None
-    spec = importlib.util.spec_from_file_location("diagram_ir", p)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    here = os.path.dirname(os.path.abspath(__file__))
+    for p in (os.path.join(here, "..", "..", "sdlc-diagrams", "scripts", "diagram_ir.py"),
+              os.path.join(here, "diagram_ir.py")):
+        if os.path.isfile(p):
+            spec = importlib.util.spec_from_file_location("diagram_ir", p)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+    return None
 
 
 def _resolve_ir(ref, artefacto):
