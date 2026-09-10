@@ -16,3 +16,4 @@ __pycache__/
 .idea/
 .vscode/settings.json
 tests/fixtures/proyecto-demo/spec/dashboard.html
+tests/fixtures/proyecto-demo/spec/portal/

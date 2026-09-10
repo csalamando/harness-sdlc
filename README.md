@@ -177,7 +177,7 @@ Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**
 
 ## 4. Capacidades de gobierno
 
-Ocho mecanismos transversales mantienen al agente dentro de los carriles, en cualquier ruta y fase.
+Nueve mecanismos transversales mantienen al agente dentro de los carriles, en cualquier ruta y fase.
 
 ### 4a. Routing orgánico
 
@@ -296,6 +296,17 @@ v2.20 reemplaza el dashboard monolítico (v2.12, §4f) por un **portal web únic
 - **Tema claro/oscuro y zoom A−/A/A+ compartidos** con los diagramas IR (mismas variables CSS y mismas claves de `localStorage`); el shell propaga el tema al contenido por `postMessage`.
 - **Páginas modulares y densas**: `inicio` (pipeline compacto + acumulado), `metricas` (tendencias + tiempos en dos columnas), `arquitectura` (tarjetas de diagramas vivos + **ADRs ↔ Tech Radar vinculados**: clic en un ADR resalta su tecnología en el radar y viceversa) y `memoria` (aprendizajes + sesiones lado a lado). Los `.md` de la spec se renderizan dentro del portal (`mdview.py`), con los enlaces internos reescritos a su página renderizada.
 - **Generación modular por registry**: cada generador (`harness_graph`, `mdview`, `diagram_ir`) solo **registra** lo suyo en `spec/portal/registry.json`; `rebuild_index()` poda entradas huérfanas y reescribe el índice, y `portal_lib.py --check` detecta drift en CI. Añadir contenido nunca regenera el sitio a mano.
+
+### 4i. Auditoría y determinismo ejecutable (v2.21 · v2.22)
+
+Nacidas del [diagnóstico de brechas de la promesa de valor](docs/diagnostico-brechas-promesa-valor.md) (22 brechas auditadas sobre un proyecto real), estas capacidades convierten la promesa del arnés — determinismo, trazabilidad, auditoría, gobierno — en mecanismos verificables, todo stdlib + Git, sin dependencias nuevas:
+
+- **Memoria de auditoría (ADR-004)**: `spec/audit/events.jsonl` append-only con **cadena de hash** tamper-evident; todo evento lleva `ts` UTC y `harness_version`. Las revocaciones y el retrabajo son hechos que nunca se sobrescriben — `audit_verify.py` detecta cualquier manipulación. Las métricas (`skill_metrics`, `sprint_review`) se derivan del log: el "trabajo rehecho" ya no puede volver a cero.
+- **Gobierno de gates**: catálogo cerrado (`GATE 0/1/2/2.5/3`, `SPRINT-N`, `FASE-N` — nada de texto libre), `--approved-by` **exigible** en gates humanos (el agente no se auto-aprueba), y `receipt.py status --strict` como veredicto ejecutable para CI.
+- **Arranque y gates deterministas**: `init_project.py` scaffolda todo proyecto idéntico (estructura, matriz, roster, radar, auditoría con génesis+bootstrap); `gate_verify.py --gate N` verifica agregado presencia + tipo + recibo vigente, con los condicionales del routing.
+- **Arquitectura y contratos exigibles**: el gate de `architecture.md` exige diagramas IR referenciados, válidos (`ubicacion` obligatoria) y con recibo vigente; `arch_lint.py` convierte las capas declaradas en política binaria sobre el código; `contract_diff.py` bloquea breaking changes de API sin bump de versión mayor.
+- **El cambio sin memoria del agente**: los recibos guardan el hash de sus dependencias upstream y `spec_diff_impact.py --apply` invalida y audita el downstream en el momento del cambio; `pipeline_state.py` deriva el estado del pipeline desde hechos (anti-drift `--check`); `harness_doctor.py --check-vendored` impide que el gobernado parchee al gobernante.
+- **HITL portable**: `circuit_breaker.py` congela un gate tras N fallos y solo un humano lo descongela (auditado); `blast_radius_check.py` verifica que el diff de git (incluidos archivos nuevos) quede dentro del alcance autorizado del change-request.
 
 ---
 
@@ -472,7 +483,7 @@ En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias super
 ## 9. Herramientas compartidas y propias
 
 - **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), Penpot MCP (`sdlc-ux-designer`, prototipos de pantalla gobernados).
-- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `gate_checker.py`, `receipt.py`, `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py`, `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado + cierre de sprint automatizado), `tdd_order_check.py` (orden TDD test→código verificable en `git log`), `manifest_check.py` (manifiesto dinámico derivado + drift), `harness_graph.py` (grafo interactivo del pipeline + **portal vivo del proyecto** + drift). **`sdlc-diagrams/scripts/`:** `diagram_ir.py` (diagramas interactivos HTML vía IR + auto-registro en el portal), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless Mermaid → SVG/PNG).
+- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `init_project.py` (scaffold determinista, v2.22), `gate_verify.py` (verificación agregada de gates, v2.22), `gate_checker.py`, `receipt.py`, `audit_log.py` + `audit_verify.py` (memoria de auditoría, v2.21), `pipeline_state.py` (estado derivado, v2.22), `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py` (con `--apply`, v2.22), `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check + `--check-vendored`, v2.22), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `arch_lint.py` (invariantes por capas, v2.21), `contract_diff.py` (compatibilidad OpenAPI, v2.21), `circuit_breaker.py` + `blast_radius_check.py` (HITL portable, v2.22), `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado + cierre de sprint automatizado), `tdd_order_check.py` (orden TDD test→código verificable en `git log`), `manifest_check.py` (manifiesto dinámico derivado + drift), `harness_graph.py` (grafo interactivo del pipeline + **portal vivo del proyecto** + drift). **`sdlc-diagrams/scripts/`:** `diagram_ir.py` (diagramas interactivos HTML vía IR + auto-registro en el portal), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless Mermaid → SVG/PNG).
 - **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
 ---
