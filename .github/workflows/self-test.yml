@@ -20,5 +20,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Self-test del arnés (71+ checks)
+      # arch_lint (N9) y contract_diff (N10) parsean YAML con PyYAML; sin él el
+      # control no se puede ejecutar y el self-test falla por diseño ("un control
+      # que no se puede ejecutar no es control").
+      - name: Dependencia de los controles YAML
+        run: pip install pyyaml
+
+      - name: Self-test del arnés (235 checks)
         run: python tests/self_test.py
