@@ -145,6 +145,8 @@ def cmd_emit(a):
     hv = harness_version()
     if hv:
         rec["harness_version"] = hv
+    if a.approved_by:
+        rec["approved_by"] = a.approved_by
     if a.tokens_src:
         rec["tokens_src"] = a.tokens_src
         if t_in:

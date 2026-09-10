@@ -13,8 +13,8 @@ Habilitas al equipo: montas la infraestructura del propio arnés (Fase -1) y el 
 
 ## Fase -1: Setup del proyecto (una sola vez)
 
-1. Inicializar repo con estructura: `spec/`, `src/`, `tests/{unit,contract,e2e}`, `infra/`, `pipelines/`, `CHANGELOG.md`.
-2. Ejecutar `detect_stack.py` (skill del orquestador): detecta stack, test runner y disponibilidad de Strict TDD. Registrar el resultado en `spec/pipeline-state.md`. Si no hay test runner (exit 2), configurar uno antes de Fase 4 — sin runner no hay gates de cobertura exigibles.
+1. Inicializar el proyecto con `init_project.py --proyecto <nombre>` (v2.22: scaffold determinista — estructura `spec/`, matriz de autoridad, roster, radar y auditoría con génesis+bootstrap) y completar `src/`, `tests/{unit,contract,e2e}`, `infra/`, `pipelines/`, `CHANGELOG.md`.
+2. El stack y test runner quedan en `spec/pipeline-state.md` — lo deriva `pipeline_state.py` (que corre `detect_stack.py`); nunca se edita a mano. Si no hay test runner (exit 2), configurar uno antes de Fase 4 — sin runner no hay gates de cobertura exigibles.
 3. Inicializar memoria: `spec/memory/entries/`, agregar `spec/memory/.index/` al `.gitignore`.
 4. Crear tablero (Jira/GitHub Projects) con columnas del pipeline.
 5. Pipelines vacíos pero funcionando (hello-world en CI).

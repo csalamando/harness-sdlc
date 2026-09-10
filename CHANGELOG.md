@@ -14,14 +14,16 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 ### Added
 - **`init_project.py`**: scaffold determinista e idempotente — estructura `spec/` completa, matriz de autoridad, roster y tech radar copiados desde los assets del arnés, memoria de auditoría inicializada con génesis + evento `bootstrap` (modo y flags del arranque registrados). **Nunca sobrescribe** un archivo existente (lo reporta como saltado). `--capas` scaffolda `architecture-rules.yaml` (activa `arch_lint`); `--sin-ui/--sin-datos/--sin-procesos` ajustan el scaffold al routing.
 - **`gate_verify.py --gate "GATE N"`**: verificación agregada del gate — para cada artefacto exigible: presencia + `gate_checker --tipo` + recibo vigente con hash coincidente; transversal: memoria de auditoría íntegra (sin auditoría no hay gate) y, en GATE 2, `arch_lint` en verde si hay reglas declaradas. Respeta los condicionales del routing (`--sin-ui` etc. excluyen lo que no aplica). Catálogo GATE 0/1/2/2.5/3 y `SPRINT-N` (sprint-review); rechaza gates fuera del catálogo N3. Exit 1 lista cada faltante.
+- **`pipeline_state.py` (N7) — el estado del pipeline se deriva, no se narra**: regenera `spec/pipeline-state.md` desde matriz de autoridad + recibos + memoria de auditoría + `detect_stack` (cierra B-14: el archivo narrado a mano con recibo que certificaba narración). Marcado DERIVADO, nunca editado a mano ni con recibo; `--check` anti-drift para CI (ignora la línea de timestamp para ser byte-estable). `init_project.py` genera el primer estado en el arranque.
+- **`receipt.py` guarda `approved_by` en el recibo** (no solo en el evento de auditoría): el recibo queda autocontenido y `pipeline_state` muestra quién aprobó.
 
 ### Changed
-- Matriz de autoridad: nuevas entradas `spec/architecture-rules.yaml` (owner `software-architect`) y `spec/audit/` (owner `orchestrator`) — los artefactos de gobierno de v2.21 quedan bajo la misma autoridad que el resto.
+- Matriz de autoridad: nuevas entradas `spec/architecture-rules.yaml` (owner `software-architect`), `spec/audit/` (owner `orchestrator`) y `spec/pipeline-state.md` (derivado, owner `orchestrator`) — los artefactos de gobierno de v2.21+ quedan bajo la misma autoridad que el resto.
 - `EVENTOS_NUCLEO` de la auditoría incluye `arch_lint` y `contract_diff` (eventos de v2.21 promovidos a núcleo).
 
 ### Notas
-- Self-test: sección [10f] — scaffold completo, idempotencia, génesis+bootstrap con versión y fecha, GATE 0 fallando sin artefactos y pasando con recibos, edición post-recibo rompiendo el gate, condicionales de routing. 203 checks.
-- Roadmap v2.22: N2 (hash compuesto de dependencias + `spec_diff_impact --apply`), N5 (`check-vendored`), N7 (pipeline-state derivado), N11 (circuit breaker + blast_radius_check). [Núcleo recomendado](docs/nucleo-recomendado-control.md).
+- Self-test: secciones [10f] (init + gate_verify) y [10g] (pipeline-state derivado: init lo genera, refleja recibos, edición manual = drift en CI, regenerar limpia). 210 checks.
+- Roadmap v2.22: N2 (hash compuesto de dependencias + `spec_diff_impact --apply`), N5 (`check-vendored`), N11 (circuit breaker + blast_radius_check). N7 entregado en esta versión. [Núcleo recomendado](docs/nucleo-recomendado-control.md).
 
 ## [2.21.0] - 2026-09-09
 

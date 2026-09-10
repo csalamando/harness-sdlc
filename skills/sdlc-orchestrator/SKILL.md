@@ -3,7 +3,7 @@ name: sdlc-orchestrator
 description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol, consultar el código por símbolos (blast radius, tests candidatos) con code_intel, generar el digest de la spec, medir el aporte y la disciplina de las skills (skill_metrics), emitir el sprint review de cierre, garantizar la aceptación de cambios vía diagramas derivados con recibo y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés, blast radius, qué tests correr, reducir contexto del agente, sprint review, drift de diagramas, catálogo de roles, PDD, prototipo de pantallas UX."
 harness-role: orchestrator
 harness-phases: "transversal"
-harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/, spec/audit/"
+harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/, spec/audit/, spec/pipeline-state.md"
 harness-version: "2.22.0"
 ---
 
@@ -54,7 +54,7 @@ El Arquitecto de Software es el **Decision Owner técnico**: el PO define el QU�
 
 ## Responsabilidades
 
-1. Mantener `spec/pipeline-state.md`: artefacto, fase, rol dueño, estado, gate pendiente, resultado de `detect_stack.py` y Risk Tier vigente.
+1. `spec/pipeline-state.md` es **derivado** (v2.22, N7): lo regenera `pipeline_state.py` desde la matriz de autoridad + recibos + memoria de auditoría + `detect_stack.py`. Nunca se edita a mano ni recibe recibo (certificar narración era la brecha B-14); `--check` en CI falla si hay drift.
 2. Antes de invocar un rol, verificar su DoR: entradas presentes **y con recibo vigente** (ver Recibos). Registrar la activación con `skill_metrics.py use --skill <rol> --fase <N>` (telemetría v2.4: sin este registro, el trabajo del rol cuenta como *freestyle* en METRICS.md). Desde v2.16 `receipt.py emit` auto-registra la activación como respaldo contra el olvido (deduplicada contra el uso manual), pero el registro manual **antes** de activar sigue siendo la fuente primaria.
 3. Al recibir un artefacto, ejecutar `gate_checker.py`; si pasa, **emitir recibo** con `receipt.py emit`, incluyendo telemetría si está disponible: `--tokens-in/-out --tokens-src reportado` cuando la plataforma del agente expone el consumo, o `--tokens-src estimado` (chars/4, lo calcula el script) cuando no; `--attempts K` si el gate necesitó reintentos.
 4. Armar el paquete de contexto mínimo por rol con `context_packager.py` — nunca pasar toda la spec a todos. Si existe `spec/INDEX.md` va primero (orientación de una página).
@@ -145,6 +145,7 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `manifest_check.py --write|--check|--summary` (v2.9): deriva el manifiesto del arnés (`assets/harness-manifest.yaml`) desde el frontmatter `harness-*` de cada SKILL.md y la lista de scripts en disco. `--check` falla si hay drift o inconsistencias cruzadas (gate declarado inexistente, artefacto `owns` fuera de la matriz de autoridad). El manifiesto es derivado — nunca se edita a mano; `harness_doctor.py` lee de él sus expectativas. `--routing [--sin-ui] [--sin-datos] [--sin-procesos]` (v2.10): imprime el routing por fases derivado del manifiesto, excluyendo las capacidades condicionales que no aplican a la iniciativa.
 - `init_project.py --proyecto <nombre> [--capas] [--sin-ui|--sin-datos|--sin-procesos]` (v2.22, N4): scaffold determinista — todo proyecto arranca con la misma estructura `spec/`, matriz de autoridad, roster, tech radar y memoria de auditoría con génesis + evento `bootstrap`. Idempotente: nunca sobrescribe. `--capas` scaffolda además `architecture-rules.yaml` (activa arch_lint).
 - `gate_verify.py --gate "GATE N" [--sin-ui|--sin-datos|--sin-procesos]` (v2.22, N4): verificación agregada — presencia + tipo (gate_checker) + recibo vigente con hash coincidente de todo lo exigible del gate, auditoría íntegra (audit_verify) y, en GATE 2, arch_lint en verde si hay reglas. Respeta los condicionales del routing. Exit 1 lista cada faltante.
+- `pipeline_state.py [--check]` (v2.22, N7): deriva `spec/pipeline-state.md` desde matriz de autoridad + recibos + auditoría + `detect_stack.py`. El estado del pipeline se genera de hechos — nunca se edita a mano ni recibe recibo; `--check` (anti-drift, ignora la línea de timestamp) en CI.
 
 ## Routing desde el manifiesto (v2.10)
 

@@ -108,3 +108,5 @@ artifacts:
     owner: orchestrator   # sprint-review-NN.md: snapshot de cierre; requiere gate sprint-review + recibo
   - path: spec/audit/
     owner: orchestrator   # memoria de auditoría (v2.21, ADR-004): append-only con cadena de hash; se escribe SOLO por scripts del arnés
+  - path: spec/pipeline-state.md
+    owner: orchestrator   # DERIVADO (v2.22, N7): lo regenera pipeline_state.py desde recibos + auditoría; nunca editado a mano ni con recibo

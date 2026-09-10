@@ -940,6 +940,43 @@ with tempfile.TemporaryDirectory() as tmp:
     check("N4: --sin-ui excluye los artefactos condicionales del routing",
           "excluidos por routing" in out and "ux-flows" in out, out)
 
+# ── 10g. N7: pipeline-state derivado — fin del estado narrado ────────────────
+print("\n[10g] pipeline-state derivado de hechos, con --check anti-drift")
+with tempfile.TemporaryDirectory() as tmp:
+    run("init_project.py", "--proyecto", "demo", cwd=tmp)
+    ps = os.path.join(tmp, "spec", "pipeline-state.md")
+    check("N7: init_project genera el primer pipeline-state derivado",
+          os.path.isfile(ps) and "DERIVADO" in open(ps, encoding="utf-8").read())
+
+    def runp(*args):
+        return run("pipeline_state.py", "--spec-dir", os.path.join(tmp, "spec"),
+                   "--root", tmp, *args, cwd=tmp)
+    code, out = runp("--check")
+    check("N7: --check recién generado pasa (sin drift)", code == 0, out)
+
+    # emitir un recibo → el estado derivado lo refleja
+    v = os.path.join(tmp, "spec", "vision.md")
+    open(v, "w", encoding="utf-8").write(
+        "# V\n## Problema\nx\n## Usuarios objetivo\nx\n## Propuesta de valor\nx\n"
+        "## Métricas de éxito\nx\n")
+    run("receipt.py", "--spec-dir", "spec/", "emit", v, "--gate", "GATE 0",
+        "--role", "product-owner", "--approved-by", "Karlo", cwd=tmp)
+    runp()
+    contenido = open(ps, encoding="utf-8").read()
+    check("N7: el estado refleja el recibo emitido (gate + vigente + aprobador)",
+          "| vision.md | product-owner | GATE 0 | vigente | Karlo |" in contenido
+          and "| GATE 0 | 1 |" in contenido, contenido[-600:])
+
+    # editado a mano = drift = fallo de CI
+    open(ps, "a", encoding="utf-8").write("\nnarración manual\n")
+    code, out = runp("--check")
+    check("N7: edición manual detectada como drift (exit 1)",
+          code == 1 and "DRIFT" in out, out)
+    code, out = runp()
+    check("N7: regenerar limpia el drift", code == 0, out)
+    code, out = runp("--check")
+    check("N7: --check vuelve a verde tras regenerar", code == 0, out)
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

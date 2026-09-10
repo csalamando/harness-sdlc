@@ -83,6 +83,17 @@ def main():
                      modo=" ".join(flags) or "full-pipeline",
                      nota=f"scaffold init_project.py (harness {harness_version()})")
 
+    # Estado del pipeline derivado (N7): el primer pipeline-state.md nace de
+    # hechos (matriz + auditoría), nunca narrado a mano.
+    try:
+        from pipeline_state import build
+        open(os.path.join(spec_dir, "pipeline-state.md"), "w",
+             encoding="utf-8").write(build(spec_dir, root))
+        if "spec/pipeline-state.md" not in saltados:
+            creados.append("spec/pipeline-state.md")
+    except Exception as e:
+        print(f"  ⚠ no se pudo derivar pipeline-state.md: {e}")
+
     print(f"PROYECTO INICIALIZADO: {a.proyecto} (harness {harness_version()})")
     for c in creados:
         print(f"  + {c}")
