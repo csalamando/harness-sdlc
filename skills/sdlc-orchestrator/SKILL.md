@@ -133,7 +133,7 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `spec_diff_impact.py --cambiado <artefacto> [--relation supersedes|conflicts_with]`: impacto downstream de un cambio.
 - `traceability_matrix.py --spec-dir spec/ --tests-dir tests/ --src-dir src/`: matriz historia → test → código; detecta brechas.
 - `detect_stack.py [--project-dir <ruta>]`: detecta stack, test runner y disponibilidad de Strict TDD (Fase -1). Exit 2 si no hay runner.
-- `harness_doctor.py [--skills-dir <ruta>] [--project-dir <ruta>]`: health check read-only del arnés (skills, scripts, estructura spec/).
+- `harness_doctor.py [--skills-dir <ruta>] [--project-dir <ruta>]`: health check read-only del arnés (skills, scripts, estructura spec/). `--check-vendored [dir]` (v2.22, N5): compara por SHA-256 los scripts vendorados del proyecto (convención `scripts/`) contra la release instalada — drift, patch local o script ajeno a la release = exit 1. El gobernado no puede editar al gobernante; correr primero en CI.
 - `decision_sizing.py --spec spec/ --output spec/risk-tier.yaml`: clasifica el Risk Tier (1/2/3) y fija el nivel de gobernanza.
 - `advisor.py --adr <adr> --risk-tier N [--output <json>]`: identifica stakeholders del Advice Process por áreas de impacto.
 - `arch_signoff.py --adr <adr> --architect "Nombre"`: firma arquitectónica; genera recibo ARCH-xxx.json con SHA-256 del ADR y artefactos de diseño.

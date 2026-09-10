@@ -5,9 +5,13 @@ on:
   push: { branches: [main] }
 
 stages:
-  - lint:          # linters de front y back
+  - governance:    # PRIMERO (v2.22): harness_doctor --check-vendored (scripts vendorados
+                   # idénticos a la release — el gobernado no edita al gobernante),
+                   # audit_verify.py (traza íntegra), receipt.py status --strict,
+                   # pipeline_state.py --check (anti-drift), spec_diff_impact --apply en cambios de spec
+  - lint:          # linters de front y back + arch_lint.py (si spec/architecture-rules.yaml existe)
   - unit:          # tests unitarios + cobertura (umbral de spec/test-plan.md)
-  - contract:      # schemathesis contra spec/api-contract.yaml + Pact
+  - contract:      # contract_diff.py --contra-git spec/api-contract.yaml (breaking sin bump = bloqueo) + schemathesis contra spec/api-contract.yaml + Pact
   - security:      # semgrep, sca (snyk), gitleaks — umbrales de AppSec
   - build:         # artefactos + imágenes Docker versionadas
   - e2e:           # Playwright/Cypress contra ambiente efímero

@@ -1037,6 +1037,35 @@ with tempfile.TemporaryDirectory() as tmp:
     check("N2: status --strict refleja la invalidación derivada (exit 1)",
           code == 1, out)
 
+# ── 10i. N5: check-vendored — el gobernado no edita al gobernante ────────────
+print("\n[10i] check-vendored: scripts vendorados idénticos a la release o nada")
+with tempfile.TemporaryDirectory() as tmp:
+    def rund5(*args):
+        return run("harness_doctor.py", *args, cwd=tmp)
+
+    code, out = rund5("--project-dir", tmp, "--check-vendored")
+    check("N5: proyecto sin scripts vendorados pasa (forma preferida)",
+          code == 0 and "instalación" in out, out)
+
+    os.makedirs(os.path.join(tmp, "scripts"))
+    import shutil as _sh5
+    _sh5.copyfile(os.path.join(ROOT, "skills", "sdlc-orchestrator", "scripts",
+                               "receipt.py"), os.path.join(tmp, "scripts", "receipt.py"))
+    code, out = rund5("--project-dir", tmp, "--check-vendored")
+    check("N5: script vendorado idéntico a la release pasa",
+          code == 0 and "idénticos" in out, out)
+
+    with open(os.path.join(tmp, "scripts", "receipt.py"), "a", encoding="utf-8") as fh:
+        fh.write("\n# Patch local: relajar gates\n")
+    code, out = rund5("--project-dir", tmp, "--check-vendored")
+    check("N5: patch local en script vendorado = fallo (exit 1, DRIFT)",
+          code == 1 and "DRIFT" in out, out)
+
+    open(os.path.join(tmp, "scripts", "iac_to_diagram.py"), "w").write("# retirado\n")
+    code, out = rund5("--project-dir", tmp, "--check-vendored")
+    check("N5: script ajeno a la release (retirado/local) = fallo",
+          code == 1 and "NO pertenece a la release" in out, out)
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

@@ -10,9 +10,64 @@ se desactualizan. Si el manifiesto no existe (instalación antigua), degrada a l
 listas mínimas históricas.
 
 Uso: python3 harness_doctor.py [--skills-dir <ruta>] [--project-dir <ruta>]
+     python3 harness_doctor.py --check-vendored [dir-scripts-del-proyecto]
 Exit 0 si todo OK; 1 si hay problemas.
+
+N5 (v2.22): --check-vendored compara por SHA-256 cada script vendorado en el
+proyecto (por convención scripts/*.py) contra la release instalada del arnés.
+Drift, patch local o script ajeno a la release = exit 1 (el gobernado no puede
+editar al gobernante). Los scripts deben ejecutarse desde la instalación de
+skills; si se vendoran por necesidad de CI, este check corre primero en CI.
 """
 import os, sys, json, argparse, subprocess, re
+import hashlib
+
+
+def _sha256(path):
+    return hashlib.sha256(open(path, "rb").read()).hexdigest()
+
+
+def check_vendored(skills_dir, vendored_dir):
+    """Compara scripts vendorados del proyecto contra la release instalada."""
+    manifest = load_manifest(skills_dir)
+    if not manifest:
+        print("FALLO: sin manifiesto del arnés no hay release contra la que "
+              "comparar (regenerar: manifest_check.py --write)")
+        return 1
+    release = {}  # nombre -> (skill, hash)
+    for skill, scripts in manifest.items():
+        for s in scripts:
+            p = os.path.join(skills_dir, skill, "scripts", s)
+            if os.path.isfile(p):
+                release[s] = (skill, _sha256(p))
+    if not os.path.isdir(vendored_dir):
+        print(f"CHECK-VENDORED OK: {vendored_dir} no existe — el proyecto ejecuta "
+              "los scripts desde la instalación (la forma preferida).")
+        return 0
+    fallos = []
+    for f in sorted(os.listdir(vendored_dir)):
+        if not f.endswith(".py"):
+            continue
+        vp = os.path.join(vendored_dir, f)
+        if f not in release:
+            fallos.append(f"{f}: NO pertenece a la release del arnés — script local "
+                          "o retirado (eliminar o upstream-ear al arnés vía PR)")
+            continue
+        skill, h = release[f]
+        if _sha256(vp) != h:
+            fallos.append(f"{f}: DRIFT — difiere de la release instalada "
+                          f"({skill}). Patch local o versión vieja: re-vendored "
+                          "desde la instalación, nunca parchar.")
+    if fallos:
+        print(f"CHECK-VENDORED FALLA: {len(fallos)} script(s) vendorados con drift:")
+        for x in fallos:
+            print(f"  - {x}")
+        print("El gobernado no puede editar al gobernante: el CI del proyecto no "
+              "continúa hasta resolver el drift.")
+        return 1
+    n = len([f for f in os.listdir(vendored_dir) if f.endswith(".py")])
+    print(f"CHECK-VENDORED OK: {n} script(s) vendorados idénticos a la release.")
+    return 0
 
 # Fallback histórico (pre-v2.9) si no hay manifiesto instalado.
 EXPECTED_SKILLS = [
@@ -56,8 +111,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skills-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
     ap.add_argument("--project-dir", default=os.getcwd())
+    ap.add_argument("--check-vendored", nargs="?", const="scripts", default=None,
+                    metavar="DIR", help="N5: verifica scripts vendorados (default: "
+                    "scripts/ del proyecto) contra la release instalada y sale")
     a = ap.parse_args()
     skills_dir = os.path.abspath(a.skills_dir)
+    if a.check_vendored is not None:
+        vd = a.check_vendored
+        if not os.path.isabs(vd):
+            vd = os.path.join(os.path.abspath(a.project_dir), vd)
+        sys.exit(check_vendored(skills_dir, vd))
     results = []
 
     print(f"Skills dir: {skills_dir}")
