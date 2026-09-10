@@ -88,6 +88,32 @@ def sha256(path):
             h.update(chunk)
     return h.hexdigest()
 
+def deps_of(spec_dir, artefacto):
+    """N2 (v2.22): dependencias upstream del artefacto según el grafo canónico
+    (spec_diff_impact.DEPENDS_ON), con su hash al momento de emitir.
+    Un cambio en cualquiera invalida derivadamente este recibo."""
+    try:
+        from spec_diff_impact import DEPENDS_ON
+    except ImportError:
+        return {}
+    base = os.path.basename(artefacto)
+    deps = {}
+    for up in DEPENDS_ON.get(base, []):
+        p = os.path.join(spec_dir, up)
+        if os.path.isfile(p):
+            deps[up] = sha256(p)
+    return deps
+
+
+def deps_mismatch(spec_dir, rec):
+    """Nombre de la primera dependencia que cambió desde la emisión, o None."""
+    for dep, old_h in (rec.get("deps") or {}).items():
+        p = os.path.join(spec_dir, dep)
+        if not os.path.isfile(p) or sha256(p) != old_h:
+            return dep
+    return None
+
+
 def cmd_emit(a):
     if not os.path.isfile(a.artefacto):
         print(f"FALLO: no existe {a.artefacto}"); sys.exit(1)
@@ -147,6 +173,9 @@ def cmd_emit(a):
         rec["harness_version"] = hv
     if a.approved_by:
         rec["approved_by"] = a.approved_by
+    deps = deps_of(a.spec_dir, a.artefacto)
+    if deps:
+        rec["deps"] = deps
     if a.tokens_src:
         rec["tokens_src"] = a.tokens_src
         if t_in:
@@ -214,6 +243,20 @@ def cmd_verify(a):
         print(f"RECIBO INVALIDADO: el contenido de {a.artefacto} cambio desde la aprobacion ({rec['gate']}).")
         print("  El gate debe volver a ejecutarse y emitirse un recibo nuevo.")
         sys.exit(1)
+    # N2: invalidación derivada — una dependencia upstream cambió desde la emisión
+    dep = deps_mismatch(a.spec_dir, rec)
+    if dep:
+        rec["estado"] = "invalidado"
+        rec["invalidado"] = datetime.datetime.now().isoformat(timespec="seconds")
+        open(p, "w", encoding="utf-8").write(json.dumps(rec, indent=2, ensure_ascii=False))
+        _audit(a.spec_dir, "invalidado", artefacto=_rel(a.spec_dir, a.artefacto),
+               gate=rec.get("gate", ""), rol=rec.get("rol", ""),
+               sha256=rec["sha256"],
+               nota=f"invalidación derivada: cambió la dependencia '{dep}'")
+        print(f"RECIBO INVALIDADO DERIVADAMENTE: '{dep}' (dependencia de {a.artefacto}) "
+              f"cambió desde la aprobación ({rec['gate']}).")
+        print("  Re-validar el gate y re-emitir — el upstream ya no es el aprobado.")
+        sys.exit(1)
     # Autoridad: el rol emisor registrado debe seguir siendo el owner según la matriz vigente
     try:
         from authority_check import owner_of, load_matrix
@@ -246,6 +289,10 @@ def cmd_status(a):
             problemas.append(f"{os.path.basename(art)}: estado {rec['estado']}")
         if match.startswith("NO"):
             problemas.append(f"{os.path.basename(art)}: hash no coincide (invalidado sin re-emitir)")
+        dep = deps_mismatch(a.spec_dir, rec)
+        if rec["estado"] == "vigente" and dep:
+            problemas.append(f"{os.path.basename(art)}: dependencia '{dep}' cambió "
+                             "(invalidación derivada pendiente)")
         print(f"| {os.path.basename(art)} | {rec['gate']} | {rec.get('rol', '-')} | {rec['estado']} | {match} |")
     # v2.21 (N3): --strict convierte el estado en veredicto ejecutable para CI
     if getattr(a, "strict", False):

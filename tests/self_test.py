@@ -977,6 +977,66 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out = runp("--check")
     check("N7: --check vuelve a verde tras regenerar", code == 0, out)
 
+# ── 10h. N2: invalidación derivada — el cambio no depende de la memoria ──────
+print("\n[10h] Hash compuesto de dependencias + spec_diff_impact --apply")
+with tempfile.TemporaryDirectory() as tmp:
+    run("init_project.py", "--proyecto", "demo", cwd=tmp)
+    def w4(rel, content):
+        p = os.path.join(tmp, rel)
+        open(p, "w", encoding="utf-8").write(content)
+        return p
+    VIS = "# V\n## Problema\nx\n## Usuarios objetivo\nx\n## Propuesta de valor\nx\n## Métricas de éxito\nx\n"
+    HU = ("## HU-001\nComo visitante (ROL-001)\n### Escenario\n**Dado** d **Cuando** c "
+          "**Entonces** e\nÉpica: EP-01\n")
+    w4("spec/roles.md", "ROL-001\n## ROL-001\nAcciones que habilita: x\nContexto: y\n"
+                        "Reglas que lo restringen: z\n")
+    v = w4("spec/vision.md", VIS)
+    hu = w4("spec/user-stories.md", HU)
+    for art, rol in ((v, "product-owner"), (hu, "business-analyst")):
+        c, o = run("receipt.py", "--spec-dir", "spec/", "emit", art,
+                   "--gate", "GATE 0" if rol == "product-owner" else "FASE-1",
+                   "--role", rol, "--approved-by", "Karlo", cwd=tmp)
+        assert c == 0, o
+
+    # el recibo de user-stories guarda el hash de sus dependencias upstream
+    rec = _j2.load(open(os.path.join(tmp, "spec", "receipts",
+                                     "user-stories.md.receipt.json"), encoding="utf-8"))
+    check("N2: el recibo guarda hash de dependencias upstream (vision, backlog…)",
+          rec.get("deps", {}).get("vision.md") and "roles.md" in rec["deps"],
+          str(rec.get("deps")))
+
+    # cambia vision.md y se re-emite: user-stories queda invalidado derivadamente
+    w4("spec/vision.md", VIS + "cambio aprobado\n")
+    run("receipt.py", "--spec-dir", "spec/", "emit", v, "--gate", "GATE 0",
+        "--role", "product-owner", "--approved-by", "Karlo", cwd=tmp)
+    code, out = run("receipt.py", "--spec-dir", "spec/", "verify", hu, cwd=tmp)
+    check("N2: verify invalida derivadamente aunque el artefacto no cambió",
+          code == 1 and "DERIVADAMENTE" in out and "vision.md" in out, out)
+    evs = [_j2.loads(l) for l in
+           open(os.path.join(tmp, "spec", "audit", "events.jsonl"), encoding="utf-8")]
+    check("N2: la invalidación derivada queda auditada con su causa",
+          any(e["evento"] == "invalidado" and "vision.md" in e.get("nota", "")
+              for e in evs), str([e["evento"] for e in evs]))
+
+    # re-emitir user-stories y probar --apply sobre un cambio de roles.md
+    run("receipt.py", "--spec-dir", "spec/", "emit", hu, "--gate", "FASE-1",
+        "--role", "business-analyst", cwd=tmp)
+    code, out = run("spec_diff_impact.py", "--cambiado", "roles.md", "--apply",
+                    "--spec-dir", os.path.join(tmp, "spec"), cwd=tmp)
+    rec2 = _j2.load(open(os.path.join(tmp, "spec", "receipts",
+                                      "user-stories.md.receipt.json"), encoding="utf-8"))
+    check("N2: --apply invalida los recibos downstream vigentes",
+          code == 0 and "invalidados" in out and rec2["estado"] == "invalidado",
+          out + rec2["estado"])
+    evs = [_j2.loads(l) for l in
+           open(os.path.join(tmp, "spec", "audit", "events.jsonl"), encoding="utf-8")]
+    check("N2: --apply audita la revocación derivada con origen y relación",
+          any(e["evento"] == "invalidado" and "--apply" in e.get("nota", "")
+              and "supersedes" in e.get("nota", "") for e in evs), "")
+    code, out = run("receipt.py", "--spec-dir", "spec/", "status", "--strict", cwd=tmp)
+    check("N2: status --strict refleja la invalidación derivada (exit 1)",
+          code == 1, out)
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

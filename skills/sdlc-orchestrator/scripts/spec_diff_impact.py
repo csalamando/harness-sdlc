@@ -4,6 +4,12 @@
 Uso: python3 spec_diff_impact.py --cambiado <nombre-artefacto>
 """
 import argparse
+import datetime
+import json
+import os
+import sys
+
+sys.dont_write_bytecode = True
 
 # Grafo de dependencias: artefacto -> artefactos que lo consumen (downstream)
 DEPENDS_ON = {
@@ -59,6 +65,11 @@ def main():
     ap.add_argument("--relation", choices=["supersedes", "conflicts_with"], default="supersedes",
                     help="Relacion del cambio con la version anterior del artefacto")
     ap.add_argument("--nueva-version", default="")
+    ap.add_argument("--spec-dir", default="spec/")
+    ap.add_argument("--apply", action="store_true",
+                    help="N2: revoca derivadamente los recibos vigentes de TODOS los "
+                         "artefactos downstream (queda en la auditoría). Sin --apply "
+                         "solo informa — el cambio ya no depende de la memoria del agente.")
     a = ap.parse_args()
     if a.cambiado not in DEPENDS_ON:
         print(f"Artefacto desconocido: {a.cambiado}. Conocidos: {', '.join(sorted(DEPENDS_ON))}")
@@ -77,6 +88,44 @@ def main():
     for art in impacted:
         print(f"  - {art}  -> revocar recibo, re-validar gate y re-ejecutar fase correspondiente")
     print(f"\nTotal: {len(impacted)} artefacto(s) a re-validar. Nueva versión de spec requerida.")
+
+    if a.apply:
+        # N2 (v2.22): la revocación derivada la ejecuta la herramienta, no la
+        # memoria del agente. Cada recibo downstream vigente queda invalidado
+        # y el hecho se registra en la memoria de auditoría.
+        try:
+            from audit_log import append_event
+        except ImportError:
+            append_event = None
+        revocados = []
+        for art in impacted:
+            rp = os.path.join(a.spec_dir, "receipts", f"{art}.receipt.json")
+            if not os.path.isfile(rp):
+                continue
+            try:
+                rec = json.load(open(rp, encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            if rec.get("estado") != "vigente":
+                continue
+            rec["estado"] = "invalidado"
+            rec["invalidado"] = datetime.datetime.now().isoformat(timespec="seconds")
+            rec["nota"] = (f"revocación derivada: cambió '{a.cambiado}' "
+                           f"({a.relation})")
+            open(rp, "w", encoding="utf-8").write(
+                json.dumps(rec, indent=2, ensure_ascii=False))
+            revocados.append(art)
+            if append_event:
+                try:
+                    append_event(a.spec_dir, "invalidado", artefacto=art,
+                                 gate=rec.get("gate", ""), rol=rec.get("rol", ""),
+                                 sha256=rec.get("sha256", ""),
+                                 nota=f"revocación derivada por spec_diff_impact "
+                                      f"--apply: cambió '{a.cambiado}' ({a.relation})")
+                except Exception as e:
+                    print(f"  ⚠ auditoría no registrada para {art}: {e}")
+        print(f"\n--apply: {len(revocados)} recibo(s) downstream invalidados y "
+              f"auditados: {', '.join(revocados) if revocados else 'ninguno vigente'}.")
 
 if __name__ == "__main__":
     main()

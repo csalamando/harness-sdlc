@@ -16,14 +16,17 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **`gate_verify.py --gate "GATE N"`**: verificación agregada del gate — para cada artefacto exigible: presencia + `gate_checker --tipo` + recibo vigente con hash coincidente; transversal: memoria de auditoría íntegra (sin auditoría no hay gate) y, en GATE 2, `arch_lint` en verde si hay reglas declaradas. Respeta los condicionales del routing (`--sin-ui` etc. excluyen lo que no aplica). Catálogo GATE 0/1/2/2.5/3 y `SPRINT-N` (sprint-review); rechaza gates fuera del catálogo N3. Exit 1 lista cada faltante.
 - **`pipeline_state.py` (N7) — el estado del pipeline se deriva, no se narra**: regenera `spec/pipeline-state.md` desde matriz de autoridad + recibos + memoria de auditoría + `detect_stack` (cierra B-14: el archivo narrado a mano con recibo que certificaba narración). Marcado DERIVADO, nunca editado a mano ni con recibo; `--check` anti-drift para CI (ignora la línea de timestamp para ser byte-estable). `init_project.py` genera el primer estado en el arranque.
 - **`receipt.py` guarda `approved_by` en el recibo** (no solo en el evento de auditoría): el recibo queda autocontenido y `pipeline_state` muestra quién aprobó.
+- **Invalidación derivada automática (N2) — la revocación deja de depender de la memoria del agente**:
+  - Los recibos guardan el **hash de sus dependencias upstream** (grafo canónico `DEPENDS_ON` de `spec_diff_impact`): `receipt.py verify` y `status --strict` invalidan/alertan derivadamente cuando una dependencia cambió, aunque el artefacto mismo no se tocara.
+  - `spec_diff_impact.py --apply`: ejecuta la revocación derivada en el momento del cambio — invalida los recibos vigentes de todo el downstream y registra cada uno en la auditoría con causa y relación (supersedes/conflicts_with). Sin `--apply` sigue solo informando.
 
 ### Changed
 - Matriz de autoridad: nuevas entradas `spec/architecture-rules.yaml` (owner `software-architect`), `spec/audit/` (owner `orchestrator`) y `spec/pipeline-state.md` (derivado, owner `orchestrator`) — los artefactos de gobierno de v2.21+ quedan bajo la misma autoridad que el resto.
 - `EVENTOS_NUCLEO` de la auditoría incluye `arch_lint` y `contract_diff` (eventos de v2.21 promovidos a núcleo).
 
 ### Notas
-- Self-test: secciones [10f] (init + gate_verify) y [10g] (pipeline-state derivado: init lo genera, refleja recibos, edición manual = drift en CI, regenerar limpia). 210 checks.
-- Roadmap v2.22: N2 (hash compuesto de dependencias + `spec_diff_impact --apply`), N5 (`check-vendored`), N11 (circuit breaker + blast_radius_check). N7 entregado en esta versión. [Núcleo recomendado](docs/nucleo-recomendado-control.md).
+- Self-test: secciones [10f] (init + gate_verify), [10g] (pipeline-state derivado) y [10h] (N2: deps con hash en el recibo, verify que invalida derivadamente, --apply que revoca y audita downstream, strict que lo refleja). 216 checks.
+- Roadmap v2.22: N5 (`check-vendored`) y N11 (circuit breaker + blast_radius_check). N7 y N2 entregados en esta versión. [Núcleo recomendado](docs/nucleo-recomendado-control.md).
 
 ## [2.21.0] - 2026-09-09
 
