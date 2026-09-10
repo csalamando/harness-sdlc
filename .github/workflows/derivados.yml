@@ -1,0 +1,45 @@
+name: derivados
+
+# Los artefactos derivados del manifiesto (harness-manifest.yaml, docs/graph.html)
+# nunca se editan a mano: se regeneran. Si un push los deja en drift, este
+# workflow los regenera y publica la corrección en la rama `autofix/derivados`
+# (fallando el run para que sea visible), en vez de solo quejarse.
+# No corre sobre pushes de la propia rama autofix (evita bucles).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "skills/**"
+      - "tests/**"
+
+jobs:
+  derivados:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Regenerar manifiesto y grafo
+        run: |
+          python skills/sdlc-orchestrator/scripts/manifest_check.py --write
+          python skills/sdlc-orchestrator/scripts/harness_graph.py --write
+
+      - name: Sin drift = OK; con drift = publicar corrección en rama autofix
+        run: |
+          if git diff --quiet; then
+            echo "derivados al día — sin drift"
+            exit 0
+          fi
+          echo "::warning::Drift de derivados detectado — publicando corrección en autofix/derivados"
+          git config user.name "harness-bot"
+          git config user.email "harness-bot@users.noreply.github.com"
+          git checkout -B autofix/derivados
+          git add skills/sdlc-orchestrator/assets/harness-manifest.yaml docs/graph.html
+          git commit -m "chore(derivados): regenerar manifiesto + grafo (drift detectado en ${GITHUB_SHA:0:7})"
+          git push -f origin autofix/derivados
+          echo "Abre PR de autofix/derivados → main, o regenera localmente con manifest_check.py --write && harness_graph.py --write"
+          exit 1
