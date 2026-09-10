@@ -100,11 +100,22 @@ def load_usage(spec_dir):
     # v2.21 (ADR-004): las activaciones tambien viven como eventos 'use' en la
     # memoria de auditoria — se fusionan aqui (la dedup de abajo colapsa los
     # duplicados auto que receipt.py escribe en ambas fuentes).
+    audit_pairs = set()
+    audit_events = []
     for e in load_audit(spec_dir):
         if e.get("evento") == "use" and e.get("skill"):
-            events.append({"ts": e.get("ts", ""), "tipo": "use",
-                           "skill": e["skill"], "fase": str(e.get("fase", "?")),
-                           "modo": e.get("modo", ""), "auto": e.get("auto", "")})
+            audit_events.append({"ts": e.get("ts", ""), "tipo": "use",
+                                 "skill": e["skill"], "fase": str(e.get("fase", "?")),
+                                 "modo": e.get("modo", ""), "auto": e.get("auto", "")})
+            audit_pairs.add((norm(e["skill"]), str(e.get("fase", "?"))))
+    # El log manda: los auto-registros legacy de usage.jsonl que ya viven en la
+    # auditoria son la MISMA activacion escrita dos veces — descartarlos (sus
+    # ts difieren por zona horaria y la dedup por dia no los colapsaria).
+    if audit_pairs:
+        events = [e for e in events
+                  if not (e.get("auto") and
+                          (norm(e.get("skill", "")), str(e.get("fase", ""))) in audit_pairs)]
+    events += audit_events
     # v2.16: deduplicar auto-registros de receipt.py — colapsar a uno por
     # skill+fase+dia, y descartarlos donde ya existe un uso manual del mismo
     # skill+fase (el manual manda; el auto es respaldo contra el olvido).
