@@ -1066,6 +1066,74 @@ with tempfile.TemporaryDirectory() as tmp:
     check("N5: script ajeno a la release (retirado/local) = fallo",
           code == 1 and "NO pertenece a la release" in out, out)
 
+# ── 10j. N11: circuit breaker con estado + blast radius sobre el diff ────────
+print("\n[10j] HITL portable: reintentos congelables y alcance verificado")
+with tempfile.TemporaryDirectory() as tmp:
+    run("init_project.py", "--proyecto", "demo", cwd=tmp)
+    def runcb(*args):
+        return run("circuit_breaker.py", "--spec-dir", os.path.join(tmp, "spec"),
+                   *args, cwd=tmp)
+
+    code, out = runcb("fail", "--artefacto", "spec/qa-report.md", "--gate", "GATE 2",
+                      "--motivo", "E2E roto")
+    check("N11: primer fallo = corrección acotada autorizada (exit 0)",
+          code == 0 and "1/1" in out, out)
+    code, out = runcb("fail", "--artefacto", "spec/qa-report.md", "--gate", "GATE 2")
+    check("N11: segundo fallo CONGELA (exit 1, escalar a humano)",
+          code == 1 and "CONGELADO" in out, out)
+    code, out = runcb("fail", "--artefacto", "spec/qa-report.md", "--gate", "GATE 2")
+    check("N11: congelado no permite más reintentos del agente",
+          code == 1 and "unfreeze humano" in out, out)
+    code, out = runcb("status")
+    check("N11: status refleja el congelado (exit 1 para CI)", code == 1, out)
+    code, out = runcb("unfreeze", "--artefacto", "spec/qa-report.md", "--gate", "GATE 2")
+    check("N11: unfreeze sin humano rechazado", code == 1 and "approved-by" in out, out)
+    code, out = runcb("unfreeze", "--artefacto", "spec/qa-report.md", "--gate", "GATE 2",
+                      "--approved-by", "Karlo")
+    check("N11: unfreeze humano descongela (exit 0)", code == 0, out)
+    evs = [_j2.loads(l) for l in
+           open(os.path.join(tmp, "spec", "audit", "events.jsonl"), encoding="utf-8")]
+    cb = [e for e in evs if e["evento"] == "circuit_breaker"]
+    check("N11: reintento, congelamiento y descongelamiento auditados con aprobador",
+          [e.get("resultado") for e in cb] == ["reintento", "congelado", "descongelado"]
+          and cb[-1].get("approved_by") == "Karlo", str(cb))
+
+with tempfile.TemporaryDirectory() as tmp:
+    os.makedirs(os.path.join(tmp, "spec"))
+    run("audit_log.py", "--spec-dir", os.path.join(tmp, "spec"), "init",
+        "--proyecto", "blast", cwd=tmp)
+    os.makedirs(os.path.join(tmp, "src", "api"))
+    open(os.path.join(tmp, "src", "api", "a.py"), "w").write("x = 1\n")
+    for c in (["git", "init", "-q"], ["git", "add", "."],
+              ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "v1"]):
+        subprocess.run(c, cwd=tmp, capture_output=True)
+    def runbr(*args):
+        return run("blast_radius_check.py", "--spec-dir", os.path.join(tmp, "spec"),
+                   "--root", tmp, *args, cwd=tmp)
+
+    open(os.path.join(tmp, "src", "api", "a.py"), "a").write("y = 2\n")
+    code, out = runbr("--allowed", "src/api/**")
+    check("N11: diff dentro del alcance pasa (exit 0)",
+          code == 0 and "BLAST RADIUS OK" in out, out)
+    os.makedirs(os.path.join(tmp, "src", "web"))
+    open(os.path.join(tmp, "src", "web", "evil.js"), "w").write("// fuera de alcance\n")
+    code, out = runbr("--allowed", "src/api/**")
+    check("N11: archivo nuevo fuera de alcance = escape (exit 1, bloquea gate)",
+          code == 1 and "FUERA del alcance" in out and "evil.js" in out, out)
+    cr = os.path.join(tmp, "spec", "CR-001.md")
+    open(cr, "w", encoding="utf-8").write(
+        "# CR-001\n## Alcance autorizado\n- src/api/**\n- src/web/\n\n## Otro\n")
+    code, out = runbr("--cr", cr)
+    check("N11: --cr lee el alcance autorizado del change-request y pasa",
+          code == 0, out)
+    evs = [_j2.loads(l) for l in
+           open(os.path.join(tmp, "spec", "audit", "events.jsonl"), encoding="utf-8")]
+    br = [e for e in evs if e["evento"] == "blast_radius"]
+    check("N11: escapes y verificaciones quedan en la auditoría",
+          [e.get("resultado") for e in br] == ["ok", "fallo", "ok"], str(br))
+    code, out = runbr("--allowed", "src/**", "--root", os.path.join(tmp, "noexiste"))
+    check("N11: sin repo git = exit 2 con mensaje claro", code == 2, out)
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

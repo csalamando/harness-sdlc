@@ -146,6 +146,8 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `init_project.py --proyecto <nombre> [--capas] [--sin-ui|--sin-datos|--sin-procesos]` (v2.22, N4): scaffold determinista — todo proyecto arranca con la misma estructura `spec/`, matriz de autoridad, roster, tech radar y memoria de auditoría con génesis + evento `bootstrap`. Idempotente: nunca sobrescribe. `--capas` scaffolda además `architecture-rules.yaml` (activa arch_lint).
 - `gate_verify.py --gate "GATE N" [--sin-ui|--sin-datos|--sin-procesos]` (v2.22, N4): verificación agregada — presencia + tipo (gate_checker) + recibo vigente con hash coincidente de todo lo exigible del gate, auditoría íntegra (audit_verify) y, en GATE 2, arch_lint en verde si hay reglas. Respeta los condicionales del routing. Exit 1 lista cada faltante.
 - `pipeline_state.py [--check]` (v2.22, N7): deriva `spec/pipeline-state.md` desde matriz de autoridad + recibos + auditoría + `detect_stack.py`. El estado del pipeline se genera de hechos — nunca se edita a mano ni recibe recibo; `--check` (anti-drift, ignora la línea de timestamp) en CI.
+- `circuit_breaker.py fail|ok|unfreeze|status` (v2.22, N11a): reintentos de gate con estado en `spec/run-state.yaml` — superado `--max` (default 1) el artefacto se CONGELA y solo un humano lo descongela (`unfreeze --approved-by`). Todo queda en la auditoría. `status` exit 1 con congelados (para CI/gates).
+- `blast_radius_check.py --allowed <globs> | --cr <change-request>` (v2.22, N11b): el diff de git (incluidos archivos nuevos sin trackear) debe calzar con el alcance autorizado — escape = exit 1 + evento en la auditoría. Los artefactos de gobierno escritos por scripts (auditoría, run-state, pipeline-state, METRICS, portal) están exentos.
 
 ## Routing desde el manifiesto (v2.10)
 

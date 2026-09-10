@@ -461,8 +461,8 @@ Basada en el **framework de 8 pasos de Sonya Natanzon**, el **Advice Process** y
 ## 8. Gestión de cambios de spec
 
 1. Declarar la relación del cambio: **supersedes** (reemplaza — flujo normal) o **conflicts_with** (contradice — requiere resolución humana, bloquea GATE 1).
-2. `spec_diff_impact.py --cambiado <artefacto> --relation <rel>` lista el downstream invalidado (grafo de dependencias de la spec).
-3. `receipt.py revoke` sobre cada artefacto impactado; re-ejecutar **solo** las fases afectadas.
+2. `spec_diff_impact.py --cambiado <artefacto> --relation <rel> --apply` (v2.22) lista **e invalida** el downstream (recibos revocados derivadamente y auditados).
+3. Re-ejecutar **solo** las fases afectadas — los recibos restantes guardan el hash de sus dependencias: `receipt.py verify` atrapa cualquier invalidación derivada que se haya omitido.
 4. Nueva versión + entrada en CHANGELOG.
 
 En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias superseded, trazabilidad y recibos en verde, sprint review generado, sesión cerrada. La próxima iteración arranca desde spec consolidada.

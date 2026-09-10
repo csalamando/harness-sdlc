@@ -30,7 +30,7 @@ import os, sys, json, hashlib, argparse, datetime, re
 GENESIS_PREV = "0" * 64
 EVENTOS_NUCLEO = {"audit_init", "emit", "invalidado", "revocado", "use",
                   "bootstrap", "harness_upgrade", "freestyle",
-                  "arch_lint", "contract_diff"}
+                  "arch_lint", "contract_diff", "circuit_breaker", "blast_radius"}
 
 
 def gate_norm(gate):

@@ -21,6 +21,10 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
   - `spec_diff_impact.py --apply`: ejecuta la revocación derivada en el momento del cambio — invalida los recibos vigentes de todo el downstream y registra cada uno en la auditoría con causa y relación (supersedes/conflicts_with). Sin `--apply` sigue solo informando.
 - **`harness_doctor.py --check-vendored` (N5) — el gobernado no puede editar al gobernante**: compara por SHA-256 cada script vendorado en el proyecto (convención `scripts/*.py`) contra la release instalada del arnés. Patch local, drift de versión o script ajeno a la release (p. ej. uno retirado) = exit 1 con el detalle. Proyecto sin scripts vendorados = OK (ejecutar desde la instalación es la forma preferida). Primer stage de la plantilla CI (`governance`).
 - **Plantilla CI endurecida** (`assets/ci-pipeline.yaml`): nuevo stage `governance` primero (check-vendored, audit_verify, status --strict, pipeline_state --check), `arch_lint` en lint y `contract_diff --contra-git` en contract.
+- **HITL portable (N11) — el confinamiento verificado sobre hechos, no sobre promesas**:
+  - `circuit_breaker.py`: la regla "una corrección acotada por gate antes de escalar" deja de ser prosa — los fallos quedan en `spec/run-state.yaml`; superado `--max` el artefacto se **congela** (el agente no reintenta más) y solo un humano lo descongela con `--approved-by` auditado. `status` da veredicto para CI.
+  - `blast_radius_check.py`: el diff de git (incluidos archivos nuevos sin trackear) debe calzar con el alcance autorizado (`--allowed` o la sección `## Alcance autorizado` del change-request). Escape = exit 1 + evento `blast_radius` en la auditoría. Los artefactos escritos por scripts (auditoría, run-state, pipeline-state, METRICS, portal) están exentos por construcción.
+  - EVENTOS_NUCLEO: +`circuit_breaker`, +`blast_radius`.
 
 ### Changed
 - Matriz de autoridad: nuevas entradas `spec/architecture-rules.yaml` (owner `software-architect`), `spec/audit/` (owner `orchestrator`) y `spec/pipeline-state.md` (derivado, owner `orchestrator`) — los artefactos de gobierno de v2.21+ quedan bajo la misma autoridad que el resto.
@@ -28,7 +32,7 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 
 ### Notas
 - Self-test: secciones [10f] (init + gate_verify), [10g] (pipeline-state derivado) y [10h] (N2: deps con hash en el recibo, verify que invalida derivadamente, --apply que revoca y audita downstream, strict que lo refleja). 216 checks.
-- Roadmap v2.22: N11 (circuit breaker + blast_radius_check). N7, N2 y N5 entregados en esta versión. [Núcleo recomendado](docs/nucleo-recomendado-control.md).
+- Con N11, v2.22 cierra su alcance: arranque determinista (N4), estado derivado (N7), invalidación derivada (N2), check-vendored (N5) y HITL portable (N11). [Núcleo recomendado](docs/nucleo-recomendado-control.md).
 
 ## [2.21.0] - 2026-09-09
 
