@@ -7,6 +7,15 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.22.1] - 2026-09-09
+
+**Hotfix de vendoring** — encontrados al aplicar v2.22.0 sobre un proyecto real (TopBirdsColombia, ver [verificación](docs/verificacion-topbirds-v2.22.md)): los scripts vendorados en `scripts/` plano del proyecto no resolvían recursos hermanos.
+
+### Fixed
+- **`audit_log.harness_version()`**: al correr vendorado no hay `SKILL.md` junto al script → devolvía `None` y los eventos (p. ej. de `arch_lint`) quedaban sin `harness_version`, rompiendo `audit_verify` ("memoria de auditoría NO íntegra" en todos los gates). Ahora `FALLBACK_VERSION` embebida garantiza el campo; nuevo check de self-test la mantiene sincronizada con el frontmatter.
+- **`gate_checker._find_diagram_ir()`**: solo buscaba `../../sdlc-diagrams/scripts/diagram_ir.py` (instalación completa); con vendoring plano no validaba los IR referenciados y GATE 1 fallaba. Ahora también resuelve `diagram_ir.py` en el mismo directorio del script vendorado.
+- **Limpieza de repo**: `.analysis/` (clones temporales de verificación) ignorado; el portal del fixture quedó fuera del tracking (artefacto derivado regenerable).
+
 ## [2.22.0] - 2026-09-09
 
 **"El arranque y el cambio son deterministas."** v2.22 abre con N4: el "mínimo para iniciar un proyecto" deja de ser interpretación y pasa a ser ejecución — mismo scaffold, mismos controles, auditoría desde el primer minuto; y los gates de entrega dejan de leerse en prosa para verificarse agregados con `gate_verify.py`. Nace del [diagnóstico de brechas](docs/diagnostico-brechas-promesa-valor.md) (proyectos que inician cada uno con archivos y controles distintos).
