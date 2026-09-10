@@ -156,9 +156,13 @@ def build(spec_dir, out_dir=None):
         pid = portal_lib.slug(ruta)
         open(os.path.join(out_dir, nombre), "w", encoding="utf-8", newline="\n").write(
             portal_lib.page_wrap(titulo, body, page_id=pid, note=nota))
+        # Índices y logs puros (CHANGELOG, INDEX) no merecen espacio de menú:
+        # quedan buscables pero fuera del lateral (v2.23).
+        base = os.path.basename(rel).lower()
+        oculto = base in ("changelog.md", "index.md")
         portal_lib.register(spec_dir, origen="mdview", kind="doc", ruta=ruta,
                             titulo=titulo, grupo=os.path.dirname(rel) or "spec",
-                            tags=[rel], texto=text)
+                            tags=[rel], texto=text, oculto=oculto)
         n += 1
     return n
 

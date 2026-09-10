@@ -17,6 +17,7 @@ __pycache__/
 .vscode/settings.json
 tests/fixtures/proyecto-demo/spec/dashboard.html
 tests/fixtures/proyecto-demo/spec/portal/
+tests/fixtures/proyecto-demo/spec/audit/
 
 # Analisis temporales locales
 .analysis/

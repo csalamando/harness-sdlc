@@ -31,11 +31,12 @@ CLI:
 import argparse, html, json, os, re, sys
 from datetime import datetime
 
-PORTAL_VERSION = "1.1.0"
+PORTAL_VERSION = "1.2.0"
 
 CATEGORIAS = [
     ("inicio", "Inicio", "🏠"),
     ("metricas", "Métricas", "📊"),
+    ("gobernanza", "Gobernanza", "🛡️"),
     ("arquitectura", "Arquitectura", "🏛️"),
     ("negocio", "Negocio", "💼"),
     ("calidad", "Calidad", "🧪"),
@@ -131,7 +132,11 @@ def _plano(t):
 
 
 _REGLES = [
-    ("arquitectura", ("adr", "architect", "arquitect", "tech-radar", "tech_radar",
+    # Gobernanza primero: ADRs/recibos/seguridad no son "docs" ni "arquitectura"
+    ("gobernanza", ("adr", "receipt", "recibo", "authority", "audit", "threat",
+                    "security", "tech-radar", "tech_radar", "governance",
+                    "gobernanza", "principles", "principios")),
+    ("arquitectura", ("architect", "arquitect",
                       "diagram", "c4-", "decision")),
     ("negocio", ("vision", "backlog", "user-stories", "user_stories", "glossary",
                  "glosario", "epica", "personas", "stakeholder")),
@@ -408,6 +413,11 @@ padding:.42rem .5rem;border-radius:8px;font-size:12.5px;font-weight:700;color:va
 #nav summary .cnt{margin-left:auto;font-size:10px;color:var(--muted);background:var(--card-bg);
 border:1px solid var(--panel-bd);border-radius:8px;padding:0 6px}
 #nav .grp{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:.55rem .5rem .15rem}
+#nav details.menu-grupo{margin:0 0 0 .6rem}
+#nav details.menu-grupo>summary{font-size:11px;font-weight:600;color:var(--sub);padding:.28rem .5rem}
+#nav details.menu-grupo>summary::before{font-size:9px;color:var(--muted)}
+#nav details.menu-grupo .grp-t{text-transform:uppercase;letter-spacing:.07em;font-size:10px;color:var(--muted)}
+#nav details.menu-grupo a.ni{padding-left:2.2rem}
 #nav a.ni{display:block;padding:.3rem .5rem .3rem 1.6rem;border-radius:7px;color:var(--sub);
 text-decoration:none;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #nav a.ni:hover{background:var(--card-bg);color:var(--txt)}
@@ -501,12 +511,26 @@ function buildNav(){
     if(!items.length)return;
     h+='<details class="cat" open><summary><span>'+c.icono+'</span>'+esc(c.label)
       +'<span class="cnt">'+items.length+'</span></summary>';
-    var g=null;
+    /* sub-grupos del registry: con >6 items en la categoría se pliegan
+       (p. ej. 14 sprint reviews -> grupo "reports" colapsado) */
+    var plegable=items.length>6, g=null, openGrp=false;
     items.forEach(function(it){
       var gr=it.grupo||'';
-      if(gr!==g){g=gr;if(g)h+='<div class="grp">'+esc(g)+'</div>';}
+      if(gr!==g){
+        if(openGrp)h+='</details>';
+        g=gr;openGrp=false;
+        if(g){
+          var gn=items.filter(function(x){return (x.grupo||'')===g;}).length;
+          if(plegable&&gn>1){
+            h+='<details class="menu-grupo"><summary><span class="grp-t">'+esc(g)
+              +'</span><span class="cnt">'+gn+'</span></summary>';
+            openGrp=true;
+          }else h+='<div class="grp">'+esc(g)+'</div>';
+        }
+      }
       h+='<a class="ni" data-id="'+it.id+'" href="#/id/'+it.id+'" title="'+esc(it.titulo)+'">'+esc(it.titulo)+'</a>';
     });
+    if(openGrp)h+='</details>';
     h+='</details>';
   });
   nav.innerHTML=h||'<div class="grp">sin páginas registradas</div>';

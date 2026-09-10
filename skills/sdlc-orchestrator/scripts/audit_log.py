@@ -88,7 +88,7 @@ CAMPOS = ("artefacto", "gate", "rol", "reason", "relation", "approved_by",
 # Version embebida de respaldo: se usa cuando el script corre vendorado en un
 # proyecto (scripts/ plano, sin SKILL.md junto). Actualizar en cada release;
 # el self-test verifica que coincide con el frontmatter del orquestador.
-FALLBACK_VERSION = "2.22.1"
+FALLBACK_VERSION = "2.23.0"
 
 
 def harness_version():

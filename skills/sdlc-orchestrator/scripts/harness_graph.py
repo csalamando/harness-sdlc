@@ -354,6 +354,47 @@ def parse_adrs(project_dir):
     return []
 
 
+def audit_summary(spec_dir):
+    """Resumen de la memoria de auditoría (v2.23, ADR-004) para el portal.
+
+    TODO se re-deriva de spec/audit/events.jsonl — el portal nunca narra.
+    None si el log no existe (la página muestra empty-state accionable).
+    """
+    import json as _j
+    p = os.path.join(spec_dir, "audit", "events.jsonl")
+    if not os.path.isfile(p):
+        return None
+    eventos = []
+    for line in open(p, encoding="utf-8"):
+        line = line.strip()
+        if line:
+            try:
+                eventos.append(_j.loads(line))
+            except ValueError:
+                pass
+    if not eventos:
+        return None
+    por_tipo = {}
+    for e in eventos:
+        por_tipo[e.get("evento", "?")] = por_tipo.get(e.get("evento", "?"), 0) + 1
+    revocaciones = [e for e in eventos if e.get("evento") in ("revoke", "invalidado")]
+    aprobadores = sorted({e["approved_by"] for e in eventos if e.get("approved_by")})
+    versiones = sorted({e["harness_version"] for e in eventos if e.get("harness_version")})
+    return {
+        "total": len(eventos),
+        "por_tipo": por_tipo,
+        "emits": por_tipo.get("emit", 0),
+        "revocaciones": revocaciones,
+        "n_revocaciones": len(revocaciones),
+        "aprobadores": aprobadores,
+        "versiones": versiones,
+        "ultimo_ts": eventos[-1].get("ts", ""),
+        "ultimo_hash": eventos[-1].get("hash", ""),
+        "cadena_ok": all(e.get("prev_hash") and e.get("hash") for e in eventos),
+        "eventos_recientes": list(reversed(eventos[-12:])),
+    }
+
+
 def parse_radar(spec_dir):
     """Tech radar por cuadrante: conteo y nombres (spec/tech-radar.yaml)."""
     import re
@@ -654,6 +695,7 @@ def derive_project(project_dir):
         "fases_detalle": fases_detalle,
         "aprendizajes": recent_learnings(spec_dir),
         "sesiones": recent_sessions(spec_dir),
+        "auditoria": audit_summary(spec_dir),
     }
 
 
@@ -1147,6 +1189,27 @@ def _dashboard_blocks(model):
         f'<div class="kpi"><div class="v">{esc(str(v))}</div><div class="k">{esc(k)}</div></div>'
         for k, v in kpis if v is not None) or '<div class="empty">Sin datos aún — el dashboard se llena con los primeros recibos.</div>'
 
+    # Gobernanza (v2.23): contadores re-derivados de spec/audit/events.jsonl.
+    # La promesa "auditable" deja de ser invisible — revocaciones con fuente.
+    audit = model.get("auditoria")
+    if audit:
+        cadena = ('<span style="color:var(--ok)">✓ íntegra</span>' if audit["cadena_ok"]
+                  else '<span style="color:var(--bad)">✗ rota</span>')
+        gob_html = (
+            '<div class="kpis">'
+            f'<div class="kpi"><div class="v">{audit["emits"]}</div><div class="k">Recibos emitidos</div></div>'
+            f'<div class="kpi"><div class="v">{audit["n_revocaciones"]}</div><div class="k">Revocaciones</div></div>'
+            f'<div class="kpi"><div class="v">{audit["total"]}</div><div class="k">Eventos de auditoría</div></div>'
+            f'<div class="kpi"><div class="v">{len(audit["aprobadores"])}</div><div class="k">Aprobadores humanos</div></div>'
+            + "</div>"
+            + f'<div style="font-size:.75rem;color:var(--muted)">Cadena de hash: {cadena}'
+              f' · último evento {esc(audit["ultimo_ts"][:19])}'
+              f' · harness {esc("/".join(audit["versiones"]) or "?")}</div>')
+    else:
+        gob_html = ('<div class="empty">Sin memoria de auditoría — inicializar con '
+                    '<code>init_project.py</code> o <code>audit_log.py init</code>. '
+                    'Sin auditoría no hay gate (v2.22).</div>')
+
     # Histórico completo por fecha (timestamps de recibos): cubre los sprints
     # anteriores al primer sprint-review — los recibos no mienten sobre cuándo pasó algo.
     timeline = model.get("timeline") or []
@@ -1352,6 +1415,7 @@ def _dashboard_blocks(model):
         "sesiones": sess,
         "glosario": f"<table>{gloss}</table>",
         "alerta": alert,
+        "gobernanza": gob_html,
     }
 
 
@@ -1412,14 +1476,65 @@ def emit_portal(model, spec_dir):
         diag_cards = ('<div class="empty">Sin diagramas en <code>spec/diagrams/</code> — '
                       'los diagramas vivos IR aparecerán aquí (skill sdlc-diagrams).</div>')
 
+    # Página de Auditoría (v2.23): 100% derivada de spec/audit/events.jsonl
+    audit = model.get("auditoria")
+    if audit:
+        _ICONO = {"emit": "✅", "revoke": "↩️", "invalidado": "⚠️", "arch_lint": "🛡",
+                  "contract_diff": "📜", "bootstrap": "🚀", "audit_init": "🌱",
+                  "use": "▸", "gate": "🚪"}
+        tl_rows = "".join(
+            f'<tr><td style="white-space:nowrap">{esc(e.get("ts", "")[:19])}</td>'
+            f'<td>{_ICONO.get(e.get("evento", ""), "·")} {esc(e.get("evento", ""))}</td>'
+            f'<td>{esc(e.get("artefacto", "") or e.get("nota", "") or "")}</td>'
+            f'<td>{esc(e.get("gate", ""))}</td><td>{esc(e.get("rol", ""))}</td>'
+            f'<td><b>{esc(e.get("approved_by", ""))}</b></td>'
+            f'<td style="font-size:.7rem;color:var(--muted)">{esc(e.get("harness_version", ""))}</td></tr>'
+            for e in audit["eventos_recientes"])
+        rev_rows = "".join(
+            f'<tr><td><code>{esc(e.get("artefacto", ""))}</code></td>'
+            f'<td>{esc(e.get("reason", ""))}</td>'
+            f'<td>{esc(e.get("relation", ""))}</td>'
+            f'<td>{esc(e.get("ts", "")[:19])}</td>'
+            f'<td><b>{esc(e.get("approved_by", ""))}</b></td></tr>'
+            for e in audit["revocaciones"])
+        cadena = ('<span style="color:var(--ok)">✓ íntegra</span>' if audit["cadena_ok"]
+                  else '<span style="color:var(--bad)">✗ rota — revisar con audit_verify.py</span>')
+        audit_body = ("<h1>🛡 Auditoría</h1>" + sub
+                      + f'<div class="panel"><h2>Salud de la cadena</h2>{blocks["gobernanza"]}'
+                        f'<p style="font-size:.78rem;color:var(--muted)">Verificación estructural: '
+                        f'cadena de hash {cadena} · {audit["total"]} eventos · '
+                        f'hash de cierre <code>{esc(audit["ultimo_hash"][:16])}…</code></p></div>'
+                      + '<h2>Revocaciones e invalidaciones</h2>'
+                      + (f'<div class="panel"><table><tr><th>Artefacto</th><th>Motivo</th>'
+                         f'<th>Relación</th><th>Fecha</th><th>Aprobado por</th></tr>{rev_rows}</table></div>'
+                         if rev_rows else
+                         '<div class="empty">Sin revocaciones registradas — cuando un recibo se revoque, '
+                         'quedará aquí con motivo y aprobador.</div>')
+                      + '<h2>Línea de tiempo de eventos</h2>'
+                      + f'<div class="panel"><table><tr><th>Fecha (UTC)</th><th>Evento</th>'
+                        f'<th>Artefacto / nota</th><th>Gate</th><th>Rol</th><th>Aprobador</th>'
+                        f'<th>Harness</th></tr>{tl_rows}</table></div>')
+    else:
+        audit_body = ("<h1>🛡 Auditoría</h1>" + sub
+                      + '<div class="empty">Este proyecto aún no tiene memoria de auditoría '
+                        '(<code>spec/audit/events.jsonl</code>). Inicialízala con '
+                        '<code>init_project.py</code> o <code>audit_log.py init</code> — '
+                        'sin auditoría no hay gate (v2.22).</div>')
+
     paginas = [
-        # Inicio: de entrada, cómo va el proyecto (pipeline compacto + acumulado)
+        # Inicio: de entrada, cómo va el proyecto (pipeline compacto + acumulado + gobernanza)
         ("inicio.html", f'Inicio — {model["proyecto"]}',
          f'<h1>🏠 {esc(model["proyecto"])}</h1>' + sub + alerta
          + '<div class="panel graph-wrap"><h2>Pipeline — estado actual</h2>'
          + blocks["pipeline"] + "</div>"
-         + "<h2>Acumulado del proyecto</h2>" + blocks["acumulado"],
-         "inicio", "inicio", "home resumen pipeline fase progreso kpis"),
+         + "<h2>Acumulado del proyecto</h2>" + blocks["acumulado"]
+         + '<h2>🛡 Gobernanza</h2><div class="panel">' + blocks["gobernanza"] + "</div>",
+         "inicio", "inicio", "home resumen pipeline fase progreso kpis gobernanza auditoría"),
+        # Auditoría: quién aprobó qué, cuándo, con qué versión del arnés (v2.23)
+        ("gobernanza-auditoria.html", "Auditoría — trazabilidad de decisiones",
+         audit_body,
+         "metrica", "gobernanza",
+         "auditoría eventos revocaciones recibos aprobador cadena hash harness trazabilidad"),
         # Métricas: tendencias + tiempos en dos columnas (densidad sin scroll)
         ("metricas.html", "Métricas del proyecto",
          "<h1>📊 Métricas del proyecto</h1>" + sub

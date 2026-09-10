@@ -7,6 +7,25 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.23.0] - 2026-09-09
+
+**"La auditoría se ve."** El portal del proyecto aprende a mostrar la memoria de auditoría (ADR-004) y el menú deja de clasificar por tipo de archivo para organizarse por pregunta del usuario. Propuesta completa: [docs/propuesta-portal-auditoria-v2.23.md](docs/propuesta-portal-auditoria-v2.23.md).
+
+### Added
+- **Página 🛡 Auditoría** (`paginas/gobernanza-auditoria.html`): 100% derivada de `spec/audit/events.jsonl` — salud de la cadena de hash, tabla de revocaciones con motivo/relación/aprobador, línea de tiempo de eventos (emit/revoke/arch_lint/contract_diff) con aprobador humano y `harness_version` por evento, contadores re-derivados (el self-test los recomputa y los compara). Sin auditoría, la página persiste con empty-state accionable (`init_project.py`) — no desaparece del menú.
+- **Bloque Gobernanza en Inicio**: recibos emitidos, revocaciones, eventos, aprobadores y estado de la cadena — la promesa "auditable" deja de ser invisible.
+- **Categoría 🛡 Gobernanza** en el menú (entre Métricas y Arquitectura): ADRs, threat model, security, tech radar y recibos dejan de clasificarse como "docs" u "operación" — son gobernanza.
+- **Sub-grupos plegables en el menú lateral**: cuando una categoría supera 6 ítems, los grupos del registry (p. ej. `reports/` con 14 sprint reviews) se colapsan en un `<details>` con contador. El menú deja de inundarse.
+- **CHANGELOG e INDEX fuera del menú**: `mdview` los registra con `oculto=True` — buscables (Ctrl+K), sin espacio en el lateral.
+
+### Changed
+- `PORTAL_VERSION` → 1.2.0: el `--check` exige regenerar portales con el shell nuevo (drift visible, como siempre).
+- `infer_categoria()`: gobernanza evalúa primero; la tabla de reglas queda como fuente única de la clasificación.
+
+### Verificación
+- 247 checks de self-test en verde (12 nuevos: 9g/9h cubren contadores derivados, aprobador visible, categoría, grupos plegables, índices ocultos y empty-state).
+- Retrocompatible: proyectos sin `spec/audit/` ven el empty-state; regenerar el portal (`harness_graph.py --proyecto .`) adopta el menú nuevo.
+
 ## [2.22.1] - 2026-09-09
 
 **Hotfix de vendoring** — encontrados al aplicar v2.22.0 sobre un proyecto real (TopBirdsColombia, ver [verificación](docs/verificacion-topbirds-v2.22.md)): los scripts vendorados en `scripts/` plano del proyecto no resolvían recursos hermanos.

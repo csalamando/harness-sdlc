@@ -246,6 +246,26 @@ model_win = json.loads(out) if code == 0 else {}
 check("derive: basename correcto con ruta Windows en recibo (cross-platform)",
       model_win.get("artefactos_por_fase", {}).get("1") == ["vision.md"])
 shutil.rmtree(tmp_rec, ignore_errors=True)
+# Setup v2.23: memoria de auditoría del fixture (derivada — se recrea cada
+# corrida; queda fuera de git como el portal). 3 emits + 1 revoke + 1 arch_lint.
+import audit_log  # noqa: E402
+_spec_fx = os.path.join(FIXTURE, "spec")
+shutil.rmtree(os.path.join(_spec_fx, "audit"), ignore_errors=True)
+audit_log.append_event(_spec_fx, "audit_init", proyecto="proyecto-demo")
+audit_log.append_event(_spec_fx, "bootstrap", proyecto="proyecto-demo",
+                       modo="demo", nota="fixture self-test")
+for _i, (_art, _rol) in enumerate((("spec/vision.md", "product-owner"),
+                                   ("spec/architecture.md", "software-architect"),
+                                   ("spec/qa-report.md", "qa-automation"))):
+    audit_log.append_event(_spec_fx, "emit", artefacto=_art, gate="GATE 1",
+                           rol=_rol, approved_by="Demo Humano",
+                           sha256=f"{_i}" * 64)
+audit_log.append_event(_spec_fx, "revoke", artefacto="spec/architecture.md",
+                       gate="GATE 1", rol="software-architect",
+                       reason="cambio de decisión (demo)", relation="supersedes",
+                       approved_by="Demo Humano", sha256_anterior="1" * 64)
+audit_log.append_event(_spec_fx, "arch_lint", reglas="architecture-rules.yaml",
+                       archivos="3", violaciones="0", resultado="ok")
 code, out = run("harness_graph.py", "--proyecto", FIXTURE)
 check("dashboard del fixture generado", code == 0 and "Dashboard generado" in out,
       out.splitlines()[-1] if code else "")
@@ -455,6 +475,77 @@ finally:
     open(_man, "w", encoding="utf-8").write(_orig)
 code, out = run("portal_lib.py", "--spec", os.path.join(FIXTURE, "spec"), "--check")
 check("portal: manifest restaurado, check OK de nuevo", code == 0, out)
+
+# ── 9g. Portal con auditoría y gobernanza (v2.23) ────────────────────────────
+print("\n[9g] Portal v2.23: gobernanza, auditoría visible, menú orgánico")
+check("portal: categoría Gobernanza existe y ordena tras Métricas",
+      '"gobernanza"' in man and man.index('"gobernanza"') < man.index('"arquitectura"'))
+check("portal: ADRs y threat-model clasifican en Gobernanza (no en docs/operación)",
+      portal_lib.infer_categoria("paginas/docs/adr__ADR-001-x.html") == "gobernanza"
+      and portal_lib.infer_categoria("paginas/docs/threat-model.html") == "gobernanza"
+      and portal_lib.infer_categoria("paginas/docs/tech-radar.html") == "gobernanza")
+pag_audit = os.path.join(PORTAL, "paginas", "gobernanza-auditoria.html")
+check("portal: página Auditoría existe (derivada de spec/audit/events.jsonl)",
+      os.path.isfile(pag_audit))
+if os.path.isfile(pag_audit):
+    aud = open(pag_audit, encoding="utf-8").read()
+    # Los contadores se re-derivan del log: nunca texto quemado
+    _evs = [json.loads(l) for l in
+            open(os.path.join(FIXTURE, "spec", "audit", "events.jsonl"), encoding="utf-8")]
+    _n_emit = sum(1 for e in _evs if e["evento"] == "emit")
+    _n_rev = sum(1 for e in _evs if e["evento"] == "revoke")
+    check("portal: auditoría muestra contadores re-derivados (emits y revocados exactos)",
+          f">{_n_emit}<" in aud and f">{_n_rev}<" in aud,
+          f"emit={_n_emit} revoke={_n_rev}")
+    check("portal: auditoría muestra aprobador humano, artefacto revocado y motivo",
+          "Demo Humano" in aud and "architecture.md" in aud and "cambio de decisión" in aud)
+    check("portal: auditoría estampa harness_version y verificación de cadena",
+          "harness" in aud.lower() and ("cadena" in aud and "íntegra" in aud))
+ini = open(os.path.join(PORTAL, "paginas", "inicio.html"), encoding="utf-8").read()
+check("portal: Inicio gana bloque de gobernanza (revocaciones + cadena de auditoría)",
+      "Gobernanza" in ini and "evocacion" in ini.replace("Revocaciones", "revocaciones")
+      and "auditor" in ini.lower())
+check("portal: shell renderiza sub-grupos plegables (details) por grupo del registry",
+      "menu-grupo" in shell and "<details" in shell or "details" in shell)
+# spec sin auditoría: la página existe con empty-state accionable (no desaparece)
+with tempfile.TemporaryDirectory() as tmp_noaudit:
+    _sp = os.path.join(tmp_noaudit, "spec")
+    os.makedirs(os.path.join(_sp, "receipts"))
+    os.makedirs(os.path.join(_sp, "reports"))
+    code, out = run("harness_graph.py", "--proyecto", tmp_noaudit)
+    _pa = os.path.join(_sp, "portal", "paginas", "gobernanza-auditoria.html")
+    check("portal: sin auditoría la página persiste con empty-state (init_project)",
+          code == 0 and os.path.isfile(_pa)
+          and "init_project" in open(_pa, encoding="utf-8").read(),
+          out.splitlines()[-1] if code else "")
+
+# ── 9h. mdview v2.23: índices ocultos y docs agrupados por directorio ─────────
+print("\n[9h] mdview: CHANGELOG/INDEX fuera del menú, docs agrupados por carpeta")
+with tempfile.TemporaryDirectory() as tmp_mdv:
+    spec = os.path.join(tmp_mdv, "spec")
+    os.makedirs(os.path.join(spec, "adr"))
+    os.makedirs(os.path.join(spec, "reports"))
+    open(os.path.join(spec, "CHANGELOG.md"), "w", encoding="utf-8").write("# Ch\n\n- x")
+    open(os.path.join(spec, "INDEX.md"), "w", encoding="utf-8").write("# Idx\n\n- y")
+    open(os.path.join(spec, "vision.md"), "w", encoding="utf-8").write("# V\n\ntexto")
+    for i in range(7):
+        open(os.path.join(spec, "reports", f"sprint-review-{i:02d}.md"), "w",
+             encoding="utf-8").write(f"# S{i}\n\ncierre.")
+    open(os.path.join(spec, "adr", "ADR-001-db.md"), "w", encoding="utf-8").write("# ADR\n\nok")
+    mdview.build(spec)
+    reg = portal_lib._load_registry(spec)
+    items = {i["ruta"]: i for i in reg["items"]}
+    check("mdview: CHANGELOG e INDEX se registran ocultos (buscables, fuera del menú)",
+          items["paginas/docs/CHANGELOG.html"].get("oculto")
+          and items["paginas/docs/INDEX.html"].get("oculto")
+          and not items["paginas/docs/vision.html"].get("oculto"))
+    check("mdview: cada doc lleva grupo = su directorio (reports, adr)",
+          items["paginas/docs/reports__sprint-review-00.html"].get("grupo") == "reports"
+          and items["paginas/docs/adr__ADR-001-db.html"].get("grupo") == "adr")
+    check("mdview: ADR clasifica en gobernanza, sprint reviews en operación",
+          items["paginas/docs/adr__ADR-001-db.html"]["categoria"] == "gobernanza"
+          and items["paginas/docs/reports__sprint-review-00.html"]["categoria"] == "operacion")
+
 
 # ── 9e. pipeline_diagram: lenguaje visual comun (v2.19); drawio retirado (v2.20) ──
 print("\n[9e] Pipeline CI/CD derivado (--tema, labels) + retiro de drawio")
