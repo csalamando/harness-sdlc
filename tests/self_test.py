@@ -857,6 +857,89 @@ components: {}
     check("N10: cada comparación registra evento contract_diff en la auditoría",
           len(cd_ev) == 1 and cd_ev[0].get("resultado") == "ok", str(cd_ev))
 
+# ── 10f. N4: init_project + gate_verify — arranque y gates deterministas ─────
+print("\n[10f] Arranque determinista: todo proyecto inicia igual y los gates se ejecutan")
+with tempfile.TemporaryDirectory() as tmp:
+    def runi(*args):
+        return run("init_project.py", *args, cwd=tmp)
+
+    code, out = runi("--proyecto", "demo")
+    check("N4: init_project crea el scaffold completo (exit 0)",
+          code == 0 and "PROYECTO INICIALIZADO" in out, out)
+    esperados = ["spec/authority-matrix.yaml", "spec/team-roster.yaml",
+                 "spec/tech-radar.yaml", "spec/audit/events.jsonl",
+                 "spec/ux", "spec/receipts", "spec/memory/entries"]
+    faltan = [e for e in esperados
+              if not os.path.exists(os.path.join(tmp, *e.split("/")))]
+    check("N4: estructura mínima creada (matriz, roster, radar, auditoría, dirs)",
+          not faltan, str(faltan))
+    check("N4: sin --capas no se scaffoldan reglas de arquitectura",
+          not os.path.exists(os.path.join(tmp, "spec", "architecture-rules.yaml")))
+    evs = [_j2.loads(l) for l in
+           open(os.path.join(tmp, "spec", "audit", "events.jsonl"), encoding="utf-8")]
+    check("N4: auditoría nace con génesis + bootstrap (versión y fecha registradas)",
+          [e["evento"] for e in evs] == ["audit_init", "bootstrap"]
+          and all(e.get("harness_version") and e.get("ts") for e in evs), str(evs))
+
+    # idempotente: no pisa archivos existentes
+    mpath = os.path.join(tmp, "spec", "authority-matrix.yaml")
+    open(mpath, "a", encoding="utf-8").write("# custom del proyecto\n")
+    code, out = runi("--proyecto", "demo")
+    check("N4: init es idempotente — no sobrescribe (reporta saltados)",
+          code == 0 and "no se tocó" in out
+          and open(mpath, encoding="utf-8").read().endswith("# custom del proyecto\n"), out)
+    evs2 = [_j2.loads(l) for l in
+            open(os.path.join(tmp, "spec", "audit", "events.jsonl"), encoding="utf-8")]
+    check("N4: re-init no duplica génesis ni bootstrap", len(evs2) == 2, str(len(evs2)))
+
+    # gate_verify: GATE 0 recién inicializado falla listando faltantes
+    def runv(*args):
+        return run("gate_verify.py", "--spec-dir", os.path.join(tmp, "spec"),
+                   "--root", tmp, *args, cwd=tmp)
+    code, out = runv("--gate", "GATE 0")
+    check("N4: gate_verify GATE 0 sin artefactos falla listándolos",
+          code == 1 and "architecture-proposal.md" in out and "NO EXISTE" in out, out)
+    code, out = runv("--gate", "gate2")
+    check("N4: gate_verify rechaza gates fuera del catálogo", code == 1, out)
+
+    # crear los 3 artefactos de GATE 0 + recibos → verde
+    def w3(rel, content):
+        p = os.path.join(tmp, rel)
+        open(p, "w", encoding="utf-8").write(content)
+        return p
+    w3("spec/architecture-proposal.md",
+       "# Propuesta\n## Contexto y objetivo de negocio\nx\n"
+       "### Opción A: mono\n- Diagrama: `spec/diagrams/a.ir.json`\n- ADR-P-001\n"
+       "### Opción B: micro\n- Diagrama: `spec/diagrams/b.ir.json`\n- ADR-P-002\n"
+       "## Comparativa\n## Recomendación\n## Estimación de costos\n")
+    w3("spec/technical-stories.md",
+       "## TS-001\n- Tipo: enabler\n- Origen: NFR\n- Criterio de aceptación: x\n"
+       "- Costo de NO hacerlo: y\n")
+    w3("spec/cost-estimation.md",
+       "CAPEX OPEX TCO\nValidez de precios: 30d\nMínimo viable / Pico\nSupuestos\n")
+    for art, rol in (("architecture-proposal.md", "solution-architect"),
+                     ("technical-stories.md", "solution-architect"),
+                     ("cost-estimation.md", "cloud-pricing")):
+        c, o = run("receipt.py", "--spec-dir", "spec/", "emit",
+                   os.path.join(tmp, "spec", art), "--gate", "GATE 0",
+                   "--role", rol, "--approved-by", "Karlo", cwd=tmp)
+        assert c == 0, o
+    code, out = runv("--gate", "GATE 0")
+    check("N4: GATE 0 completo con recibos vigentes pasa (exit 0)",
+          code == 0 and "3 verificados" in out, out)
+
+    # editar un artefacto aprobado rompe el gate (hash no coincide)
+    open(os.path.join(tmp, "spec", "cost-estimation.md"), "a",
+         encoding="utf-8").write("cambio sin re-aprobar\n")
+    code, out = runv("--gate", "GATE 0")
+    check("N4: artefacto editado tras el recibo rompe gate_verify (exit 1)",
+          code == 1 and "hash no coincide" in out, out)
+
+    # condicional de routing: GATE 1 sin UI excluye los artefactos UX
+    code, out = runv("--gate", "GATE 1", "--sin-ui")
+    check("N4: --sin-ui excluye los artefactos condicionales del routing",
+          "excluidos por routing" in out and "ux-flows" in out, out)
+
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")
 if FAILURES:

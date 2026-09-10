@@ -88,10 +88,10 @@ skills:
   - name: sdlc-orchestrator
     role: orchestrator
     phases: [transversal]
-    owns: [spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/]
+    owns: [spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/, spec/audit/]
     gates: []
     optional-deps: []
-    scripts: [advisor.py, arch_lint.py, arch_signoff.py, audit_log.py, audit_verify.py, authority_check.py, code_intel.py, context_packager.py, contract_diff.py, decision_sizing.py, detect_stack.py, gate_checker.py, harness_doctor.py, harness_graph.py, manifest_check.py, mdview.py, portal_lib.py, receipt.py, skill_metrics.py, spec_diff_impact.py, spec_index.py, sprint_review.py, tdd_order_check.py, traceability_matrix.py]
+    scripts: [advisor.py, arch_lint.py, arch_signoff.py, audit_log.py, audit_verify.py, authority_check.py, code_intel.py, context_packager.py, contract_diff.py, decision_sizing.py, detect_stack.py, gate_checker.py, gate_verify.py, harness_doctor.py, harness_graph.py, init_project.py, manifest_check.py, mdview.py, portal_lib.py, receipt.py, skill_metrics.py, spec_diff_impact.py, spec_index.py, sprint_review.py, tdd_order_check.py, traceability_matrix.py]
   - name: sdlc-product-analyst
     role: product-analyst
     phases: [7]
@@ -123,7 +123,7 @@ skills:
   - name: sdlc-software-architect
     role: software-architect
     phases: [2, 3]
-    owns: [spec/architecture.md, spec/api-contract.yaml, spec/data-model.md, spec/adr/, spec/test-plan.md, spec/tech-debt.md]
+    owns: [spec/architecture.md, spec/api-contract.yaml, spec/data-model.md, spec/adr/, spec/test-plan.md, spec/tech-debt.md, spec/architecture-rules.yaml]
     gates: [architecture, api-contract, test-plan, adr]
     optional-deps: []
     scripts: []

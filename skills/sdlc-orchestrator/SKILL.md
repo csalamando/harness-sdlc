@@ -3,8 +3,8 @@ name: sdlc-orchestrator
 description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pipeline completo de desarrollo: activar roles en orden (PO, BA, UX, Architect, Security, Data, Dev Back, Dev Front, QA, DevOps, Cloud, SRE), elegir la ruta mínima adecuada (routing orgánico), verificar gates con recibos vinculados al contenido, gestionar cambios de spec con relaciones supersedes/conflicts_with, archivar sprints, empaquetar contexto mínimo por rol, consultar el código por símbolos (blast radius, tests candidatos) con code_intel, generar el digest de la spec, medir el aporte y la disciplina de las skills (skill_metrics), emitir el sprint review de cierre, garantizar la aceptación de cambios vía diagramas derivados con recibo y mantener trazabilidad código-test-historia. Dispara ante: ejecutar pipeline SDLC, coordinar equipo de agentes, verificar gates, gestionar cambio de spec, modos full-pipeline/hotfix/change-request, health check del arnés, blast radius, qué tests correr, reducir contexto del agente, sprint review, drift de diagramas, catálogo de roles, PDD, prototipo de pantallas UX."
 harness-role: orchestrator
 harness-phases: "transversal"
-harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/"
-harness-version: "2.21.0"
+harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/, spec/audit/"
+harness-version: "2.22.0"
 ---
 
 
@@ -143,6 +143,8 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `contract_diff.py --old f --new f | --contra-git <contrato>` (v2.21, N10): compatibilidad de contratos OpenAPI — detecta breaking changes (path/operación/parámetro eliminado, parámetro recién requerido, tipos cambiados, propiedades de respuesta eliminadas) y bloquea si la versión mayor (`info.version`) no subió. El gate `api-contract` lo aplica automáticamente contra HEAD cuando hay versión previa en git.
 - `spec_index.py [--spec-dir spec/]`: regenera `spec/INDEX.md`, digest de una página con hash y resumen por artefacto.
 - `manifest_check.py --write|--check|--summary` (v2.9): deriva el manifiesto del arnés (`assets/harness-manifest.yaml`) desde el frontmatter `harness-*` de cada SKILL.md y la lista de scripts en disco. `--check` falla si hay drift o inconsistencias cruzadas (gate declarado inexistente, artefacto `owns` fuera de la matriz de autoridad). El manifiesto es derivado — nunca se edita a mano; `harness_doctor.py` lee de él sus expectativas. `--routing [--sin-ui] [--sin-datos] [--sin-procesos]` (v2.10): imprime el routing por fases derivado del manifiesto, excluyendo las capacidades condicionales que no aplican a la iniciativa.
+- `init_project.py --proyecto <nombre> [--capas] [--sin-ui|--sin-datos|--sin-procesos]` (v2.22, N4): scaffold determinista — todo proyecto arranca con la misma estructura `spec/`, matriz de autoridad, roster, tech radar y memoria de auditoría con génesis + evento `bootstrap`. Idempotente: nunca sobrescribe. `--capas` scaffolda además `architecture-rules.yaml` (activa arch_lint).
+- `gate_verify.py --gate "GATE N" [--sin-ui|--sin-datos|--sin-procesos]` (v2.22, N4): verificación agregada — presencia + tipo (gate_checker) + recibo vigente con hash coincidente de todo lo exigible del gate, auditoría íntegra (audit_verify) y, en GATE 2, arch_lint en verde si hay reglas. Respeta los condicionales del routing. Exit 1 lista cada faltante.
 
 ## Routing desde el manifiesto (v2.10)
 

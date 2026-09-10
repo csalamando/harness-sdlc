@@ -54,6 +54,8 @@ artifacts:
     owner: software-architect   # único que firma ADRs
   - path: spec/test-plan.md
     owner: software-architect
+  - path: spec/architecture-rules.yaml
+    owner: software-architect   # invariantes por capas ejecutables (v2.21, arch_lint.py); cambio = decisión de arquitectura
   - path: spec/tech-debt.md
     owner: software-architect
   - path: spec/threat-model.md
@@ -104,3 +106,5 @@ artifacts:
     owner: orchestrator   # usage.jsonl append-only (activaciones de skills)
   - path: spec/reports/
     owner: orchestrator   # sprint-review-NN.md: snapshot de cierre; requiere gate sprint-review + recibo
+  - path: spec/audit/
+    owner: orchestrator   # memoria de auditoría (v2.21, ADR-004): append-only con cadena de hash; se escribe SOLO por scripts del arnés

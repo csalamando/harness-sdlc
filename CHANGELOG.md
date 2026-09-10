@@ -7,6 +7,22 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.22.0] - 2026-09-09
+
+**"El arranque y el cambio son deterministas."** v2.22 abre con N4: el "mínimo para iniciar un proyecto" deja de ser interpretación y pasa a ser ejecución — mismo scaffold, mismos controles, auditoría desde el primer minuto; y los gates de entrega dejan de leerse en prosa para verificarse agregados con `gate_verify.py`. Nace del [diagnóstico de brechas](docs/diagnostico-brechas-promesa-valor.md) (proyectos que inician cada uno con archivos y controles distintos).
+
+### Added
+- **`init_project.py`**: scaffold determinista e idempotente — estructura `spec/` completa, matriz de autoridad, roster y tech radar copiados desde los assets del arnés, memoria de auditoría inicializada con génesis + evento `bootstrap` (modo y flags del arranque registrados). **Nunca sobrescribe** un archivo existente (lo reporta como saltado). `--capas` scaffolda `architecture-rules.yaml` (activa `arch_lint`); `--sin-ui/--sin-datos/--sin-procesos` ajustan el scaffold al routing.
+- **`gate_verify.py --gate "GATE N"`**: verificación agregada del gate — para cada artefacto exigible: presencia + `gate_checker --tipo` + recibo vigente con hash coincidente; transversal: memoria de auditoría íntegra (sin auditoría no hay gate) y, en GATE 2, `arch_lint` en verde si hay reglas declaradas. Respeta los condicionales del routing (`--sin-ui` etc. excluyen lo que no aplica). Catálogo GATE 0/1/2/2.5/3 y `SPRINT-N` (sprint-review); rechaza gates fuera del catálogo N3. Exit 1 lista cada faltante.
+
+### Changed
+- Matriz de autoridad: nuevas entradas `spec/architecture-rules.yaml` (owner `software-architect`) y `spec/audit/` (owner `orchestrator`) — los artefactos de gobierno de v2.21 quedan bajo la misma autoridad que el resto.
+- `EVENTOS_NUCLEO` de la auditoría incluye `arch_lint` y `contract_diff` (eventos de v2.21 promovidos a núcleo).
+
+### Notas
+- Self-test: sección [10f] — scaffold completo, idempotencia, génesis+bootstrap con versión y fecha, GATE 0 fallando sin artefactos y pasando con recibos, edición post-recibo rompiendo el gate, condicionales de routing. 203 checks.
+- Roadmap v2.22: N2 (hash compuesto de dependencias + `spec_diff_impact --apply`), N5 (`check-vendored`), N7 (pipeline-state derivado), N11 (circuit breaker + blast_radius_check). [Núcleo recomendado](docs/nucleo-recomendado-control.md).
+
 ## [2.21.0] - 2026-09-09
 
 **"La auditoría es un hecho, no una promesa."** v2.21 abre la memoria de auditoría del arnés (ADR-004): una traza append-only de hechos de gobierno, separada de la memoria de trabajo, que hace estructuralmente imposible que el retrabajo desaparezca de las métricas al re-aprobar un artefacto. Nace del [diagnóstico de brechas de la promesa de valor](docs/diagnostico-brechas-promesa-valor.md) (B-01: los recibos revocados se sobrescribían y la métrica de retrabajo estaba condenada a cero).
