@@ -769,11 +769,20 @@ DASH_CSS = """
   .dense2eq { display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; align-items:start; }
   @media (max-width:1150px) { .dense2, .dense2eq { grid-template-columns:1fr; } }
   .diag-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:.8rem; margin-bottom:1.2rem; }
-  .dcard { display:block; background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:10px;
-           padding:.8rem .9rem; text-decoration:none; color:var(--fg); }
-  .dcard:hover { border-color:var(--accent); text-decoration:none; }
-  .dcard b { display:block; font-size:.88rem; color:var(--txt); margin-bottom:.15rem; }
-  .dcard span { font-size:.72rem; color:var(--sub); }
+  .dcard { display:flex; flex-direction:column; background:var(--card-bg); border:1px solid var(--panel-bd);
+           border-radius:10px; padding:.8rem .9rem .55rem; color:var(--fg); }
+  .dcard-head { display:flex; justify-content:space-between; align-items:baseline; gap:.5rem;
+                font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--sub);
+                border-bottom:1px solid var(--panel-bd); padding-bottom:.4rem; margin-bottom:.5rem; }
+  .dcard-head b { color:var(--dcard-c, var(--accent)); font-weight:700; }
+  .dcard-head .n { font-variant-numeric:tabular-nums; color:var(--muted); }
+  .dcard-links { display:flex; flex-direction:column; gap:.3rem; flex:1; }
+  .dcard-links a { font-size:.82rem; color:var(--txt); text-decoration:none; line-height:1.3;
+                   padding:.15rem 0; }
+  .dcard-links a:hover { color:var(--accent); text-decoration:underline; }
+  .dcard-links a::before { content:"🗺 "; font-size:.75rem; }
+  .dcard-foot { margin-top:.6rem; height:4px; border-radius:2px;
+                background:var(--dcard-c, var(--accent)); opacity:.85; }
   .adr-row { cursor:pointer; }
   .adr-row:hover td { background:var(--card-bg); }
   .adr-row.hl td { background:rgba(59,130,246,.16); }
@@ -1631,11 +1640,23 @@ def main_proyecto(a):
     # Derivado, best-effort: nunca bloquea el dashboard.
     try:
         import portal_lib, mdview
+        # Grafo de código (v2.27): si el proyecto tiene índice code_intel,
+        # sus dos vistas (grafo-codigo + grafo-modulos, tema compartido con
+        # el portal) se regeneran ANTES del sweep de diagramas — quedan
+        # garantizadas en la página Arquitectura en esta misma pasada.
+        cg_msg = ""
+        try:
+            import code_graph
+            r = code_graph.emit_views(project_dir)
+            if r:
+                cg_msg = f" · grafo código: {r[2]} archivos, {r[3]} aristas"
+        except Exception as e:
+            cg_msg = f" · grafo código OMITIDO ({e})"
         emit_portal(model, spec_dir)
         n_docs = mdview.build(spec_dir)
         n_items = portal_lib.rebuild_index(spec_dir, proyecto=model["proyecto"],
                                            harness_version=model.get("harness_version", "?"))
-        portal_msg = f" · portal: {n_items} páginas ({n_docs} docs)"
+        portal_msg = f" · portal: {n_items} páginas ({n_docs} docs){cg_msg}"
     except Exception as e:
         portal_msg = f" · portal OMITIDO ({e})"
     print(f"Dashboard generado: {out} (redirect → portal/index.html)")
