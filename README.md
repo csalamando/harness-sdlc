@@ -1,12 +1,27 @@
-# Arnés SDLC — SDD + TDD + RDD con gobernanza de decisiones
+# 🛡 Arnés SDLC — Tu agente de IA, convertido en un equipo de desarrollo gobernado
 
-[![self-test](https://github.com/csalamando/harness-sdlc/actions/workflows/self-test.yml/badge.svg)](https://github.com/csalamando/harness-sdlc/actions/workflows/self-test.yml)
-[![GitHub release](https://img.shields.io/github/v/release/csalamando/harness-sdlc)](https://github.com/csalamando/harness-sdlc/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[](https://github.com/csalamando/harness-sdlc/actions/workflows/self-test.yml)[](https://github.com/csalamando/harness-sdlc/releases)[](LICENSE)
 
-**Un arnés para agentes de IA** que gobierna el ciclo de vida completo del software (**SDLC**) combinando **Spec-Driven Development (SDD)**, **Test-Driven Development (TDD)** y **Receipt-Driven Development (RDD)**: la spec versionada manda (SDD), los tests preceden al código (TDD) y toda aprobación es un recibo criptográfico verificable, no la narración del agente (RDD). Está implementado como un conjunto de **21 skills** que siguen el estándar abierto **Agent Skills** (SKILL.md + assets/references/scripts) — no es un framework de agentes propio, sino la capa de gobierno que convierte a cualquier agente compatible en un equipo de desarrollo con roles, gates y evidencia auditable. Ejecutable en Kimi, Claude Code, Antigravity, Codex, Cursor, Copilot, VS Code, Open WebUI y LiteLLM.
+> **La spec manda. Los tests primero. Y cada aprobación es un recibo criptográfico, no una promesa.**
 
-> **Principio rector:** la fuente de verdad es `spec/` versionada en Git. Si una decisión, aprobación o aprendizaje no está versionada, no existe.
+Los agentes de IA ya escriben código. El problema es otro: **¿cómo gobiernas lo que hacen?** Sin spec versionada, sin tests primero y sin evidencia de las aprobaciones, un agente es un junior brillante con amnesia: narra lo que hizo, olvida lo que aprendió y nadie puede auditar sus decisiones.
+
+El **Arnés SDLC** resuelve exactamente eso. Es una capa de gobierno — **21 skills** en el estándar abierto **Agent Skills** — que convierte a cualquier agente compatible en un equipo de desarrollo completo: roles especializados, gates que bloquean, recibos SHA-256 que se invalidan solos, memoria persistente entre sesiones y un portal web del proyecto que se deriva solo de la evidencia.
+
+**No es otro framework de agentes. Es la disciplina que le faltaba al tuyo.** Funciona en Kimi, Claude Code, Antigravity, Codex, Cursor, Copilot, VS Code, Open WebUI y LiteLLM.
+
+---
+
+## 🎯 El valor, en una frase
+
+| Sin arnés | Con arnés |
+|---|---|
+| El agente *dice* que la spec está aprobada | Un recibo SHA-256 vinculado al contenido exacto lo **prueba** — si cambia un byte, la aprobación se invalida sola |
+| El código aparece y luego se piensa la spec | **Sin spec aprobada no hay código** (SDD) — GATE 1 bloquea, literalmente |
+| "Los tests pasan" | Los tests **preceden** al código (TDD) y el orden red→green se verifica en `git log` |
+| Cada sesión empieza de cero | Memoria Git-nativa en 3 scopes (proyecto / usuario / organización) con políticas obligatorias y desviaciones con aprobación humana |
+| Decisiones técnicas por intuición | Proceso de **8 pasos con scorecard cuantitativa**, Advice Process y firma del Arquitecto — proporcional al riesgo |
+| El estado del proyecto se pregunta en reuniones | Un **portal web vivo** lo muestra todo, derivado 100% de recibos + spec, regenerado por CI |
 
 ---
 
@@ -18,120 +33,34 @@
 # 2. Descomprime cada <nombre>.skill en el directorio de skills de tu agente:
 #    Kimi → Skills · Claude Code → .claude/skills/ · Cursor → .cursor/skills/ · Codex → ~/.codex/skills/
 ```
-3. En tu proyecto, dile al agente: **"usa el orquestador SDLC para <tu iniciativa>"**
+3. En tu proyecto, dile al agente: **"usa el orquestador SDLC para \<tu iniciativa>"**
 
 Eso es todo — el orquestador elige la ruta mínima, activa los roles y exige los gates. Guía completa por agente/IDE en [docs/guia-de-uso-arnes-sdlc.md](docs/guia-de-uso-arnes-sdlc.md).
 
 ---
 
-## Demo: el portal del proyecto
+## 🖥 Demo: el portal del proyecto
 
-`harness_graph.py --proyecto .` genera `spec/portal/` — un portal web navegable, buscable (Ctrl+K) y con tema claro/oscuro, derivado 100% de recibos + spec (cero narración manual). Así se ve en un proyecto real:
+Un comando — `harness_graph.py --proyecto .` — genera `spec/portal/`: un portal web navegable, buscable (Ctrl+K) y con tema claro/oscuro, derivado **100% de recibos + spec** (cero narración manual). Así se ve en un proyecto real:
 
 | Inicio (pipeline + acumulado) | Métricas (tendencias + tiempos) | Arquitectura (ADRs ↔ Tech Radar) |
 |---|---|---|
-| ![Portal — Inicio](demos/portal2-inicio.png) | ![Portal — Métricas](demos/portal2-metricas.png) | ![Portal — Arquitectura](demos/portal2-arquitectura.png) |
+| ![Inicio del portal](demos/portal2-inicio.png) | ![Métricas del portal](demos/portal2-metricas.png) | ![Arquitectura del portal](demos/portal2-arquitectura.png) |
 
-Diagrama vivo interactivo (IR): tema claro/oscuro, zoom, badges de ubicación de despliegue (☁ nube / ⌂ on-premise / ◈ otro), insights y foco por URL:
+Diagramas vivos interactivos (IR): tema claro/oscuro, zoom, badges de ubicación de despliegue (☁ nube / ⌂ on-premise / ◈ otro), insights y foco compartible por URL:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="demos/arch-diagrams-oscuro.png">
   <img src="demos/arch-diagrams-claro.png" alt="Diagrama IR — tema claro y oscuro">
 </picture>
 
-Sprint review versionado (gate `sprint-review` bloqueante en CI):
+Y cada sprint cierra con un **sprint review versionado** (gate bloqueante en CI — un sprint sin aprendizaje registrado no pasa):
 
 ![Sprint review](demos/sprint-review-report.png)
 
 ---
 
-## Tabla de contenidos
-
-[Demo: el portal del proyecto](#demo-el-portal-del-proyecto) ·
-1. [Visión general](#1-visión-general)
-2. [Las 21 skills](#2-las-21-skills)
-3. [El pipeline y los gates](#3-el-pipeline-y-los-gates)
-4. [Capacidades de gobierno](#4-capacidades-de-gobierno)
-   - [Routing orgánico](#4a-routing-orgánico)
-   - [Autoridad por rol](#4b-autoridad-por-rol-quién-puede-emitir-qué)
-   - [Contexto mínimo e inteligencia de código](#4c-contexto-mínimo-e-inteligencia-de-código-v23)
-   - [Telemetría de skills y Sprint Review](#4d-telemetría-de-skills-y-sprint-review-v24--v25)
-   - [Diagramas como mecanismo de aceptación](#4e-diagramas-como-mecanismo-de-aceptación-de-cambios-v26)
-   - [Manifiesto dinámico, grafo y dashboard vivo](#4f-manifiesto-dinámico-del-arnés-v29)
-   - [La visibilidad se gobierna, no se pide](#4g-la-visibilidad-se-gobierna-no-se-pide-v215)
-   - [El portal del proyecto](#4h-el-portal-del-proyecto-v220)
-5. [Receipts (RDD): confiar en evidencia, no en narración](#5-receipts-rdd-confiar-en-evidencia-no-en-narración)
-6. [El sistema de memoria](#6-el-sistema-de-memoria)
-7. [Gobernanza de decisiones (v2.0)](#7-gobernanza-de-decisiones-v20)
-8. [Gestión de cambios de spec](#8-gestión-de-cambios-de-spec)
-9. [Herramientas compartidas y propias](#9-herramientas-compartidas-y-propias)
-10. [Créditos y referencias](#10-créditos-y-referencias)
-
----
-
-## 1. Visión general
-
-El arnés convierte a un agente de propósito general en un **equipo de desarrollo completo con roles especializados**, donde cada rol:
-
-- tiene **entradas y salidas declaradas** (artefactos en `spec/`),
-- cumple un **checklist de salida (DoD)** verificable por script,
-- produce **evidencia auditable** (recibos criptográficos, memorias, trazabilidad),
-- y no puede avanzar sin que los **gates** estén en verde.
-
-Las tres disciplinas que combina, y por qué ninguna alcanza sola:
-
-| Disciplina | Qué garantiza | Qué NO garantiza sola |
-|---|---|---|
-| **SDD** (Spec-Driven) | Todo nace de una spec versionada; sin spec no hay código | Que la spec aprobada siga siendo la que se ejecuta |
-| **TDD** (Test-Driven) | Los tests preceden al código; todo bug vuelve con su test | Que los tests que "pasaron" lo hayan hecho de verdad |
-| **RDD** (Receipt-Driven) | Toda aprobación es un recibo SHA-256 vinculado al contenido exacto; si cambia un byte, se invalida solo | — es la capa que hace verificables a las otras dos |
-
-Tres ideas lo diferencian de un pipeline de prompts:
-
-1. **RDD (Receipt-Driven Development):** las aprobaciones no son narración del agente ("ya está revisado"), sino recibos SHA-256 vinculados al contenido exacto aprobado. Si el artefacto cambia un byte, el recibo se invalida solo.
-2. **Memoria persistente con gobierno:** lo aprendido no muere al cerrar la sesión. Vive en Markdown versionado con tres scopes (proyecto, usuario, organización) y un flujo de políticas y desviaciones con aprobación humana.
-3. **Gobernanza de decisiones:** las decisiones técnicas significativas siguen un proceso riguroso de 8 pasos con scorecard cuantitativa, advice process y firma del Arquitecto — proporcional al riesgo (Risk Tiers).
-
----
-
-## 2. Las 21 skills
-
-Ordenadas por fase del pipeline (las transversales al final):
-
-<details>
-<summary><b>Ver la tabla completa de las 21 skills</b> (clic para desplegar)</summary>
-
-| Skill | Rol | Fase |
-|---|---|---|
-| `sdlc-devops-engineer` | Setup + CI/CD + IaC + rollback | -1, 6 |
-| `sdlc-product-owner` | Visión, épicas, backlog priorizado (el QUÉ y el CUÁNDO) | 0 |
-| `sdlc-solution-architect` | Arquitecto de la iniciativa: apoya a PO/BA con historias, escribe historias técnicas, propuesta de arquitectura con opciones (GATE 0) | 0-2 |
-| `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure — caso de negocio (GATE 0) y estimación fina (Fase 6) | 0, 6 |
-| `sdlc-business-analyst` | Historias de usuario + Gherkin + reglas de negocio + catálogo de roles gobernado + PDD (AS-IS, condicional a automatización de procesos) | 1 |
-| `sdlc-ux-designer` | Flujos UX + design system + tokens + prototipo de pantallas gobernado (Penpot, condicional a UI) | 2 |
-| `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + test-plan. **Decision Owner técnico (el CÓMO)** | 2-3 |
-| `sdlc-decision-engine` | Motor de decisiones: 8 pasos, scorecard, Decision Packages | 2 |
-| `sdlc-enterprise-architect` | Tech Radar, Principios, excepciones, Paved Roads | 2 (Tier 1) |
-| `sdlc-security-engineer` | Threat modeling + SAST/DAST (GATE 2.5) | 2, 4, 5 |
-| `sdlc-data-engineer` | Migraciones + gobierno de datos | 2 |
-| `sdlc-backend-dev-tdd` | Backend con TDD estricto | 4 |
-| `sdlc-frontend-dev-tdd` | Frontend con TDD + mocks desde OpenAPI | 4 |
-| `sdlc-qa-automation` | E2E desde Gherkin + regresión + carga (GATE 2) | 5 |
-| `sdlc-cloud-engineer` | Infraestructura cloud + observabilidad | 6 |
-| `sdlc-sre` | SLOs + incidentes + postmortems | 7 |
-| `sdlc-product-analyst` | Medición de impacto → realimenta backlog | 7 |
-| `sdlc-technical-writer` | Documentación doc-as-code (Wiki / Pages / Confluence) | 4-6 |
-| `sdlc-orchestrator` | Orquestador del pipeline + 18 herramientas CLI | Transversal |
-| `sdlc-memory` | Memoria persistente con scopes y gobierno | Transversal |
-| `sdlc-diagrams` | Diagramas interactivos HTML vía IR (`diagram_ir.py`), Mermaid (doc-as-code) y pipeline CI/CD derivado de workflows (`pipeline_diagram.py`), con auto-registro en el portal | Transversal |
-
-</details>
-
-Separación de autoridad: **el PO nunca aprueba decisiones técnicas; el Arquitecto de Software es el único rol que firma ADRs.**
-
----
-
-## 3. El pipeline y los gates
+## 🔄 El proceso: fases, gates y artefactos
 
 ```mermaid
 flowchart LR
@@ -161,165 +90,88 @@ flowchart LR
     style STOP1 fill:#f8d7da,stroke:#dc3545
 ```
 
-Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**.
+Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**. Sin excepciones.
 
-| Gate | Qué exige |
-|---|---|
-| **GATE 0** (humano) | Aprobación de la iniciativa: propuesta de arquitectura con ≥2 opciones + recomendación justificada (scorecard con costo como criterio), historias técnicas registradas y estimación **CAPEX/OPEX/TCO vigente** (AWS/Azure, 3 escenarios). Sin caso de negocio aprobado, no hay pipeline de construcción. |
-| **GATE 1** (humano) | Spec consolidada aprobada + sin `conflicts_with` de memoria pendientes + `policy check` en verde (toda política org mandatory attestada o con desviación aprobada vigente) + **cada ADR Tier 1-2 con 8 pasos validados, Advice Log registrado, Tech Radar cruzado y firma vigente** + **si la iniciativa tiene UI: inventario de pantallas con recibo vigente (sin prototipo aprobado, el Dev Front no implementa)**. Sin esto, cero código. |
-| **GATE 2** | Todas las historias verificadas E2E. Bug crítico → se devuelve al dev **con el test que lo reproduce** (una corrección acotada; si falla, escala a humano). |
-| **GATE 2.5** | Ninguna vulnerabilidad crítica/alta abierta. |
-| **GATE 3** | Staging validado + rollback probado + diagramas derivados regenerados desde su fuente (IaC/workflows) con recibo vigente. |
+### Qué exige cada gate
 
-Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**.
+| Gate | Tipo | Qué exige |
+|---|---|---|
+| **GATE 0** | 🧑 humano | Iniciativa aprobada: propuesta de arquitectura con ≥2 opciones + recomendación justificada (scorecard con costo), historias técnicas y estimación **CAPEX/OPEX/TCO vigente** (AWS/Azure, 3 escenarios). Sin caso de negocio, no hay pipeline. |
+| **GATE 1** | 🧑 humano | Spec consolidada + sin conflictos de memoria pendientes + políticas org attestadas + **cada ADR Tier 1-2 con 8 pasos validados, Advice Log, Tech Radar cruzado y firma vigente** + **prototipo de pantallas aprobado si hay UI**. Sin esto, cero código. |
+| **GATE 2** | 🤖 automático | Todas las historias verificadas E2E. Bug crítico → se devuelve al dev **con el test que lo reproduce**. |
+| **GATE 2.5** | 🤖 automático | Ninguna vulnerabilidad crítica/alta abierta. |
+| **GATE 3** | 🧑 humano | Staging validado + rollback probado + diagramas derivados regenerados desde su fuente con recibo vigente. |
 
----
+### Qué se genera en cada fase
 
-## 4. Capacidades de gobierno
+Cada artefacto vive en `spec/` versionada en Git y tiene **un único rol dueño** (matriz de autoridad) y un **recibo** que lo certifica:
 
-Nueve mecanismos transversales mantienen al agente dentro de los carriles, en cualquier ruta y fase.
+| Fase | Rol activo | Artefactos generados (salida gobernada) |
+|---|---|---|
+| **-1 · Setup** | `sdlc-devops-engineer` | CI/CD + IaC base, detección de stack (`detect_stack.py`) — sin test runner, TDD queda en pausa explícita |
+| **0 · Discovery** | `sdlc-product-owner` · `sdlc-solution-architect` · `sdlc-cloud-pricing` | Visión y épicas · **propuesta de arquitectura con opciones** · historias técnicas (enablers, deuda, spikes, NFRs) · **estimación CAPEX/OPEX/TCO** por escenario → **GATE 0** |
+| **1 · Análisis** | `sdlc-business-analyst` | Historias de usuario + Gherkin · reglas de negocio · **catálogo de roles gobernado** (`roles.md`) · PDD AS-IS firmado por el Process Owner (si automatiza procesos) |
+| **2 · Diseño** | `sdlc-ux-designer` · `sdlc-software-architect` · `sdlc-security-engineer` · `sdlc-data-engineer` · `sdlc-decision-engine` · `sdlc-enterprise-architect` | Prototipo de pantallas gobernado (Penpot, `spec/ux/`) + design tokens · `architecture.md` + **diagramas IR** · contratos **OpenAPI** · modelo de datos · **ADRs firmados** (8 pasos + scorecard + Advice Log) · threat model · test-plan |
+| **3 · Consolidación** | `sdlc-orchestrator` | Spec maestra consolidada + trazabilidad → **GATE 1** |
+| **4 · Build** | `sdlc-backend-dev-tdd` · `sdlc-frontend-dev-tdd` · `sdlc-technical-writer` | Código backend y frontend con **TDD estricto** (commits `test(red)` antes de `feat(green)`, verificables en `git log`) · documentación doc-as-code |
+| **5 · QA** | `sdlc-qa-automation` · `sdlc-security-engineer` | E2E desde Gherkin · regresión · carga · reporte QA → **GATE 2 + GATE 2.5** |
+| **6 · Infraestructura** | `sdlc-devops-engineer` · `sdlc-cloud-engineer` · `sdlc-cloud-pricing` | Staging y producción · observabilidad (logs, métricas, trazas, alertas) · estimación fina de costos · diagramas de despliegue derivados → **GATE 3** |
+| **7 · Operación** | `sdlc-sre` · `sdlc-product-analyst` | SLOs · postmortems · **impact-report** de negocio que realimenta el backlog |
+| **8 · Archivo** | `sdlc-orchestrator` · `sdlc-memory` | Merge de delta-specs · **sprint review versionado** (gate propio) · `METRICS.md` · memorias `learning` · portal regenerado · sesión cerrada con handoff |
+| **Transversal** | `sdlc-orchestrator` · `sdlc-memory` · `sdlc-diagrams` | Recibos SHA-256 · auditoría append-only con cadena de hash · memoria en 3 scopes · portal del proyecto · trazabilidad HU→test→código |
 
-### 4a. Routing orgánico
-
-No todo trabajo merece el pipeline completo. El orquestador elige la **ruta mínima** antes de empezar:
-
-| Situación | Ruta |
-|---|---|
-| Cambio mecánico ya entendido, 1-3 archivos, spec intacta | **Directo**: dev con TDD + gate 2 |
-| Se necesita explorar 4+ archivos para entender | **Exploración delegada**: sub-tarea acotada de lectura, luego decidir con evidencia |
-| Bug en producción | **Hotfix**: QA reproduce con test → dev corrige (TDD) → gates 2 y 3 |
-| Iniciativa o evolución de producto nueva | **Discovery**: PO + BA + Solution Architect + Cloud Pricing → propuesta con opciones, historias técnicas y CAPEX/OPEX → GATE 0 |
-| Ambigüedad sustancial | **Full-pipeline**: proponer al usuario; iniciar solo tras aprobación |
-| Cambio de alcance aprobado | **Change-request**: ver §8 |
-
-Los gates de entrega (2, 2.5, 3) aplican **siempre**, sin importar la ruta.
-
-### 4b. Autoridad por rol: quién puede emitir qué
-
-Un dev puede *opinar* sobre un ADR (de hecho debe: Paso 5 del Advice Process), pero no puede *emitirlo*. La **matriz de autoridad** (`spec/authority-matrix.yaml`) declara un único rol dueño por artefacto, y el arnés la hace cumplir en tres niveles:
-
-1. **Recibos con rol:** `receipt.py emit --role <rol>` — si el artefacto tiene owner declarado y el rol no coincide, el recibo se rechaza y el gate no reconoce la aprobación. Un ADR "aprobado" por un dev simplemente no existe para GATE 1.
-2. **CI:** `authority_check.py` valida en cada PR que quien toca `spec/` tiene el rol dueño (mapeo usuario→rol en `spec/team-roster.yaml`).
-3. **Git (frontera dura):** plantilla `CODEOWNERS` + branch protection — un PR que toca `spec/adr/` no se mergea sin el Arquitecto. La especificación completa para llevar esto a GitHub nativo (teams ↔ roles, status checks requeridos, environments como aprobación de GATE 3, bypass de emergencia gobernado) está en **[docs/gobernanza-github.md](docs/gobernanza-github.md)** (v2.14).
-
-Cambiar la matriz es un cambio de gobierno: requiere PR y queda auditado en el historial.
-
-**Roles gobernados (v2.7):** el "Como <rol>" de las historias no es una palabra libre — referencia `spec/roles.md`, el catálogo del BA donde cada rol es nombre + acciones que habilita + contexto/condiciones + reglas que lo restringen. El gate valida que los ROL-xx citados existan. Para iniciativas que automatizan o rediseñan procesos, el PDD (`spec/process-definition.md`) captura el AS-IS con excepciones, volúmenes y SLA, y exige firma del Process Owner (recibo) antes del diseño TO-BE.
-
-**Prototipos de pantalla gobernados (v2.8):** las pantallas con sus flujos de interacción son el contrato visual del sprint — negocio las ve y las navega *antes* de escribir código, sin sorpresas en la demo. Estándar del arnés: **Penpot** (open-source, formato web abierto, self-hostable, MCP oficial): el archivo de diseño se versiona en `spec/ux/` junto al inventario `PANT-xx` y los renders, con recibo del `ux-designer`. GATE 1 exige el inventario aprobado para las pantallas del sprint; sin prototipo aprobado, el Dev Front no implementa. Un cambio de HU/flujo/rol revoca el recibo y las pantallas se re-aprueban. Si la organización usa Figma, el artefacto gobernado sigue siendo el export versionado — nunca la nube.
-
-### 4c. Contexto mínimo e inteligencia de código (v2.3)
-
-El contexto del agente es un recurso gobernado. Tres mecanismos para que el agente **lea solo lo que necesita**:
-
-1. **`spec_index.py` → `spec/INDEX.md`**: digest de una página con hash y resumen de cada artefacto; el agente se orienta con un archivo y abre solo el que necesita (verificando recibo).
-2. **`code_intel.py`**: motor de inteligencia de código propio (inspirado en [Gortex](https://github.com/zzet/gortex), reimplementado a medida): grafo de símbolos en SQLite derivable, Python stdlib puro, **sin daemon**. `context` devuelve el cuerpo exacto de un símbolo o el esqueleto del archivo en vez de leerlo completo; `impact` calcula el blast radius antes de editar; `tests` lista los tests candidatos (evidencia para GATE 2); `search` busca en firmas y docstrings (FTS5). Extracción `ast` para Python y patrones para 15 lenguajes más; reindex incremental por SHA-256 (~ms sin cambios). Si el índice no existe, el arnés degrada a lectura normal — la capacidad es opcional, nunca bloquea.
-3. **`mem.py search --brief`**: una línea por memoria; se abre con `get` solo la relevante.
-
-En change-request, el impacto total = `spec_diff_impact.py` (spec) + `code_intel.py impact` (código).
-
-### 4d. Telemetría de skills y Sprint Review (v2.4 · v2.5)
-
-La disciplina no se narra, se mide — y **sin meter telemetría en el contexto del agente** (la escritura es un flag en comandos que ya existen; la lectura es bajo demanda):
-
-1. **`skill_metrics.py use --skill <rol> --fase <N>`**: el orquestador registra cada activación (append-only en `spec/metrics/usage.jsonl`).
-2. **`receipt.py emit --tokens-src reportado|estimado --attempts K`**: tokens por artefacto — exactos si la plataforma del agente los expone, estimados por chars/4 si no (nunca depende de que el agente "se acuerde").
-3. **`skill_metrics.py report` → `spec/METRICS.md`**: tres vistas — **aporte** (artefactos, % de gates al primer intento, tokens por skill), **cobertura** (detector de *freestyle*: un rol con artefactos pero sin activación registrada está trabajando por fuera de la skill; una activación sin artefactos es skill de adorno) y **señales** accionables para mejorar skills.
-4. **`sprint_review.py --sprint <N>` (v2.5) → `spec/reports/sprint-review-NN.md`**: al cerrar cada sprint, snapshot versionado con avance del proyecto, desempeño del arnés, lead times por gate, **tendencia vs el sprint anterior** y aprendizajes — la visibilidad de largo plazo para ajustar basándose en datos. Desde **v2.15** el review es un **artefacto gobernado con gate propio** (`--tipo sprint-review`): exige las secciones completas y al menos una memoria `learning` del periodo; ver §4g.
-
-En Fase 8 el orquestador genera `METRICS.md` y guarda las señales como memoria `learning` — la mejora de las skills se retroalimenta sola. `METRICS.md` nunca se inyecta en paquetes de contexto.
-
-### 4e. Diagramas como mecanismo de aceptación de cambios (v2.6)
-
-Los diagramas no son solo documentación: son un **punto de control**. Ningún diagrama cuenta sin recibo de aprobación del rol dueño sobre su contenido:
-
-1. **Derivados de fuente** (nunca se editan a mano): `pipeline_diagram.py` genera el diagrama del CI/CD desde `.github/workflows/` y valida `needs:` rotos y ciclos. La regeneración **propone** el cambio → el diff en Git se revisa → el rol dueño lo **acepta** con `receipt.py emit --role devops-engineer`. Modo `check` = drift detection en CI y Fase 8.
-2. **Interactivos HTML** (`diagram_ir.py`): desde v2.20 los diagramas de arquitectura se generan como HTML interactivo (IR) con tema claro/oscuro y zoom, y se auto-registran en el portal del proyecto (`spec/portal/`).
-3. **Render headless** (`diagram_render.py`): Mermaid → SVG/PNG vía mmdc (renderiza bloques Mermaid dentro de Markdown — doc-as-code). Motores opcionales: sin ellos, el fuente versionado sigue siendo el entregable.
-
-### 4f. Manifiesto dinámico del arnés (v2.9)
-
-El arnés deja de describirse a sí mismo con prosa y números quemados. La fuente de verdad de cada skill vive en **el frontmatter de su propio SKILL.md** (campos `harness-*`: rol, fases, artefactos que posee, gates, condicionalidad, dependencias opcionales), y el **manifiesto es un artefacto derivado**, nunca editado a mano:
-
-```bash
-python3 manifest_check.py --summary   # vista legible: 21 skills, roles, fases, gates, owns, scripts
-python3 manifest_check.py --check     # exit 1 si hay drift o inconsistencias (corre en self-test y CI)
-python3 manifest_check.py --routing --sin-ui --sin-datos   # routing por fases derivado (v2.10)
-```
-
-`manifest_check.py --check` cruza las tres fuentes y falla si divergen: gates declarados vs los que `gate_checker.py` soporta, artefactos `owns` vs la matriz de autoridad, scripts declarados vs disco. `harness_doctor.py` lee sus expectativas del manifiesto — **añadir una skill o un script ya no requiere actualizar listas quemadas en tres archivos** (la clase de bug que motivó v2.8.1 queda cerrada estructuralmente).
-
-**Routing derivado (v2.10):** al iniciar una iniciativa, el orquestador ejecuta `--routing` con los flags de condición (`--sin-ui`, `--sin-datos`, `--sin-procesos`) y obtiene los roles por fase que aplican — las capacidades condicionales que no aplican quedan **auto-excluidas** (sin UI no hay prototipo `spec/ux/`; sin proceso que automatizar no hay PDD; sin datos significativos `sdlc-data-engineer` no participa). Añadir una skill al routing = su frontmatter, sin tocar al orquestador.
-
-*Inspiración: "Everything is a plugin" / capability seams de DeepSeek Harness (§10) — traducida a nuestro estándar Markdown agnóstico de agente. Las capas con rank (proyecto > usuario > bundled) se evaluaron y **se difirieron** ([ADR-001](docs/decisions/ADR-001-skills-por-capas-rank.md)): requieren madurez alta en estas herramientas y preferimos centralizar esas decisiones para que los equipos maduren sin asumir riesgos.*
-
-**Grafo interactivo del pipeline (v2.11):** el mismo manifiesto alimenta un mapa visual navegable del arnés — las 6 macro-fases como nodos, las 21 skills agrupadas por fase, y los loops de realimentación (sprints, TDD, hotfix, delta-spec, impact-report → backlog). También es **derivado, nunca editado a mano**:
-
-```bash
-python3 harness_graph.py --write   # regenera docs/graph.html (self-contained, sin dependencias)
-python3 harness_graph.py --check   # exit 1 si el grafo quedó atrás del manifiesto (self-test y CI)
-```
-
-Si añades una skill o cambias sus fases en el frontmatter, el grafo se regenera solo — el `--check` falla en CI si alguien olvida regenerarlo. Abre [`docs/graph.html`](docs/graph.html) en el navegador para explorarlo.
-
-**Dashboard vivo del proyecto (v2.12, [ADR-002](docs/decisions/ADR-002-dashboard-html-proyecto.md)):** el mismo motor, alimentado del estado real de tu proyecto — **un solo `spec/dashboard.html`, siempre "el ahora"** (nunca un HTML por sprint; la historia la siguen guardando los `sprint-review-NN.md`, que el dashboard lee para las tendencias):
-
-```bash
-python3 harness_graph.py --proyecto .          # genera/actualiza spec/dashboard.html
-python3 harness_graph.py --proyecto . --check  # exit 1 si quedó atrás (CI)
-```
-
-Muestra el pipeline con los gates pintados según sus recibos (vigente / invalidado / pendiente), la fase actual con banda de progreso, los loops de feedback con **recorridos históricos ×N** (y resaltados cuando están activos), los artefactos generados por fase, el panel de **decisiones gobernadas** (ADRs con estado y Risk Tier + Tech Radar por cuadrante), contadores acumulados (sprints, releases, HU cerradas, gates al primer intento), tendencias por sprint con **alertas automáticas** cuando un lead time empeora, y las últimas memorias `learning`. Cero narración manual: todo deriva de `receipts/` + `spec/` + `spec/reports/` + `spec/adr/`. **El dashboard es visualización, no evidencia** — la evidencia siguen siendo los recibos; por eso un dashboard desactualizado alerta en CI pero no bloquea gates. Desde **v2.15** el workflow de referencia lo **regenera y auto-commitea en cada push a main** cuando hay drift real (§4g): la frescura ya no depende de que alguien lo pida.
-
-### 4g. La visibilidad se gobierna, no se pide (v2.15)
-
-La lección de fondo: mientras métricas, sprint review y dashboard dependían de que el agente *recordara* generarlos, la visibilidad era opcional en la práctica. v2.15 sube cada pieza de telemetría a la capa más fuerte posible — convención → gate → CI → git:
-
-| Pieza | Mecanismo v2.15 |
-|---|---|
-| **Sprint review** | Gate `sprint-review` **bloqueante** en CI sobre `spec/reports/*.md`: exige secciones completas **y una memoria `learning` del periodo** — un sprint sin aprendizaje registrado no pasa |
-| **Cierre de sprint** | `sprint_review.py` regenera `spec/METRICS.md` siempre, **autogenera la memoria learning** en sprints limpios e imprime los comandos de cierre (gate + recibo + dashboard) |
-| **Dashboard** | En PR: warning de drift (`--check`). En push a main: **auto-commit del dashboard regenerado** (solo con drift real; `concurrency` dedicada evita carreras del bot) |
-| **Freestyle** | Warning en CI si el PR toca código sin activaciones registradas de roles dev en `usage.jsonl` |
-| **TDD** | `tdd_order_check.py` verifica en `git log` que `test(HU-x): red` precede a `feat(HU-x): green` — el orden de commits es la evidencia observable del TDD intra-sesión |
-| **Tokens** | Review y dashboard separan **medidos** (reportados) de **estimados** (chars/4) con % de cobertura y alerta si difieren >25% |
-| **Propiedad** | `spec/METRICS.md`, `spec/metrics/`, `spec/reports/`, `spec/dashboard.html` con dueño en la matriz de autoridad y CODEOWNERS |
-
-Qué queda **deliberadamente fuera** (prometerlo sería mentira): tokens exactos por sesión (solo la plataforma los conoce), TDD intra-sesión (solo verificable vía commits), y la calidad de la aprobación humana en los gates. Detalle completo en la guía, §5o "Qué controla el arnés y qué no".
-
-### 4h. El portal del proyecto (v2.20)
-
-v2.20 reemplaza el dashboard monolítico (v2.12, §4f) por un **portal web único** del proyecto: el mismo `harness_graph.py --proyecto .` emite `spec/portal/` y `spec/dashboard.html` queda como redirect. Las capturas de la [sección Demo](#demo-el-portal-del-proyecto) son de este portal. En pocas líneas:
-
-- **Shell navegable**: menú lateral colapsable por categorías (🏠 Inicio, 📊 Métricas, 🏛 Arquitectura, 💼 Negocio, 🧪 Calidad, 🚀 Operación, 📚 Documentos, 🧠 Memoria) con contadores y subgrupos; routing por hash `#/id/<slug>` (funciona desde `file://`, sin servidor); miga de pan con botones de historial y **última página visitada persistida por proyecto**.
-- **Búsqueda global (Ctrl+K)**: índice de texto plano de todas las páginas — títulos, contenido de los `.md`, nodos e insights de diagramas — con resultados priorizados y resaltado.
-- **Tema claro/oscuro y zoom A−/A/A+ compartidos** con los diagramas IR (mismas variables CSS y mismas claves de `localStorage`); el shell propaga el tema al contenido por `postMessage`.
-- **Páginas modulares y densas**: `inicio` (pipeline compacto + acumulado), `metricas` (tendencias + tiempos en dos columnas), `arquitectura` (tarjetas de diagramas vivos + **ADRs ↔ Tech Radar vinculados**: clic en un ADR resalta su tecnología en el radar y viceversa) y `memoria` (aprendizajes + sesiones lado a lado). Los `.md` de la spec se renderizan dentro del portal (`mdview.py`), con los enlaces internos reescritos a su página renderizada.
-- **Generación modular por registry**: cada generador (`harness_graph`, `mdview`, `diagram_ir`) solo **registra** lo suyo en `spec/portal/registry.json`; `rebuild_index()` poda entradas huérfanas y reescribe el índice, y `portal_lib.py --check` detecta drift en CI. Añadir contenido nunca regenera el sitio a mano.
-
-### 4i. Auditoría y determinismo ejecutable (v2.21 · v2.22)
-
-Nacidas del [diagnóstico de brechas de la promesa de valor](docs/diagnostico-brechas-promesa-valor.md) (22 brechas auditadas sobre un proyecto real), estas capacidades convierten la promesa del arnés — determinismo, trazabilidad, auditoría, gobierno — en mecanismos verificables, todo stdlib + Git, sin dependencias nuevas:
-
-- **Memoria de auditoría (ADR-004)**: `spec/audit/events.jsonl` append-only con **cadena de hash** tamper-evident; todo evento lleva `ts` UTC y `harness_version`. Las revocaciones y el retrabajo son hechos que nunca se sobrescriben — `audit_verify.py` detecta cualquier manipulación. Las métricas (`skill_metrics`, `sprint_review`) se derivan del log: el "trabajo rehecho" ya no puede volver a cero.
-- **Gobierno de gates**: catálogo cerrado (`GATE 0/1/2/2.5/3`, `SPRINT-N`, `FASE-N` — nada de texto libre), `--approved-by` **exigible** en gates humanos (el agente no se auto-aprueba), y `receipt.py status --strict` como veredicto ejecutable para CI.
-- **Arranque y gates deterministas**: `init_project.py` scaffolda todo proyecto idéntico (estructura, matriz, roster, radar, auditoría con génesis+bootstrap); `gate_verify.py --gate N` verifica agregado presencia + tipo + recibo vigente, con los condicionales del routing.
-- **La auditoría se ve (v2.23)**: el portal del proyecto gana la página 🛡 **Auditoría** (línea de tiempo de eventos con aprobador y `harness_version`, tabla de revocaciones, salud de la cadena) y el bloque Gobernanza en Inicio — todo re-derivado de `events.jsonl`. El menú se reorganiza por pregunta del usuario: nueva categoría **Gobernanza** (ADRs, seguridad, radar), sub-grupos plegables cuando una categoría crece (p. ej. 14 sprint reviews colapsan en su grupo) y CHANGELOG/INDEX fuera del lateral (buscables con Ctrl+K).
-- **Arquitectura y contratos exigibles**: el gate de `architecture.md` exige diagramas IR referenciados, válidos (`ubicacion` obligatoria) y con recibo vigente; `arch_lint.py` convierte las capas declaradas en política binaria sobre el código; `contract_diff.py` bloquea breaking changes de API sin bump de versión mayor.
-- **El cambio sin memoria del agente**: los recibos guardan el hash de sus dependencias upstream y `spec_diff_impact.py --apply` invalida y audita el downstream en el momento del cambio; `pipeline_state.py` deriva el estado del pipeline desde hechos (anti-drift `--check`); `harness_doctor.py --check-vendored` impide que el gobernado parchee al gobernante.
-- **HITL portable**: `circuit_breaker.py` congela un gate tras N fallos y solo un humano lo descongela (auditado); `blast_radius_check.py` verifica que el diff de git (incluidos archivos nuevos) quede dentro del alcance autorizado del change-request.
+> **Separación de autoridad:** el PO nunca aprueba decisiones técnicas; el Arquitecto de Software es **el único rol que firma ADRs**. Un recibo emitido por el rol equivocado simplemente no existe para el gate.
 
 ---
 
-## 5. Receipts (RDD): confiar en evidencia, no en narración
+## 🧩 Las 21 skills
 
-### El problema
+<details>
+<summary><b>Ver la tabla completa de las 21 skills</b> (clic para desplegar)</summary>
 
-Un agente puede *decir* "la spec está aprobada" o "los tests pasan". Esa afirmación no es verificable y puede quedar desactualizada en el momento en que alguien edita el archivo.
+| Skill | Rol | Fase |
+|---|---|---|
+| `sdlc-devops-engineer` | Setup + CI/CD + IaC + rollback | -1, 6 |
+| `sdlc-product-owner` | Visión, épicas, backlog priorizado (el QUÉ y el CUÁNDO) | 0 |
+| `sdlc-solution-architect` | Arquitecto de la iniciativa: historias técnicas + propuesta con opciones (GATE 0) | 0-2 |
+| `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure | 0, 6 |
+| `sdlc-business-analyst` | Historias de usuario + Gherkin + roles gobernados + PDD | 1 |
+| `sdlc-ux-designer` | Flujos UX + design system + prototipo gobernado (Penpot) | 2 |
+| `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + test-plan. **Decision Owner técnico (el CÓMO)** | 2-3 |
+| `sdlc-decision-engine` | Motor de decisiones: 8 pasos, scorecard, Decision Packages | 2 |
+| `sdlc-enterprise-architect` | Tech Radar, Principios, excepciones, Paved Roads | 2 (Tier 1) |
+| `sdlc-security-engineer` | Threat modeling + SAST/DAST (GATE 2.5) | 2, 4, 5 |
+| `sdlc-data-engineer` | Migraciones + gobierno de datos | 2 |
+| `sdlc-backend-dev-tdd` | Backend con TDD estricto | 4 |
+| `sdlc-frontend-dev-tdd` | Frontend con TDD + mocks desde OpenAPI | 4 |
+| `sdlc-qa-automation` | E2E desde Gherkin + regresión + carga (GATE 2) | 5 |
+| `sdlc-cloud-engineer` | Infraestructura cloud + observabilidad | 6 |
+| `sdlc-sre` | SLOs + incidentes + postmortems | 7 |
+| `sdlc-product-analyst` | Medición de impacto → realimenta backlog | 7 |
+| `sdlc-technical-writer` | Documentación doc-as-code (Wiki / Pages / Confluence) | 4-6 |
+| `sdlc-orchestrator` | Orquestador del pipeline + 18 herramientas CLI | Transversal |
+| `sdlc-memory` | Memoria persistente con scopes y gobierno | Transversal |
+| `sdlc-diagrams` | Diagramas interactivos HTML (IR), Mermaid y pipeline CI/CD derivado | Transversal |
 
-### La solución: recibos criptográficos
+</details>
 
-Cuando un gate pasa, `receipt.py emit` guarda en `spec/receipts/` un JSON con el **SHA-256 exacto del artefacto aprobado**, el gate, el rol y el timestamp:
+---
+
+## 🏛 Los tres pilares (y por qué ninguno alcanza solo)
+
+| Disciplina | Qué garantiza | Qué NO garantiza sola |
+|---|---|---|
+| **SDD** (Spec-Driven) | Todo nace de una spec versionada; sin spec no hay código | Que la spec aprobada siga siendo la que se ejecuta |
+| **TDD** (Test-Driven) | Los tests preceden al código; todo bug vuelve con su test | Que los tests que "pasaron" lo hayan hecho de verdad |
+| **RDD** (Receipt-Driven) | Toda aprobación es un recibo SHA-256 vinculado al contenido exacto; si cambia un byte, se invalida solo | — es la capa que hace verificables a las otras dos |
+
+> **Principio rector:** la fuente de verdad es `spec/` versionada en Git. Si una decisión, aprobación o aprendizaje no está versionada, no existe.
+
+---
+
+## 🧾 RDD: recibos criptográficos, no narración
+
+Un agente puede *decir* "la spec está aprobada". Esa afirmación no es verificable. En su lugar, cuando un gate pasa, `receipt.py emit` guarda un JSON con el **SHA-256 exacto del artefacto aprobado**, el gate, el rol y el timestamp:
 
 ```json
 {
@@ -343,41 +195,24 @@ stateDiagram-v2
     REVOKED --> [*]: pipeline detenido
 ```
 
-**Reglas del sistema:**
+**Las reglas:**
 
-1. **Verificación antes de consumir.** Antes de que cualquier fase downstream use un artefacto, `receipt.py verify` recalcula el hash del archivo actual y lo compara con el recibo. Un byte de diferencia → recibo **INVALIDATED** y el gate debe re-ejecutarse. Nadie aprueba dos veces sin nueva evidencia.
-2. **Revocación en cascada.** Un cambio de spec (`spec_diff_impact.py`) revoca automáticamente los recibos de todos los artefactos impactados downstream.
-3. **Firma arquitectónica.** Variante especializada: `arch_signoff.py` emite `ARCH-xxx.json` firmado por el Arquitecto, con hash compuesto del ADR **y** de los artefactos de diseño (architecture.md, OpenAPI, modelo de datos, diagramas). Si el diseño diverge de lo firmado en Fase 4, el pipeline se detiene.
-4. **Estados auditables.** `receipt.py status` muestra todos los recibos (ACTIVE / INVALIDATED / REVOKED) — un log de gobierno derivado de criptografía, no de memoria del agente.
+1. **Verificación antes de consumir** — un byte de diferencia y el gate debe re-ejecutarse. Nadie aprueba dos veces sin nueva evidencia.
+2. **Revocación en cascada** — un cambio de spec invalida automáticamente los recibos de todo el downstream impactado (con hash de dependencias en cada recibo, ni siquiera depende de que el agente lo recuerde).
+3. **Firma arquitectónica** — `arch_signoff.py` firma ADR + diseño con hash compuesto; si el código diverge de lo firmado, el pipeline se detiene.
+4. **Auditoría tamper-evident** — `spec/audit/events.jsonl` append-only con cadena de hash; el retrabajo y las revocaciones son hechos que nunca se sobrescriben. `audit_verify.py` detecta cualquier manipulación.
+5. **El agente no se auto-aprueba** — los gates humanos (0/1/3, sprint review) exigen `--approved-by`.
 
 ```bash
-python3 receipt.py emit --artifact spec/architecture.md --gate GATE-1
-python3 receipt.py verify --artifact spec/architecture.md
-python3 receipt.py status
-python3 receipt.py revoke --artifact spec/architecture.md
+python3 receipt.py emit --artifact spec/architecture.md --gate GATE-1 --role software-architect --approved-by "J. Pérez"
+python3 receipt.py status --strict   # veredicto ejecutable para CI: exit 1 si algo no está vigente
 ```
-
-*Inspiración: patrón de "receipts" y "trust derivable evidence" observado en el ecosistema de Gentleman-Programming (ver §10), reimplementado a nuestra medida sobre SHA-256 + Git.*
 
 ---
 
-## 6. El sistema de memoria
+## 🧠 Memoria que sobrevive a la sesión (y a la organización)
 
-### El problema
-
-Los agentes olvidan todo al cerrar la sesión: decisiones y sus razones, bugs ya resueltos, aprendizajes del proyecto. Y las organizaciones no tienen forma de hacer cumplir sus lineamientos en un flujo de agentes.
-
-### Arquitectura: Markdown es la verdad, SQLite es solo un índice
-
-**La fuente de verdad son archivos Markdown** con frontmatter YAML y estructura What / Why / Where / Key details / Learned:
-
-```
-./spec/memory/entries/     # scope project — viaja en el repo del proyecto
-~/.sdlcmem/user/entries/   # scope user    — compartida entre tus proyectos
-~/.sdlcmem/org/entries/    # scope org     — lineamientos de la organización
-```
-
-Al ser Git-nativa, la memoria tiene **historial, diff, code review y resolución de conflictos gratis**. Junto a cada raíz existe un `index.db` (**SQLite con FTS5**) que solo acelera la búsqueda con ranking. Es **100% derivable**: se borra y se reconstruye con `mem.py reindex`. Nunca pierdes nada por tocar la DB.
+Los agentes olvidan todo al cerrar la sesión. Aquí, lo aprendido vive en **Markdown versionado** con tres scopes y precedencia — la organización siempre gana:
 
 ```mermaid
 flowchart TB
@@ -397,99 +232,51 @@ flowchart TB
     Q --> PROJ
 ```
 
-```bash
-# Consultar la memoria
-python3 mem.py search "autenticación oauth"   # búsqueda federada en los 3 scopes
-python3 mem.py get MEM-2026-0001
-python3 mem.py timeline
-# O directo sobre el índice:
-sqlite3 spec/memory/index.db "SELECT id, title FROM memories_fts WHERE memories_fts MATCH 'oauth'"
-```
-
-Para agentes, `mem_mcp.py` expone las mismas 16 operaciones como **servidor MCP stdio** (`mem_save`, `mem_search`, `mem_policy_check`, ...).
-
-### Scopes y precedencia
-
-`project` < `user` < `org`. Una búsqueda consulta los tres y ordena por precedencia: la organización gana. La promoción (`mem.py promote MEM-x --to org`) lleva un patrón probado en un proyecto al nivel superior, registrando `derived_from`.
-
-### Relaciones entre memorias
-
-- **`supersedes`**: una memoria reemplaza a otra (la anterior queda como histórico).
-- **`conflicts_with`**: dos memorias se contradicen → **bloquea GATE 1** hasta resolución humana (`conflicts resolve`).
-
-### Gobierno organizacional: políticas y desviaciones
-
-El caso que motivó el diseño: *"si en la organización hay prácticas y lineamientos que se deben cumplir, y un proyecto necesita cambiarlos, debe existir revisión y aprobación"*.
-
-1. **Políticas** (`--type policy --enforcement mandatory|recommended`) se guardan en scope org. Antes de GATE 1, cada proyecto ejecuta `policy check` y `policy attest`: toda política mandatory debe estar **compliant** o tener una **desviación aprobada vigente**.
-2. **Desviaciones** (`deviation request → approve|reject`): el proyecto solicita excepción con justificación; un humano aprueba con **fecha de expiración**. Mientras está *pending*, NO exime. Al expirar, el gate vuelve a bloquear. Las aprobaciones son irreversibles (auditoría).
-3. **Filtro de secretos**: el scope org rechaza memorias que contengan credenciales (patrones de API keys, tokens, contraseñas) — la capa compartida nunca debe filtrar secretos.
-
-```bash
-python3 mem.py save --scope org --type policy --enforcement mandatory \
-  --title "TLS 1.3 en toda comunicación externa" --what "..." --why "..."
-python3 mem.py policy check          # exit 1 si hay violación → bloquea GATE 1
-python3 mem.py deviation request --policy POL-1 --reason "..."
-python3 mem.py deviation approve DEV-1 --approver "CISO" --expires 2026-12-31
-```
-
-*Inspiración: la separación memoria/herramientas y la idea de memoria persistente entre agentes de **Engram** (Gentleman-Programming) — el usuario decidió conscientemente **no adoptarlo** y construir uno propio mejorado: Git-nativo, con scopes, gobierno de políticas y desviaciones, relaciones y MCP (ver §10).*
+- **Git-nativa:** historial, diff y code review gratis. El índice SQLite/FTS5 es 100% derivable (`mem.py reindex`).
+- **Gobierno real:** políticas org `mandatory` bloquean GATE 1 si no están attestadas o con **desviación aprobada con expiración** por un humano.
+- **Conflictos detectados:** dos memorias que se contradicen bloquean GATE 1 hasta resolución humana.
+- **MCP incluido:** las 16 operaciones expuestas como servidor MCP stdio para agentes.
 
 ---
 
-## 7. Gobernanza de decisiones (v2.0)
+## ⚖️ Gobernanza de decisiones proporcional al riesgo
 
-Basada en el **framework de 8 pasos de Sonya Natanzon**, el **Advice Process** y el **Tech Radar** (ver §10).
-
-### Risk Tiering — gobernanza proporcional al riesgo
-
-`decision_sizing.py` analiza la spec y clasifica:
+Las decisiones técnicas significativas siguen el **framework de 8 pasos** (problem statement sin soluciones prematuras → criterios ponderados → opciones → advice process → scorecard cuantitativa → decisión con consecuencias aceptadas → re-evaluation triggers), con **Risk Tiering**:
 
 | Tier | Ejemplos | Gobernanza |
 |---|---|---|
-| **1** (alto) | PII, pagos, autenticación, datos críticos | 8 pasos + Advice completo + revisión Enterprise Architect |
-| **2** (medio) | Microservicios, APIs, integraciones | 8 pasos + Advice con peers |
-| **3** (bajo) | Herramientas internas, UI, prototipos | ADR simplificado + registro en memoria |
+| **1** (alto) | PII, pagos, autenticación | 8 pasos + Advice completo + revisión Enterprise Architect |
+| **2** (medio) | APIs, integraciones, microservicios | 8 pasos + Advice con peers |
+| **3** (bajo) | Herramientas internas, UI | ADR simplificado + registro en memoria |
 
-### Los 8 pasos (skill `sdlc-decision-engine`)
-
-1. **Problem Statement** sin soluciones prematuras — el gate rechaza *"Necesitamos usar Kafka"*; exige el problema real.
-2. **Last Responsible Moment** — fecha límite real, restricciones, costo de reversa.
-3. **Criterios ponderados** (mín. 3, pesos = 100%) definidos **antes** de ver opciones. Opcionalmente cargados de un **Decision Package** pre-aprobado.
-4. **Opciones** (mín. 2, ideal 3, una radicalmente diferente); se marcan las **Paved Roads**.
-5. **Advice Process** — `advisor.py` identifica stakeholders por impacto (datos → Data Engineer; seguridad → Security Engineer; Tier 1 → siempre Enterprise Architect). El consejo **no es vinculante**; omitir la consulta **sí bloquea** el gate. Todo consejo queda en el **Advice Log**: quién, cuándo, qué, si se aplicó y por qué.
-6. **Scorecard cuantitativa** — `scorecard_calculator.py` pondera criterios × opciones; la opción elegida debe ser la ganadora o tener justificación explícita.
-7. **Decisión** — con consecuencias positivas esperadas y **negativas aceptadas**, y qué NO se decidió.
-8. **Re-evaluation triggers** — condiciones que obligan a revisar la decisión.
-
-### Firma y Tech Radar
-
-- **Firma:** `arch_signoff.py` emite el recibo `ARCH-xxx.json`. Un ADR firmado **no se modifica**: se supersedea con uno nuevo. Si cambia tras la firma, el gate detecta el recibo invalidado.
-- **Tech Radar** (`sdlc-enterprise-architect`): **ADOPT** = Paved Road (pre-aprobado) · **TRIAL** = justificación · **ASSESS** = ADR de excepción · **HOLD** = bloquea el gate salvo excepción aprobada por el Architecture Board.
-- El Enterprise Architect **gobierna por excepción**: asesora, no veta; solo interviene en Tier 1, principio mandatory violado o tecnología en HOLD.
+El **Tech Radar** (ADOPT / TRIAL / ASSESS / HOLD) convierte tecnologías en paved roads pre-aprobados o en gates bloqueantes. Y un ADR firmado **no se modifica**: se supersedea con uno nuevo.
 
 ---
 
-## 8. Gestión de cambios de spec
+## 🧭 Routing orgánico: no todo merece el pipeline completo
 
-1. Declarar la relación del cambio: **supersedes** (reemplaza — flujo normal) o **conflicts_with** (contradice — requiere resolución humana, bloquea GATE 1).
-2. `spec_diff_impact.py --cambiado <artefacto> --relation <rel> --apply` (v2.22) lista **e invalida** el downstream (recibos revocados derivadamente y auditados).
-3. Re-ejecutar **solo** las fases afectadas — los recibos restantes guardan el hash de sus dependencias: `receipt.py verify` atrapa cualquier invalidación derivada que se haya omitido.
-4. Nueva versión + entrada en CHANGELOG.
+| Situación | Ruta |
+|---|---|
+| Cambio mecánico, 1-3 archivos, spec intacta | **Directo**: dev con TDD + gate 2 |
+| Hay que explorar 4+ archivos para entender | **Exploración delegada** |
+| Bug en producción | **Hotfix**: QA reproduce con test → dev corrige → gates 2 y 3 |
+| Iniciativa nueva | **Discovery** → GATE 0 |
+| Ambigüedad sustancial | **Full-pipeline**, solo tras aprobación del usuario |
+| Cambio de alcance aprobado | **Change-request** con revocación en cascada |
 
-En **Fase 8 (Archivo)**: merge de delta-specs en la spec maestra, memorias superseded, trazabilidad y recibos en verde, sprint review generado, sesión cerrada. La próxima iteración arranca desde spec consolidada.
-
----
-
-## 9. Herramientas compartidas y propias
-
-- **Compartidas (plataforma):** GitHub (repo del código **y** de la spec, versionados juntos; aprobar spec = mergear PR), Jira/GitHub Projects (backlog enlazado a `spec/`), Confluence/Wiki/Pages (documentación viva vía `sdlc-technical-writer`), Penpot MCP (`sdlc-ux-designer`, prototipos de pantalla gobernados).
-- **Propias del arnés (CLI en `sdlc-orchestrator/scripts/`):** `init_project.py` (scaffold determinista, v2.22), `gate_verify.py` (verificación agregada de gates, v2.22), `gate_checker.py`, `receipt.py`, `audit_log.py` + `audit_verify.py` (memoria de auditoría, v2.21), `pipeline_state.py` (estado derivado, v2.22), `context_packager.py` (contexto mínimo por rol), `spec_diff_impact.py` (con `--apply`, v2.22), `traceability_matrix.py` (HU → test → código), `detect_stack.py` (sin test runner, TDD queda en pausa), `harness_doctor.py` (health check + `--check-vendored`, v2.22), `decision_sizing.py`, `advisor.py`, `arch_signoff.py`, `arch_lint.py` (invariantes por capas, v2.21), `contract_diff.py` (compatibilidad OpenAPI, v2.21), `circuit_breaker.py` + `blast_radius_check.py` (HITL portable, v2.22), `authority_check.py` (autoridad por rol), `code_intel.py` (inteligencia de código), `spec_index.py` (digest de la spec), `skill_metrics.py` (telemetría de skills), `sprint_review.py` (sprint review versionado + cierre de sprint automatizado), `tdd_order_check.py` (orden TDD test→código verificable en `git log`), `manifest_check.py` (manifiesto dinámico derivado + drift), `harness_graph.py` (grafo interactivo del pipeline + **portal vivo del proyecto** + drift). **`sdlc-diagrams/scripts/`:** `diagram_ir.py` (diagramas interactivos HTML vía IR + auto-registro en el portal), `pipeline_diagram.py` (CI/CD derivado de workflows + validación), `diagram_render.py` (render headless Mermaid → SVG/PNG).
-- **Regla de gobierno:** toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
+Los gates de entrega (2, 2.5, 3) aplican **siempre**, sin importar la ruta.
 
 ---
 
-## 10. Créditos y referencias
+## 🛠 Herramientas del arnés (stdlib + Git, sin dependencias)
+
+`init_project.py` (scaffold determinista) · `gate_verify.py` · `gate_checker.py` · `receipt.py` · `audit_log.py` + `audit_verify.py` · `pipeline_state.py` · `spec_diff_impact.py --apply` (invalidación derivada) · `authority_check.py` · `arch_signoff.py` · `arch_lint.py` (la arquitectura como política binaria sobre el código) · `contract_diff.py` (bloquea breaking changes de API sin bump mayor) · `circuit_breaker.py` + `blast_radius_check.py` (HITL: el agente se congela y solo un humano lo descongela) · `code_intel.py` (grafo de símbolos, blast radius, menos tokens) · `context_packager.py` · `traceability_matrix.py` · `skill_metrics.py` · `sprint_review.py` · `tdd_order_check.py` · `manifest_check.py` · `harness_graph.py` (portal del proyecto) · `harness_doctor.py` · `diagram_ir.py` · `pipeline_diagram.py` · `diagram_render.py`
+
+**Regla de gobierno:** toda herramienta produce o consume un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
+
+---
+
+## 🙏 Créditos y referencias
 
 Este arnés es diseño e implementación propios, pero se apoya explícitamente en ideas publicadas por otros, a quienes damos crédito:
 
@@ -499,16 +286,22 @@ Este arnés es diseño e implementación propios, pero se apoya explícitamente 
 | **Advice Process, Tech Radar, Principios, arquitectura conversacional** | [Martin Fowler / Andrew Harmel-Law — *Scaling Architecture Conversationally*](https://martinfowler.com/articles/scaling-architecture-conversationally.html) | Paso 5 (advice no vinculante pero obligatorio de registrar), Tech Radar con cuadrantes, gobernanza por excepción del Enterprise Architect |
 | **Tech Radar (formato ADOPT/TRIAL/ASSESS/HOLD)** | ThoughtWorks | Estructura de `spec/tech-radar.yaml` y reglas de gate |
 | **Architecture Decision Records** | Michael Nygard | Plantillas de ADR y ciclo de vida (Proposed → Adopted → Superseded) |
-| **"Everything is a plugin" / capability seams** | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Implementado en v2.9/v2.10 como **manifiesto dinámico + routing derivado**: metadatos en el frontmatter de cada SKILL.md, manifiesto derivado con detección de drift y routing por fases con capacidades condicionales auto-excluidas (`manifest_check.py`). Diferido: skills por capas con rank — [ADR-001](docs/decisions/ADR-001-skills-por-capas-rank.md) |
-| **Patrones de trabajo con agentes, memoria entre agentes, receipts** | [Gentleman-Programming — gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) y [Engram](https://github.com/Gentleman-Programming/engram) | **Inspiración, no adopción**: estudiamos su forma de trabajar y reimplementamos a nuestra medida — memoria Git-nativa con scopes/gobierno (diferencial sobre Engram, por decisión explícita del usuario) y recibos SHA-256 |
-| **Code intelligence para agentes (grafo de símbolos, blast radius, menos tokens)** | [Gortex — zzet/gortex](https://github.com/zzet/gortex) (Apache 2.0) | **Inspiración, no adopción**: reimplementado como `code_intel.py` en Python stdlib, sin daemon, con extracción por niveles (ast/patrones) e índice SQLite derivable |
-| **Diseño UX open-source (prototipos, tokens, estándares web)** | [Penpot](https://penpot.app) (MPL-2.0) | Herramienta estándar de `sdlc-ux-designer` para prototipos gobernados en `spec/ux/` — archivo versionable en Git, sin lock-in propietario |
+| **"Everything is a plugin" / capability seams** | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Implementado como **manifiesto dinámico + routing derivado**: metadatos en el frontmatter de cada SKILL.md, manifiesto derivado con detección de drift y routing por fases con capacidades condicionales auto-excluidas (`manifest_check.py`). Diferido: skills por capas con rank — [ADR-001](docs/decisions/ADR-001-skills-por-capas-rank.md) |
+| **Patrones de trabajo con agentes, memoria entre agentes, receipts** | [Gentleman-Programming — gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) y [Engram](https://github.com/Gentleman-Programming/engram) | **Inspiración, no adopción**: reimplementado a nuestra medida — memoria Git-nativa con scopes/gobierno y recibos SHA-256 |
+| **Code intelligence para agentes (grafo de símbolos, blast radius, menos tokens)** | [Gortex — zzet/gortex](https://github.com/zzet/gortex) (Apache 2.0) | **Inspiración, no adopción**: reimplementado como `code_intel.py` en Python stdlib, sin daemon, con índice SQLite derivable |
+| **Diagramas interactivos desde IR** | [archify — tt-a1i/archify](https://github.com/tt-a1i/archify) | **Inspiración, no dependencia**: patrón de diagramas vivos con foco, lens y estado por URL, reimplementado en `diagram_ir.py` (ADR-003) |
+| **Visor Markdown estático** | [grip — joeyespo/grip](https://github.com/joeyespo/grip) | Inspiración del patrón de export; `mdview.py` es offline y sin dependencias |
+| **Diseño UX open-source (prototipos, tokens, estándares web)** | [Penpot](https://penpot.app) (MPL-2.0) | Herramienta estándar de `sdlc-ux-designer` para prototipos gobernados en `spec/ux/` — versionable en Git, sin lock-in propietario |
 | **Estándar Agent Skills** | Formato abierto SKILL.md (Anthropic y ecosistema) | Packaging, progressive disclosure (SKILL.md → references → scripts) |
 | **Doc-as-code (Wiki/Pages/Confluence)** | GitHub Wiki, MkDocs Material, markdown-confluence | Publicación de `sdlc-technical-writer` |
 
 Agradecimiento especial a los autores de las fuentes anteriores: este arnés no copia su código; adopta sus **ideas metodológicas** y las integra en un sistema coherente con recibos, memoria gobernada y gates automatizados.
 
 ---
+
+## 📚 Documentación
+
+[Guía de uso por agente/IDE](docs/guia-de-uso-arnes-sdlc.md) · [Gobernanza a nivel GitHub](docs/gobernanza-github.md) · [Grafo interactivo del pipeline](docs/graph.html) · [ADRs del arnés](docs/decisions/) · [CHANGELOG](CHANGELOG.md) · [CONTRIBUTING](CONTRIBUTING.md)
 
 ## Versionado
 
