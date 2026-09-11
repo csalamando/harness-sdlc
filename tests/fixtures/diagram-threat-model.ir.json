@@ -1,0 +1,34 @@
+{
+  "kind": "flow",
+  "tipo": "threat-model",
+  "titulo": "Modelo de amenazas (STRIDE) — flujo de autenticacion",
+  "fuente": "spec/diagrams/threat-model.ir.json",
+  "bandas": "hulls",
+  "grupos": {"Zona no confiable": "#94a3b8", "Zona segura VPC": "#34d399", "Zona de datos": "#38bdf8"},
+  "limites": [
+    {"label": "Limite de confianza", "despues_rank": 0},
+    {"label": "Limite de confianza", "despues_rank": 1}
+  ],
+  "nodos": [
+    {"id": "usuario", "titulo": "Usuario",          "sub": "entidad externa",  "tipo": "external", "grupo": "Zona no confiable", "detalle": "Agente fuera de nuestro control; puede ser atacante.", "rank": 0},
+    {"id": "auth",    "titulo": "Servicio de autenticacion", "sub": "proceso", "tipo": "proceso",  "grupo": "Zona segura VPC",   "detalle": "Valida credenciales, emite JWT firmado y aplica rate-limiting.", "rank": 1},
+    {"id": "db",      "titulo": "Base de datos",    "sub": "almacen de datos", "tipo": "db",       "grupo": "Zona de datos",     "detalle": "Credenciales con hash (bcrypt) y roles; cifrada en reposo.", "rank": 2}
+  ],
+  "aristas": [
+    {"desde": "usuario", "hasta": "auth",    "label": "(1) Envia credenciales (HTTPS)", "amenaza": "S"},
+    {"desde": "auth",    "hasta": "db",      "label": "(2) Valida credenciales",        "amenaza": "I"},
+    {"desde": "db",      "hasta": "auth",    "label": "(3) Retorna usuario/rol",        "back": true},
+    {"desde": "auth",    "hasta": "usuario", "label": "(4) Retorna JWT",                "back": true, "amenaza": "T"}
+  ],
+  "insights": [
+    {"titulo": "Componentes DFD", "color": "#a78bfa", "bullets": [
+      "Entidad externa (Usuario) → proceso (Servicio de autenticacion) → almacen (Base de datos)",
+      "Flujos numerados (1)-(4) en ambas direcciones, como en el DFD clasico"]},
+    {"titulo": "Limites de confianza", "color": "#fb7185", "bullets": [
+      "Lineas divisorias rojas entre zona no confiable, zona segura y zona de datos",
+      "Todo flujo que cruza un limite lleva amenaza STRIDE: S, I, T"]},
+    {"titulo": "Mitigaciones clave", "color": "#34d399", "bullets": [
+      "S (spoofing): TLS + JWT firmado · T (tampering): firma y validacion de esquema",
+      "I (info disclosure): hash bcrypt + cifrado en reposo"]}
+  ]
+}

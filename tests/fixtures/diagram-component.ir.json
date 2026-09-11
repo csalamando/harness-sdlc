@@ -1,0 +1,29 @@
+{
+  "kind": "flow",
+  "tipo": "component",
+  "titulo": "Componentes (C4 L3) — API de pagos",
+  "fuente": "spec/diagrams/componentes-api.ir.json",
+  "bandas": "hulls",
+  "grupos": {"Contenedor: API de pagos (FastAPI)": "#a78bfa"},
+  "nodos": [
+    {"id": "router",  "titulo": "Router HTTP",        "sub": "endpoints /pagos",   "tipo": "edge",     "grupo": "Contenedor: API de pagos (FastAPI)", "detalle": "Valida esquemas, autentica JWT y enruta a los casos de uso.", "rank": 0},
+    {"id": "uc",      "titulo": "Casos de uso",       "sub": "autorizar/capturar", "tipo": "service",  "grupo": "Contenedor: API de pagos (FastAPI)", "detalle": "Orquesta la transaccion; sin logica de infraestructura.", "rank": 1},
+    {"id": "repo",    "titulo": "Repositorio pagos",  "sub": "puerto + adaptador", "tipo": "db",       "grupo": "Contenedor: API de pagos (FastAPI)", "detalle": "Persistencia en PostgreSQL; transaccional con outbox.", "rank": 2},
+    {"id": "bus",     "titulo": "Publicador eventos", "sub": "outbox → SNS",       "tipo": "job",      "grupo": "Contenedor: API de pagos (FastAPI)", "detalle": "Lee el outbox y publica eventos de dominio.", "rank": 2},
+    {"id": "fraude",  "titulo": "Cliente antifraude", "sub": "adapter SaaS",       "tipo": "external", "grupo": "Contenedor: API de pagos (FastAPI)", "ir": "diagram-deployment.ir.json", "detalle": "Adaptador del motor antifraude; ver la vista de despliegue con ↗.", "rank": 2}
+  ],
+  "aristas": [
+    {"desde": "router", "hasta": "uc",     "label": "DTO validado"},
+    {"desde": "uc",     "hasta": "repo",   "label": "persiste"},
+    {"desde": "uc",     "hasta": "fraude", "label": "scoring (REST)"},
+    {"desde": "bus",    "hasta": "repo",   "label": "lee outbox", "back": true}
+  ],
+  "insights": [
+    {"titulo": "Arquitectura limpia", "color": "#a78bfa", "bullets": [
+      "El router no conoce persistencia; los casos de uso no conocen HTTP",
+      "Outbox + publicador: ningun evento se pierde si cae el bus"]},
+    {"titulo": "Drill-down", "color": "#38bdf8", "bullets": [
+      "El cliente antifraude enlaza (↗) a la vista de despliegue",
+      "El enlace vive en el IR (campo ir) y el panel muestra la ruta"]}
+  ]
+}

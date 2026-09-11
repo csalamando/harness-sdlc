@@ -4,7 +4,7 @@ description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pi
 harness-role: orchestrator
 harness-phases: "transversal"
 harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/, spec/audit/, spec/pipeline-state.md"
-harness-version: "2.23.0"
+harness-version: "2.27.0"
 ---
 
 
@@ -119,6 +119,8 @@ El contexto del agente es un recurso gobernado, no infinito. Tres mecanismos:
 
 En GATE 2, `code_intel.py tests <símbolo>` es evidencia de qué tests debían correr. Si el índice no existe, el arnés degrada a lectura normal de archivos (como drawio sin MCP: la capacidad es opcional, nunca bloquea).
 
+**Grafo de código derivado (`code_graph.py`, v2.27)**: el índice SQLite es un grafo (símbolos + aristas de llamada) y esta vista lo hace visible. Gobierno — **dónde**: vive junto a `code_intel.py`; emite `<proyecto>/spec/diagrams/grafo-codigo.html` (interactivo: nodos=archivos coloreados por directorio, tamaño=nº de símbolos, filtros, top hubs) y `grafo-modulos.html` (SVG estático: acoplamiento medido entre módulos, grosor=aristas que cruzan). Ambas usan los **TOKENS_CSS del portal** y la clave compartida `dir-tema`: el toggle ☀/☾ del shell las retema en vivo (día/noche), como los diagramas IR. **Garantía de inclusión**: `harness_graph.py --proyecto` las regenera ANTES del sweep de diagramas (best-effort, nunca bloquea) y `emit_portal` las registra automáticamente en la página **Arquitectura** del portal. **Cuándo**: tras cada `code_intel.py index` (regla: reindexar al abrir sesión) y en cada regeneración del portal; `code_graph.py check` es el anti-drift (fingerprint del índice embebido en el HTML). **Quién**: lo ejecuta el rol de desarrollo/orquestador al reindexar; consume el Arquitecto (vista módulos → `spec/architecture/`) y cualquier dev (hubs, acoplamiento, archivos aislados). Matiz honesto: las aristas del índice son a nivel archivo, no símbolo→símbolo; el grafo interactivo es de archivos y el ranking de hubs de símbolos es por in-degree — no se inventa atribución. Tests, cobertura y ruido de frameworks (`describe`/`it`/`expect`) se excluyen por defecto (`--include-tests` para incluirlos).
+
 ## Scripts
 
 Ejecutar con `python3 scripts/<nombre>.py`:
@@ -139,6 +141,7 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `arch_signoff.py --adr <adr> --architect "Nombre"`: firma arquitectónica; genera recibo ARCH-xxx.json con SHA-256 del ADR y artefactos de diseño.
 - `authority_check.py <artefacto> --role <rol> | --author <usuario> --team spec/team-roster.yaml`: valida que quien emite/firma un artefacto sea su rol dueño según `spec/authority-matrix.yaml`. Exit 1 si no está autorizado.
 - `code_intel.py --root <proyecto> index|symbol|context|impact|tests|search|map|stats`: inteligencia de código local (grafo de símbolos en SQLite, incremental, sin daemon). `context` evita leer archivos completos; `impact` calcula blast radius; `tests` lista tests candidatos para GATE 2.
+- `code_graph.py emit|check|stats [--root <proyecto>] [--include-tests]` (v2.27): vistas derivadas del índice code_intel — grafo interactivo de archivos y grafo estático de módulos en `spec/diagrams/` (los recoge el portal en Arquitectura). Ejecutar tras cada reindex; `check` falla si las vistas quedan atrás del índice.
 - `arch_lint.py [--root .] [--rules spec/architecture-rules.yaml]` (v2.21, N9): linter de invariantes arquitectónicos — si el proyecto declara arquitectura por capas, verifica que el código la respete (`ast` para Python, patrones para JS/TS). Exit 1 por violación o config inválida; registra el hecho en la memoria de auditoría. Sin reglas declaradas, exit 0 (condicional).
 - `contract_diff.py --old f --new f | --contra-git <contrato>` (v2.21, N10): compatibilidad de contratos OpenAPI — detecta breaking changes (path/operación/parámetro eliminado, parámetro recién requerido, tipos cambiados, propiedades de respuesta eliminadas) y bloquea si la versión mayor (`info.version`) no subió. El gate `api-contract` lo aplica automáticamente contra HEAD cuando hay versión previa en git.
 - `spec_index.py [--spec-dir spec/]`: regenera `spec/INDEX.md`, digest de una página con hash y resumen por artefacto.

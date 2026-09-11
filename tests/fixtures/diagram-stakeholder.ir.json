@@ -1,0 +1,34 @@
+{
+  "kind": "flow",
+  "tipo": "stakeholder",
+  "titulo": "Stakeholders (onion) — Plataforma de Pagos",
+  "fuente": "spec/diagrams/stakeholders.ir.json",
+  "bandas": "hulls",
+  "grupos": {"Equipo nucleo": "#34d399", "Negocio": "#a78bfa", "Externos": "#38bdf8"},
+  "anidados": {"Equipo nucleo": "Negocio", "Negocio": "Externos"},
+  "nodos": [
+    {"id": "sistema", "titulo": "Plataforma de Pagos", "sub": "sistema", "tipo": "service", "grupo": "Equipo nucleo", "detalle": "Sistema bajo descripcion: portal de comercios, API de pagos, consola de operaciones y reportes regulatorios.", "rank": 1},
+    {"id": "po",     "titulo": "Product Owner",     "sub": "interno · prioriza",  "tipo": "role", "grupo": "Equipo nucleo", "color": "#a78bfa", "detalle": "Dueno del backlog y de las metricas de exito.", "rank": 0},
+    {"id": "devs",   "titulo": "Equipo dev",        "sub": "interno · construye", "tipo": "role", "grupo": "Equipo nucleo", "color": "#a78bfa", "detalle": "Backend, frontend y QA del producto.", "rank": 2},
+    {"id": "ops",    "titulo": "Operaciones",       "sub": "interno · negocio",   "tipo": "role", "grupo": "Negocio",       "color": "#a78bfa", "detalle": "Gestionan disputas y liquidaciones manuales.", "rank": 0},
+    {"id": "riesgo", "titulo": "Riesgo y cumplimiento", "sub": "interno · control", "tipo": "role", "grupo": "Negocio",     "color": "#a78bfa", "detalle": "Aprueban cambios que toquen AML o fraude.", "rank": 2},
+    {"id": "comercios", "titulo": "Comercios",      "sub": "externo · usuarios",  "tipo": "role", "grupo": "Externos",      "color": "#38bdf8", "detalle": "Usuarios principales del portal y la API.", "rank": 0},
+    {"id": "regulador", "titulo": "Regulador",      "sub": "externo · supervision", "tipo": "role", "grupo": "Externos",    "color": "#38bdf8", "detalle": "Recibe reportes regulatorios mensuales; no opera el sistema.", "rank": 2}
+  ],
+  "aristas": [
+    {"desde": "po",        "hasta": "sistema", "label": "define roadmap"},
+    {"desde": "devs",      "hasta": "sistema", "label": "construye"},
+    {"desde": "ops",       "hasta": "sistema", "label": "usa: consola ops"},
+    {"desde": "riesgo",    "hasta": "sistema", "label": "audita: AML/fraude"},
+    {"desde": "comercios", "hasta": "sistema", "label": "usa: portal + API"},
+    {"desde": "regulador", "hasta": "sistema", "label": "recibe: reportes"}
+  ],
+  "insights": [
+    {"titulo": "Internos vs externos", "color": "#a78bfa", "bullets": [
+      "Morado = internos (equipo y negocio); azul = externos",
+      "Los anillos concentricos marcan cercania al producto"]},
+    {"titulo": "Que modulo usa cada quien", "color": "#38bdf8", "bullets": [
+      "Comercios: portal + API · Operaciones: consola ops · Regulador: reportes",
+      "Riesgo no usa el sistema: lo audita — puede bloquear releases"]}
+  ]
+}

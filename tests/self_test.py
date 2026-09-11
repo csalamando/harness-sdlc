@@ -367,6 +367,148 @@ for fx in ("diagram-flow.ir.json", "diagram-sequence.ir.json"):
         code, out = rund("check", "--ir", os.path.join(FIX, fx), "--out", out_html)
         check(f"check {fx}: detecta HTML editado a mano (exit 1)", code == 1, out)
 
+# v1.2: tipos context / container / capability-map (C4 L1-L2, mapa BIAN)
+for fx, marca in (("diagram-context.ir.json", "central"),
+                  ("diagram-container.ir.json", "ubadge"),
+                  ("diagram-capability-map.ir.json", "ebadge")):
+    code, out = rund("validate", "--ir", os.path.join(FIX, fx))
+    check(f"validate acepta fixture {fx}", code == 0, out)
+    with tempfile.TemporaryDirectory() as tmp:
+        out_html = os.path.join(tmp, fx.replace(".ir.json", ".html"))
+        code, out = rund("render", "--ir", os.path.join(FIX, fx), "--out", out_html)
+        cond = code == 0 and os.path.exists(out_html)
+        if cond:
+            cond = marca in open(out_html, encoding="utf-8").read()
+        check(f"render {fx}: vista con elemento propio del tipo ({marca})", cond, out)
+
+# reglas de gobierno por tipo: validate rechaza IRs que las violan
+def _ir_tmp(mut, fx="diagram-context.ir.json"):
+    ir = json.load(open(os.path.join(FIX, fx), encoding="utf-8"))
+    mut(ir)
+    f = tempfile.NamedTemporaryFile("w", suffix=".ir.json", delete=False, encoding="utf-8")
+    json.dump(ir, f); f.close()
+    return f.name
+
+p_bad = _ir_tmp(lambda ir: ir["nodos"].__setitem__(0, {**ir["nodos"][0], "central": True}))
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("context: rechaza 2 nodos centrales (exit 1)", code == 1 and "exactamente 1" in out, out)
+
+p_bad = _ir_tmp(lambda ir: ir["aristas"].append({"desde": "cliente", "hasta": "core", "label": "atajo"}))
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("context: rechaza arista que no toca el sistema central", code == 1 and "sistema central" in out, out)
+
+p_bad = _ir_tmp(lambda ir: ir["nodos"][0].pop("grupo"), "diagram-container.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("container: rechaza contenedor fuera de todo boundary", code == 1 and "boundary" in out, out)
+
+p_bad = _ir_tmp(lambda ir: ir["nodos"][0].pop("ubicacion"), "diagram-container.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("container: exige ubicacion como architecture", code == 1 and "ubicacion" in out, out)
+
+p_bad = _ir_tmp(lambda ir: ir["nodos"][0].update(estado="inventado"), "diagram-capability-map.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("capability-map: rechaza estado fuera del catalogo", code == 1 and "adoptar|madurar|mantener|retirar" in out, out)
+
+p_bad = _ir_tmp(lambda ir: ir.update(bandas="filas"), "diagram-capability-map.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("capability-map: exige bandas columnas", code == 1 and "columnas" in out, out)
+
+p_bad = _ir_tmp(lambda ir: ir["nodos"][1].update(rank=3), "diagram-capability-map.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("capability-map: rechaza dominio repartido en varias columnas", code == 1 and "una columna" in out, out)
+
+# v1.3: deployment / component / er / stakeholder / threat-model
+for fx, marca in (("diagram-deployment.ir.json", "anidados"),
+                  ("diagram-component.ir.json", "drill"),
+                  ("diagram-er.ir.json", "card_d"),
+                  ("diagram-stakeholder.ir.json", "EXTERNOS"),
+                  ("diagram-threat-model.ir.json", "⚠")):
+    code, out = rund("validate", "--ir", os.path.join(FIX, fx))
+    check(f"validate acepta fixture {fx}", code == 0, out)
+    with tempfile.TemporaryDirectory() as tmp:
+        out_html = os.path.join(tmp, fx.replace(".ir.json", ".html"))
+        code, out = rund("render", "--ir", os.path.join(FIX, fx), "--out", out_html)
+        cond = code == 0 and os.path.exists(out_html)
+        if cond:
+            cond = marca in open(out_html, encoding="utf-8").read()
+        check(f"render {fx}: vista con elemento propio del tipo ({marca})", cond, out)
+
+p_bad = _ir_tmp(lambda ir: ir["nodos"][0].pop("ubicacion"), "diagram-deployment.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("deployment: exige ubicacion en cada nodo", code == 1 and "ubicacion" in out, out)
+
+p_bad = _ir_tmp(lambda ir: ir["nodos"][0].pop("grupo"), "diagram-component.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("component: rechaza componente fuera del contenedor", code == 1 and "grupo" in out, out)
+
+p_bad = _ir_tmp(lambda ir: ir["aristas"][0].pop("card_h"), "diagram-er.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("er: rechaza relacion sin cardinalidad en ambos extremos", code == 1 and "card_h" in out, out)
+
+p_bad = _ir_tmp(lambda ir: ir["aristas"][0].update(amenaza="X"), "diagram-threat-model.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("threat-model: rechaza amenaza fuera de STRIDE", code == 1 and "STRIDE" in out, out)
+
+p_bad = _ir_tmp(lambda ir: ir["anidados"].update({"Subnet privada datos": "VPC pagos", "VPC pagos": "Subnet privada datos"}), "diagram-deployment.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("anidados: rechaza ciclos de hulls", code == 1 and "ciclo" in out, out)
+
+# v1.4: headroom de hulls anidados, color por nodo, lineas de limite de confianza
+with tempfile.TemporaryDirectory() as tmp:
+    out_html = os.path.join(tmp, "dep.html")
+    code, out = rund("render", "--ir", os.path.join(FIX, "diagram-deployment.ir.json"), "--out", out_html)
+    ys = [float(y) for y in re.findall(r'class="hull".*?<text x="[\d.-]+" y="([\d.-]+)"',
+                                       open(out_html, encoding="utf-8").read())]
+    check("deployment: etiquetas de hulls anidados no pisan el titulo (y>85)",
+          code == 0 and bool(ys) and min(ys) > 85, f"min y={min(ys) if ys else '?'}")
+
+with tempfile.TemporaryDirectory() as tmp:
+    out_html = os.path.join(tmp, "stk.html")
+    code, out = rund("render", "--ir", os.path.join(FIX, "diagram-stakeholder.ir.json"), "--out", out_html)
+    cont = open(out_html, encoding="utf-8").read()
+    check("stakeholder: color por nodo interno/externo aplicado",
+          code == 0 and "#a78bfa14" in cont and "#38bdf814" in cont, out)
+
+with tempfile.TemporaryDirectory() as tmp:
+    out_html = os.path.join(tmp, "tm.html")
+    code, out = rund("render", "--ir", os.path.join(FIX, "diagram-threat-model.ir.json"), "--out", out_html)
+    cont = open(out_html, encoding="utf-8").read()
+    check("threat-model: lineas divisorias de limite de confianza dibujadas",
+          code == 0 and cont.count("MITE DE CONFIANZA") == 2, out)
+
+p_bad = _ir_tmp(lambda ir: ir["limites"].append({"label": "sin rank"}), "diagram-threat-model.ir.json")
+code, out = rund("validate", "--ir", p_bad)
+os.unlink(p_bad)
+check("limites: rechaza limite sin despues_rank", code == 1 and "despues_rank" in out, out)
+
+# v2.26.1: aristas que saltan columnas van por canal inferior; chips truncados
+with tempfile.TemporaryDirectory() as tmp:
+    out_html = os.path.join(tmp, "dep.html")
+    code, out = rund("render", "--ir", os.path.join(FIX, "diagram-deployment.ir.json"), "--out", out_html)
+    cont = open(out_html, encoding="utf-8").read()
+    m_skip = re.search(r'data-f="ecs" data-t="core"><path d="([^"]+)"', cont)
+    check("deployment: arista que salta columnas usa canal inferior (no recta)",
+          code == 0 and m_skip and "Q" in m_skip.group(1), m_skip.group(1)[:60] if m_skip else out)
+with tempfile.TemporaryDirectory() as tmp:
+    out_html = os.path.join(tmp, "tm.html")
+    code, out = rund("render", "--ir", os.path.join(FIX, "diagram-threat-model.ir.json"), "--out", out_html)
+    cont = open(out_html, encoding="utf-8").read()
+    ys_lim = [float(y) for y in re.findall(r'<text x="[\d.]+" y="([\d.]+)" fill="#fb7185"', cont)]
+    check("threat-model: etiquetas de limite al pie + chip truncado al hueco",
+          code == 0 and len(ys_lim) == 2 and min(ys_lim) > 300 and "⚠S · (1) Envia c…" in cont, out)
+
 # validate rechaza IR roto
 with tempfile.TemporaryDirectory() as tmp:
     bad = os.path.join(tmp, "bad.ir.json")
@@ -1230,6 +1372,62 @@ with tempfile.TemporaryDirectory() as tmp:
           [e.get("resultado") for e in br] == ["ok", "fallo", "ok"], str(br))
     code, out = runbr("--allowed", "src/**", "--root", os.path.join(tmp, "noexiste"))
     check("N11: sin repo git = exit 2 con mensaje claro", code == 2, out)
+
+# ── 11. Grafo de código derivado (v2.27: code_graph) ─────────────────────────
+print("\n[11] code_graph: vistas derivadas del índice code_intel con tema del portal")
+import sqlite3 as _sq
+with tempfile.TemporaryDirectory() as tmp:
+    cidir = os.path.join(tmp, ".codeintel")
+    os.makedirs(cidir)
+    db = _sq.connect(os.path.join(cidir, "index.db"))
+    db.executescript("""
+        CREATE TABLE files(path TEXT PRIMARY KEY, sha TEXT, lang TEXT, mtime REAL);
+        CREATE TABLE symbols(file TEXT, name TEXT, kind TEXT, line_start INT,
+                             line_end INT, signature TEXT, doc TEXT);
+        CREATE TABLE edges(file TEXT, kind TEXT, target TEXT);
+        INSERT INTO symbols VALUES
+          ('src/api/handler.ts','handle','function',1,10,'function handle()',''),
+          ('src/api/handler.ts','aux','function',12,20,'function aux()',''),
+          ('src/domain/core.ts','DomainError','class',1,15,'class DomainError',''),
+          ('src/tests/x.test.ts','helper','function',1,5,'function helper()','');
+        INSERT INTO edges VALUES
+          ('src/api/handler.ts','call','DomainError'),
+          ('src/api/handler.ts','call','describe'),
+          ('src/tests/x.test.ts','call','handle'),
+          ('src/api/handler.ts','call','libExtenaNoIndexada');
+    """)
+    db.commit(); db.close()
+    code, out = run("code_graph.py", "emit", "--root", tmp)
+    g1 = os.path.join(tmp, "spec", "diagrams", "grafo-codigo.html")
+    g2 = os.path.join(tmp, "spec", "diagrams", "grafo-modulos.html")
+    check("code_graph emit genera ambas vistas en spec/diagrams/",
+          code == 0 and os.path.isfile(g1) and os.path.isfile(g2), out)
+    h1 = open(g1, encoding="utf-8").read() if os.path.isfile(g1) else ""
+    h2 = open(g2, encoding="utf-8").read() if os.path.isfile(g2) else ""
+    check("vista interactiva usa tokens del portal y tema compartido (dir-tema)",
+          "data-theme=claro" in h1 and "dir-tema" in h1 and "portal==='tema'" in h1)
+    check("vista de módulos usa tokens del portal y tema compartido (dir-tema)",
+          "data-theme=claro" in h2 and "dir-tema" in h2 and "portal==='tema'" in h2)
+    check("tests y ruido de frameworks excluidos del grafo",
+          "x.test.ts" not in h1 and "describe" not in h1 and "helper" not in h1)
+    check("llamadas no resueltas se reportan honestamente (1 en el fixture)",
+          "1 llamadas no resueltas" in out, out)
+    code, out = run("code_graph.py", "check", "--root", tmp)
+    check("code_graph check pasa tras emit (sin drift)", code == 0, out)
+    # drift: tocar el índice (nuevo símbolo) debe romper el fingerprint
+    db = _sq.connect(os.path.join(cidir, "index.db"))
+    db.execute("INSERT INTO symbols VALUES ('src/domain/core.ts','nueva','function',20,25,'function nueva()','')")
+    db.commit(); db.close()
+    code, out = run("code_graph.py", "check", "--root", tmp)
+    check("code_graph check detecta drift (exit 1) tras cambiar el índice",
+          code == 1 and "DRIFT" in out, out)
+with tempfile.TemporaryDirectory() as tmp:
+    code, out = run("code_graph.py", "emit", "--root", tmp)
+    check("sin índice code_intel: emit informa y sale 0 (capacidad opcional)",
+          code == 0 and "SIN ÍNDICE" in out, out)
+    code, out = run("code_graph.py", "check", "--root", tmp)
+    check("sin índice code_intel: check pasa (degrada, nunca bloquea)",
+          code == 0, out)
 
 # ── Resumen ──────────────────────────────────────────────────────────────────
 print(f"\n{'='*60}\n{PASSES} checks OK, {len(FAILURES)} fallos")

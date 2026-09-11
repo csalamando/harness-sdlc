@@ -7,6 +7,106 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.27.0] - 2026-09-10
+
+**"El índice ya era un grafo; ahora se ve."** `code_graph.py` convierte el índice code_intel (SQLite: símbolos + aristas de llamada) en dos vistas derivadas que el portal recoge automáticamente en la página Arquitectura.
+
+### Added
+- **`code_graph.py emit|check|stats`** en `sdlc-orchestrator/scripts/` (stdlib puro, sin CDN): lee `<proyecto>/.codeintel/index.db` y emite a `spec/diagrams/`:
+  - `grafo-codigo.html` — grafo interactivo force-directed (JS autocontenido): nodos=archivos coloreados por directorio, tamaño=nº de símbolos, zoom/pan, hover, panel de detalle (símbolos, depende de / dependen de él), filtros por directorio, buscador y top-25 hubs por in-degree.
+  - `grafo-modulos.html` — grafo estático SVG de módulos (directorios): acoplamiento real medido, grosor de arista = llamadas+imports que cruzan módulos, con tabla de aristas. Pieza documentable para `spec/architecture/`.
+- **Tema día/noche compartido con el portal**: ambas vistas usan los `TOKENS_CSS` de `portal_lib` (con copia de respaldo embebida) y la clave `dir-tema`; el toggle ☀/☾ del shell las retema en vivo vía postMessage, igual que los diagramas IR. El canvas lee los tokens en cada frame.
+- **Garantía de inclusión en el dashboard**: `harness_graph.main_proyecto` llama `code_graph.emit_views()` ANTES del sweep de diagramas (best-effort, nunca bloquea) — regenerar el portal regenera y registra las vistas en la página Arquitectura en la misma pasada.
+- **Anti-drift `check`**: fingerprint SHA-256 del subgrafo embebido en el HTML; exit 1 si las vistas quedan atrás del índice (mismo patrón que los demás derivados del arnés).
+- **Filtros anti-ruido por defecto**: excluye tests, cobertura y vendors, y llamadas a frameworks de test/librería estándar (`describe`/`it`/`expect`…) que dominan el in-degree sin informar. `--include-tests` los reincorpora.
+- **Gobierno** (documentado en el SKILL del orquestador): *dónde* — script junto a `code_intel.py`, salida en `spec/diagrams/` registrada por el sweep de `harness_graph.emit_portal`; *cuándo* — tras cada `code_intel.py index` y en cada regeneración del portal; *quién* — ejecuta el rol de desarrollo/orquestador al reindexar; consumen Arquitecto (vista módulos) y devs (interactivo).
+
+### Notas
+- Matiz del esquema: las aristas del índice son a nivel **archivo** (archivo → nombre llamado), no símbolo→símbolo. El grafo interactivo es de archivos y el ranking de hubs es por in-degree de símbolo; no se inventa atribución símbolo→símbolo.
+- Capacidad opcional: sin índice, `emit` informa y sale 0; `check` pasa (degrada como el resto de capacidades code_intel).
+
+### Verificación
+- Probado contra índice real (95 archivos útiles, 442 aristas archivo→archivo, 6 módulos, 2 686 llamadas a símbolos no indexados reportadas honestamente): `emit` + `check` en verde, JSON embebido parseable, JS validado con `node --check`, ambas vistas renderizadas en Chrome headless en **tema claro y oscuro** (PNG de evidencia).
+- 289 checks de self-test en verde (9 nuevos: emisión de ambas vistas, tokens/`dir-tema` presentes en las dos, exclusión de tests y ruido, reporte de no resueltas, `check` sin drift, detección de drift al tocar el índice, degradación sin índice en `emit` y `check`).
+
+## [2.26.1] - 2026-09-10
+
+### Fixed
+- **Aristas que saltan columnas ya no atraviesan nodos** (defecto visto en deployment: `ecs→core` cruzaba PostgreSQL RDS en línea recta): span > 1 se enruta por el canal inferior con estilo normal; `_layout` reserva altura para estos canales igual que para back-edges.
+- **Etiquetas de hull truncadas** al ancho disponible, reservando la zona del badge de `ubicacion` del nodo superior derecho ("SUBNET PRIVADA DATOS" vs pill "AWS RDS").
+- **Etiquetas de límites de confianza al pie de la línea** (antes pisaban las etiquetas de zona en la franja superior).
+- **Chips de etiqueta de arista truncados al hueco entre nodos** con elipsis (el texto completo sigue en el panel de detalle) — "⚠S · (1) Envía credenciales (HTTPS)" ya no invade las tarjetas vecinas.
+
+### Verificación
+- 291 checks de self-test en verde (2 nuevos: canal para skip-edges, límite al pie + chip truncado).
+
+## [2.26.0] - 2026-09-10
+
+**"Feedback visual convertido en renderer."** Tres extensiones al motor IR nacidas de la revisión visual de los fixtures: headroom para hulls anidados, color por nodo y líneas divisorias de límite de confianza estilo DFD.
+
+### Added
+- **Headroom vertical para hulls anidados** (v1.4): con `anidados`, los nodos se desplazan 46px por nivel de profundidad — las etiquetas de los hulls externos ya no pisan el título/subtítulo (regresión cubierta por self-test: etiqueta más alta con y>85).
+- **Color por nodo** (`"color"`): sobreescribe la paleta del tipo — habilita internos/externos en stakeholder y énfasis puntuales en cualquier diagrama. Normalizado en el `diff`.
+- **Líneas de límite de confianza** (`"limites": [{"label", "despues_rank"}]`): divisorias verticales rojas punteadas entre columnas de rank, etiquetadas `[ LÍMITE DE CONFIANZA ]` — el componente DFD clásico de los threat models. `validate` exige `label` y `despues_rank` entero.
+- Tipo de nodo nuevo: `proceso` (◯) para DFD; entidad externa se modela con `external` (⬡) y almacén con `db` (⛁).
+
+### Fixed (fixtures rediseñados tras revisión visual)
+- **ER**: de fila india a disposición 2D (Pago y Liquidación en el mismo rank, apilados) — las relaciones se leen sin recorrer toda la línea.
+- **Stakeholder**: nodo central del sistema con aristas "usa: portal + API / consola ops / reportes" por rol, y color morado (internos) vs azul (externos) via `"color"`.
+- **Threat-model**: rediseñado como DFD STRIDE — entidad externa → proceso → almacén, flujos numerados (1)-(4) en ambas direcciones y dos límites de confianza divisorios.
+
+### Verificación
+- 280 checks de self-test en verde (4 nuevos: headroom, color por nodo, líneas de límite, rechazo de límite sin rank).
+
+## [2.25.0] - 2026-09-10
+
+**"Del contexto a la amenaza: el IR cubre el ciclo completo."** Cinco tipos nuevos de diagramas vivos sobre el mismo renderer y lenguaje visual: hulls anidados, cardinalidades, drill-down y trust boundaries. Completan el top-10 de vistas del arnés (deployment, component, ER, stakeholder, threat-model).
+
+### Added
+- **`tipo: "deployment"`** en `diagram_ir.py`: zonas con **hulls anidados** — nuevo campo top-level `"anidados": {"hijo": "padre"}` (región→VPC→subnet; el padre se expande hasta envolver al hijo; ciclos y referencias a grupos inexistentes rechazados por `validate`). Hereda `ubicacion` obligatoria. Cubre topología de red.
+- **`tipo: "component"` (C4 L3)**: componentes dentro del boundary de un contenedor; **drill-down IR-a-IR** — un nodo con `"ir": "otro.ir.json"` muestra marcador ↗ y el panel de detalle enlaza a la vista hija.
+- **`tipo: "er"` (Entidad-Relación)**: entidades `entity|db|store`; toda arista exige `card_d`/`card_h` del catálogo `1|N|M|0..1|0..N|1..N|1..1|N..M`, dibujadas junto a cada extremo.
+- **`tipo: "stakeholder"` (onion)**: anillos concéntricos via `anidados`; nodos tipo `role` (◍).
+- **`tipo: "threat-model"` (STRIDE/DFD)**: grupos en `"trust": [...]` se dibujan como **trust boundary** (borde rojo grueso, ⛨); aristas con `"amenaza": "S|T|R|I|D|E"` (validado) se etiquetan `⚠X · label`, incluidos back-edges.
+- Tipos de nodo nuevos: `entity` (▦) y `role` (◍). Fixtures: `diagram-deployment`, `diagram-component`, `diagram-er`, `diagram-stakeholder`, `diagram-threat-model` (+ HTML derivados).
+- Dueños de IR: deployment → `sdlc-cloud-engineer`, er → `sdlc-data-engineer`, threat-model → `sdlc-security-engineer`, stakeholder → `sdlc-business-analyst`, component → `sdlc-software-architect`.
+
+### Changed
+- `diagram_ir.py` VERSION → 1.3.0; `_bandas` (hulls) soporta anidados y trust; el diff normaliza `ir`, `card_d`, `card_h` y `amenaza`; el panel de detalle muestra el enlace de drill-down; las etiquetas `⚠STRIDE` aplican también en back-edges.
+- HTML derivados regenerados en `tests/fixtures/`, `demos/` y `.analysis/`.
+
+### Verificación
+- 275 checks de self-test en verde (15 nuevos: validación + render de los 5 tipos, y 5 rechazos de reglas: ubicación en deployment, grupo en component, cardinalidad en ER, amenaza fuera de STRIDE, ciclo en anidados).
+- Retrocompatible: IRs existentes sin los campos nuevos validan y renderizan igual.
+
+## [2.24.1] - 2026-09-10
+
+### Fixed
+- **Bandas `columnas` sin solapes**: el rect de columna baja de `MY-52` a `MY-40` y la etiqueta de dominio a `MY-16` — ya no rozan el subtítulo "derivado de…" del encabezado.
+- **`validate` rechaza dominios de capability-map repartidos en varias columnas** (ranks distintos dentro del mismo `grupo`): era el origen de las etiquetas de dominio sobrepuestas; ahora se detecta en CI con mensaje accionable ("asigna el mismo rank a todas sus capacidades"). Fixture BIAN corregido: un rank por dominio.
+
+### Verificación
+- 260 checks de self-test en verde (1 nuevo: rechazo de dominio multi-columna).
+
+## [2.24.0] - 2026-09-10
+
+**"El IR crece: contexto, contenedores y capacidades."** Tres nuevas vistas de diagramas vivos sobre el mismo renderer y el mismo lenguaje visual — cero primitivos nuevos de interacción, solo reglas de gobierno y dos glyphs (anillo central, pill de madurez).
+
+### Added
+- **`tipo: "context"` (C4 L1)** en `diagram_ir.py`: exige exactamente 1 nodo con `"central": true` (dibujado con doble anillo punteado) y que toda arista toque el sistema central. Tipos de nodo nuevos en `TIPO_BASE`: `actor` (☺) y `external` (⬡).
+- **`tipo: "container"` (C4 L2)**: exige `"bandas": "hulls"`, que todo nodo caiga dentro de un boundary (`grupo` declarado) y hereda la regla de `ubicacion` obligatoria de `architecture`.
+- **`tipo: "capability-map"` (mapa de capacidades BIAN)**: exige `"bandas": "columnas"` (columna = dominio), `grupo` en toda capacidad y `"estado"` del catálogo `adoptar|madurar|mantener|retirar`, dibujado como pill de madurez coloreado en la esquina inferior del nodo, visible también en el panel de detalle y en el `diff`.
+- Fixtures: `tests/fixtures/diagram-context.ir.json`, `diagram-container.ir.json`, `diagram-capability-map.ir.json` (+ sus HTML derivados).
+- Dueños de IR actualizados en `sdlc-diagrams`: context/container → `sdlc-software-architect`, capability-map → `sdlc-solution-architect`.
+
+### Changed
+- `diagram_ir.py` VERSION → 1.2.0; `_elements()` del diff normaliza `estado` y `central`.
+- HTML derivado de `diagram-flow`/`diagram-sequence` regenerado (el panel de detalle ahora muestra `estado` cuando existe).
+
+### Verificación
+- 259 checks de self-test en verde (12 nuevos: validación positiva y render de los 3 tipos, y 6 rechazos de reglas de gobierno).
+- Retrocompatible: IRs existentes sin `tipo` nuevo no cambian su validación; el drift de los HTML viejos se resuelve con `render`.
+
 ## [2.23.0] - 2026-09-09
 
 **"La auditoría se ve."** El portal del proyecto aprende a mostrar la memoria de auditoría (ADR-004) y el menú deja de clasificar por tipo de archivo para organizarse por pregunta del usuario. Propuesta completa: [docs/propuesta-portal-auditoria-v2.23.md](docs/propuesta-portal-auditoria-v2.23.md).

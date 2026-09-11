@@ -1,0 +1,28 @@
+{
+  "kind": "flow",
+  "tipo": "er",
+  "titulo": "Entidad-Relacion — Pagos y liquidaciones",
+  "fuente": "spec/diagrams/er-pagos.ir.json",
+  "bandas": "hulls",
+  "grupos": {"Dominio pagos": "#34d399", "Dominio comercios": "#38bdf8"},
+  "nodos": [
+    {"id": "comercio",   "titulo": "Comercio",    "sub": "id, nit, nombre",            "tipo": "entity", "grupo": "Dominio comercios", "detalle": "Atributos: id (PK), nit, nombre_legal, fecha_afiliacion.", "rank": 0},
+    {"id": "pago",       "titulo": "Pago",        "sub": "id, monto, estado",          "tipo": "entity", "grupo": "Dominio pagos",     "detalle": "Atributos: id (PK), comercio_id (FK), monto, moneda, estado, creado_en.", "rank": 1},
+    {"id": "liquidacion","titulo": "Liquidacion", "sub": "id, periodo, total",         "tipo": "entity", "grupo": "Dominio pagos",     "detalle": "Atributos: id (PK), comercio_id (FK), periodo, total, emitida_en.", "rank": 1},
+    {"id": "liq_det",    "titulo": "Detalle liq.", "sub": "liquidacion_id, pago_id",   "tipo": "entity", "grupo": "Dominio pagos",     "detalle": "Tabla asociativa N..M entre liquidacion y pago.", "rank": 2}
+  ],
+  "aristas": [
+    {"desde": "comercio", "hasta": "pago",        "label": "recibe",    "card_d": "1", "card_h": "N"},
+    {"desde": "comercio", "hasta": "liquidacion", "label": "se liquida", "card_d": "1", "card_h": "N"},
+    {"desde": "liquidacion", "hasta": "liq_det",  "label": "contiene",  "card_d": "1", "card_h": "N"},
+    {"desde": "pago",     "hasta": "liq_det",     "label": "aparece en", "card_d": "1", "card_h": "0..N"}
+  ],
+  "insights": [
+    {"titulo": "Cardinalidades exigibles", "color": "#34d399", "bullets": [
+      "Toda relacion declara card_d y card_h del catalogo (1, N, 0..N, 1..N...)",
+      "Un pago puede no estar liquidado aun: aparece en 0..N detalles"]},
+    {"titulo": "Tabla asociativa", "color": "#38bdf8", "bullets": [
+      "Detalle liq. resuelve el N..M entre liquidacion y pago",
+      "La liquidacion nunca toca pagos de otro comercio (regla de negocio)"]}
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "kind": "flow",
+  "tipo": "capability-map",
+  "titulo": "Mapa de capacidades BIAN — Banca de pagos",
+  "fuente": "spec/diagrams/capacidades-bian.ir.json",
+  "bandas": "columnas",
+  "grupos": {
+    "Payments": "#38bdf8",
+    "Customer Management": "#a78bfa",
+    "Risk & Compliance": "#f59e0b"
+  },
+  "nodos": [
+    {
+      "id": "cap-init",
+      "titulo": "Payment Initiation",
+      "sub": "BIAN: Payment Order",
+      "tipo": "service",
+      "grupo": "Payments",
+      "estado": "adoptar",
+      "detalle": "Ordenes de pago API-first; diferenciador frente a competidores.",
+      "rank": 0
+    },
+    {
+      "id": "cap-liq",
+      "titulo": "Settlement & Clearing",
+      "sub": "BIAN: Payment Clearing",
+      "tipo": "service",
+      "grupo": "Payments",
+      "estado": "mantener",
+      "detalle": "Batch hacia el core; suficiente para el volumen actual.",
+      "rank": 0
+    },
+    {
+      "id": "cap-onb",
+      "titulo": "Merchant Onboarding",
+      "sub": "BIAN: Customer Agreement",
+      "tipo": "service",
+      "grupo": "Customer Management",
+      "estado": "madurar",
+      "detalle": "Alta de comercios semiautomatica; falta KYB digital completo.",
+      "rank": 1
+    },
+    {
+      "id": "cap-crm",
+      "titulo": "Customer 360",
+      "sub": "BIAN: Party Reference",
+      "tipo": "service",
+      "grupo": "Customer Management",
+      "estado": "retirar",
+      "detalle": "CRM legado a desmantelar; sus datos migran al onboarding nuevo.",
+      "rank": 1
+    },
+    {
+      "id": "cap-frd",
+      "titulo": "Fraud Detection",
+      "sub": "BIAN: Fraud Diagnosis",
+      "tipo": "service",
+      "grupo": "Risk & Compliance",
+      "estado": "adoptar",
+      "detalle": "Scoring en tiempo real; inversion priorizada este ano.",
+      "rank": 2
+    },
+    {
+      "id": "cap-aml",
+      "titulo": "AML Screening",
+      "sub": "BIAN: Regulatory Compliance",
+      "tipo": "service",
+      "grupo": "Risk & Compliance",
+      "estado": "mantener",
+      "detalle": "Listas OFAC/ONU automatizadas; revision manual de alertas.",
+      "rank": 2
+    }
+  ],
+  "aristas": [],
+  "insights": [
+    {
+      "titulo": "Apuesta de inversion",
+      "color": "#34d399",
+      "bullets": [
+        "adoptar: Payment Initiation y Fraud Detection (diferenciadores)",
+        "madurar: Merchant Onboarding hasta KYB digital completo"
+      ]
+    },
+    {
+      "titulo": "Deuda por retirar",
+      "color": "#fb7185",
+      "bullets": [
+        "Customer 360 legado: plan de retiro con migracion de datos",
+        "Sin capacidades 'retirar' en Payments ni Risk"
+      ]
+    }
+  ]
+}

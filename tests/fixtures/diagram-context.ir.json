@@ -1,0 +1,31 @@
+{
+  "kind": "flow",
+  "tipo": "context",
+  "titulo": "Contexto (C4 L1) — Plataforma de Pagos",
+  "fuente": "spec/diagrams/contexto.ir.json",
+  "bandas": "hulls",
+  "grupos": {"Actores": "#fbbf24", "Sistemas externos": "#94a3b8"},
+  "nodos": [
+    {"id": "cliente",  "titulo": "Cliente",              "sub": "persona",            "tipo": "actor",    "grupo": "Actores",           "detalle": "Usuario final que inicia pagos desde la app o el portal web."},
+    {"id": "comercio", "titulo": "Comercio afiliado",    "sub": "persona / empresa",  "tipo": "actor",    "grupo": "Actores",           "detalle": "Recibe liquidaciones y consulta el estado de sus ventas."},
+    {"id": "pagos",    "titulo": "Plataforma de Pagos",  "sub": "sistema bajo descripcion", "tipo": "service", "central": true,      "detalle": "Procesa pagos, gestiona liquidaciones y expone APIs a los comercios."},
+    {"id": "core",     "titulo": "Core bancario",        "sub": "sistema legado",     "tipo": "external", "grupo": "Sistemas externos", "detalle": "Sistema del banco adquirente; liquidaciones via archivos batch."},
+    {"id": "fraude",   "titulo": "Motor antifraude",     "sub": "SaaS",               "tipo": "external", "grupo": "Sistemas externos", "ubicacion": "SaaS (cloud)", "detalle": "Scoring en tiempo real por transaccion."},
+    {"id": "notif",    "titulo": "Proveedor de correo",  "sub": "SaaS",               "tipo": "external", "grupo": "Sistemas externos", "ubicacion": "SaaS (cloud)", "detalle": "Envio de notificaciones y estados de cuenta."}
+  ],
+  "aristas": [
+    {"desde": "cliente",  "hasta": "pagos", "label": "inicia pago (HTTPS)"},
+    {"desde": "comercio", "hasta": "pagos", "label": "consulta liquidaciones"},
+    {"desde": "pagos",    "hasta": "core",  "label": "liquida (batch)"},
+    {"desde": "pagos",    "hasta": "fraude", "label": "scoring (REST)"},
+    {"desde": "pagos",    "hasta": "notif", "label": "notifica (SMTP)"}
+  ],
+  "insights": [
+    {"titulo": "Alcance del sistema", "color": "#a78bfa", "bullets": [
+      "Un unico sistema central: Plataforma de Pagos (anillo doble)",
+      "Toda relacion externa pasa por el sistema — regla validada por diagram_ir"]},
+    {"titulo": "Dependencias criticas", "color": "#fb7185", "bullets": [
+      "El scoring antifraude esta en el camino sincrono de cada pago",
+      "La liquidacion al core bancario es batch: no bloquea la autorizacion"]}
+  ]
+}

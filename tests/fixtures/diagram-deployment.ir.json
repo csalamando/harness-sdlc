@@ -1,0 +1,35 @@
+{
+  "kind": "flow",
+  "tipo": "deployment",
+  "titulo": "Despliegue — Plataforma de Pagos (AWS + on-prem)",
+  "fuente": "spec/diagrams/despliegue.ir.json",
+  "bandas": "hulls",
+  "grupos": {
+    "Region AWS us-east-1": "#a78bfa",
+    "VPC pagos": "#38bdf8",
+    "Subnet privada datos": "#34d399",
+    "Datacenter banco (on-prem)": "#94a3b8"
+  },
+  "anidados": {"VPC pagos": "Region AWS us-east-1", "Subnet privada datos": "VPC pagos"},
+  "nodos": [
+    {"id": "cdn",   "titulo": "CDN / WAF",          "sub": "CloudFront + WAF",  "tipo": "edge",    "grupo": "Region AWS us-east-1",    "ubicacion": "AWS (cloud)",            "detalle": "Terminacion TLS, filtrado WAF y cache estatico.", "rank": 0},
+    {"id": "alb",   "titulo": "ALB",                "sub": "balanceador",       "tipo": "edge",    "grupo": "VPC pagos",               "ubicacion": "AWS (cloud)",            "detalle": "Balanceo L7 hacia el servicio de pagos.", "rank": 1},
+    {"id": "ecs",   "titulo": "Servicio pagos",     "sub": "ECS Fargate x3",    "tipo": "service", "grupo": "VPC pagos",               "ubicacion": "AWS (cloud)",            "detalle": "Contenedores de la API; autoescalado por CPU.", "rank": 2},
+    {"id": "rds",   "titulo": "PostgreSQL RDS",     "sub": "Multi-AZ",          "tipo": "db",      "grupo": "Subnet privada datos",    "ubicacion": "AWS RDS (cloud)",        "detalle": "Sin IP publica; solo accesible desde la VPC.", "rank": 3},
+    {"id": "core",  "titulo": "Core bancario",      "sub": "mainframe",         "tipo": "external","grupo": "Datacenter banco (on-prem)", "ubicacion": "on-premise datacenter", "detalle": "Liquidaciones por archivos batch via VPN site-to-site.", "rank": 4}
+  ],
+  "aristas": [
+    {"desde": "cdn",  "hasta": "alb",  "label": "HTTPS"},
+    {"desde": "alb",  "hasta": "ecs",  "label": "HTTP interno"},
+    {"desde": "ecs",  "hasta": "rds",  "label": "SQL (TLS)"},
+    {"desde": "ecs",  "hasta": "core", "label": "SFTP batch (VPN)"}
+  ],
+  "insights": [
+    {"titulo": "Hulls anidados", "color": "#a78bfa", "bullets": [
+      "Region → VPC → Subnet: cada nivel envuelve al anterior (campo anidados)",
+      "La subnet de datos no tiene salida publica: solo la VPC la alcanza"]},
+    {"titulo": "Frontera cloud/on-prem", "color": "#fbbf24", "bullets": [
+      "Un unico enlace SFTP batch cruza al datacenter via VPN",
+      "El core bancario queda fuera de la nube y fuera del camino sincrono"]}
+  ]
+}

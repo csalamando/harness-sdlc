@@ -11,10 +11,12 @@
   document.getElementById('btn-zmas').onclick=ev=>{ev.stopPropagation();z=Math.min(1.8,+(z+0.1).toFixed(2));aplZoom();};
   document.getElementById('btn-zmenos').onclick=ev=>{ev.stopPropagation();z=Math.max(0.6,+(z-0.1).toFixed(2));aplZoom();};
   document.getElementById('btn-zreset').onclick=ev=>{ev.stopPropagation();z=1;aplZoom();};
+  window.addEventListener('message',ev=>{const d=ev.data||{};
+    if(d.portal==='tema'){tema=d.tema==='claro'?'claro':'oscuro';aplTema();}});
   aplTema();aplZoom();
 })();
 
-const DATOS={"spa": {"titulo": "Browser (SPA)", "sub": "Angular 18", "tipo": "ui", "detalle": "Interceptor JWT adjunta el token en cada request.", "ubicacion": ""}, "api": {"titulo": "API REST", "sub": ".NET 8", "tipo": "service", "detalle": "AuthController + middleware de validacion.", "ubicacion": ""}, "auth": {"titulo": "Entra ID", "sub": "OAuth2+PKCE", "tipo": "security", "detalle": "IdP corporativo; JWT de 15 min + refresh rotativo.", "ubicacion": ""}, "sql": {"titulo": "Azure SQL", "sub": "auditoria", "tipo": "db", "detalle": "Tabla de auditoria; escritura con rol de app (sin DDL).", "ubicacion": ""}}, COLORES={"ui": "#38bdf8", "edge": "#2dd4bf", "service": "#a78bfa", "security": "#f59e0b", "db": "#34d399", "job": "#94a3b8", "decision": "#f472b6", "terminal": "#e2e8f0", "source": "#38bdf8", "transform": "#a78bfa", "store": "#34d399", "consumer": "#fbbf24", "start": "#2dd4bf", "waiting": "#fbbf24", "failure": "#fb7185"};
+const DATOS={"spa": {"titulo": "Browser (SPA)", "sub": "Angular 18", "tipo": "ui", "detalle": "Interceptor JWT adjunta el token en cada request.", "ubicacion": ""}, "api": {"titulo": "API REST", "sub": ".NET 8", "tipo": "service", "detalle": "AuthController + middleware de validacion.", "ubicacion": ""}, "auth": {"titulo": "Entra ID", "sub": "OAuth2+PKCE", "tipo": "security", "detalle": "IdP corporativo; JWT de 15 min + refresh rotativo.", "ubicacion": ""}, "sql": {"titulo": "Azure SQL", "sub": "auditoria", "tipo": "db", "detalle": "Tabla de auditoria; escritura con rol de app (sin DDL).", "ubicacion": ""}}, COLORES={"ui": "#38bdf8", "edge": "#2dd4bf", "service": "#a78bfa", "security": "#f59e0b", "db": "#34d399", "job": "#94a3b8", "decision": "#f472b6", "terminal": "#e2e8f0", "source": "#38bdf8", "transform": "#a78bfa", "store": "#34d399", "consumer": "#fbbf24", "start": "#2dd4bf", "waiting": "#fbbf24", "failure": "#fb7185", "actor": "#fbbf24", "external": "#94a3b8", "entity": "#34d399", "role": "#fbbf24", "proceso": "#a78bfa"};
 let lens=[];
 function aplicar(focus){
   const act=new Set(lens);

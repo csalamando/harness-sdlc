@@ -1,0 +1,32 @@
+{
+  "kind": "flow",
+  "tipo": "container",
+  "titulo": "Contenedores (C4 L2) — Plataforma de Pagos",
+  "fuente": "spec/diagrams/contenedores.ir.json",
+  "bandas": "hulls",
+  "grupos": {"Boundary: Canal web": "#38bdf8", "Boundary: VPC pagos (AWS)": "#a78bfa", "Boundary: Datos": "#34d399"},
+  "nodos": [
+    {"id": "spa",     "titulo": "SPA comercios",     "sub": "React",          "tipo": "ui",       "grupo": "Boundary: Canal web",       "ubicacion": "Cloudflare (cloud)", "detalle": "Portal del comercio: ventas, liquidaciones y disputas."},
+    {"id": "bff",     "titulo": "BFF web",           "sub": "Node.js",        "tipo": "edge",     "grupo": "Boundary: Canal web",       "ubicacion": "AWS (cloud)",        "detalle": "Agrega y adapta APIs para la SPA; sesiones y tokens."},
+    {"id": "api",     "titulo": "API de pagos",      "sub": "FastAPI",        "tipo": "service",  "grupo": "Boundary: VPC pagos (AWS)", "ubicacion": "AWS (cloud)",        "detalle": "Autorizacion y captura; publica eventos de dominio."},
+    {"id": "liq",     "titulo": "Worker liquidacion","sub": "job nocturno",   "tipo": "job",      "grupo": "Boundary: VPC pagos (AWS)", "ubicacion": "AWS (cloud)",        "detalle": "Genera archivos de liquidacion hacia el core bancario."},
+    {"id": "pg",      "titulo": "PostgreSQL",        "sub": "transaccional",  "tipo": "db",       "grupo": "Boundary: Datos",           "ubicacion": "AWS RDS (cloud)",    "detalle": "Pagos, comercios y liquidaciones; cifrado en reposo."},
+    {"id": "bus",     "titulo": "Bus de eventos",    "sub": "SNS/SQS",        "tipo": "service",  "grupo": "Boundary: Datos",           "ubicacion": "AWS (cloud)",        "detalle": "Eventos de dominio: pago_autorizado, liquidacion_emitida."}
+  ],
+  "aristas": [
+    {"desde": "spa", "hasta": "bff", "label": "HTTPS/JSON"},
+    {"desde": "bff", "hasta": "api", "label": "REST + JWT"},
+    {"desde": "api", "hasta": "pg",  "label": "SQL (TLS)"},
+    {"desde": "api", "hasta": "bus", "label": "publica eventos"},
+    {"desde": "liq", "hasta": "bus", "label": "consume"},
+    {"desde": "liq", "hasta": "pg",  "label": "lee pagos"}
+  ],
+  "insights": [
+    {"titulo": "Boundaries", "color": "#38bdf8", "bullets": [
+      "Cada contenedor cae dentro de un boundary (regla de validate)",
+      "El boundary de datos nunca se expone fuera de la VPC"]},
+    {"titulo": "Ubicaciones exigibles", "color": "#34d399", "bullets": [
+      "Todo contenedor declara donde corre (pill de ubicacion)",
+      "Canal web en Cloudflare+AWS; nucleo 100% dentro de la VPC"]}
+  ]
+}
