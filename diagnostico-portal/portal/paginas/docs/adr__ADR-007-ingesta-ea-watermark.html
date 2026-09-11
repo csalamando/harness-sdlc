@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>ADR-007: Ingesta EA incremental por watermark, idempotente por GUID</title><style>:root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);--gline:#334155;--gnode:#1e293b;color-scheme:dark}:root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);--gline:#94a3b8;--gnode:#f1f5f9;color-scheme:light}body{background:var(--bg);color:var(--fg);font-family:system-ui,'Segoe UI',sans-serif;margin:0;padding:1.5rem 1.8rem 3rem;line-height:1.55;font-size:15px}h1{font-size:1.35rem;color:var(--txt);margin:.2rem 0 .8rem}h2{font-size:1.08rem;color:var(--txt);margin:1.4rem 0 .6rem}h3{font-size:.92rem;color:var(--sub);margin:1.1rem 0 .4rem}h4{font-size:.85rem;color:var(--sub);margin:1rem 0 .3rem}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:5px;padding:.12em .4em;font-size:.88em;font-family:ui-monospace,'Cascadia Code',Consolas,monospace}pre{background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:10px;padding:1rem;overflow-x:auto}pre code{background:none;border:none;padding:0}table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.88em;display:block;overflow-x:auto}th,td{border-bottom:1px solid var(--panel-bd);padding:.45em .7em;text-align:left;vertical-align:top}th{color:var(--sub);font-size:.78em;text-transform:uppercase;letter-spacing:.04em}blockquote{border-left:3px solid var(--panel-bd);margin:1em 0;padding:.2em 1em;color:var(--sub)}hr{border:none;border-top:1px solid var(--panel-bd);margin:1.6em 0}img{max-width:100%}li{margin:.2em 0}.pnote{color:var(--muted);font-size:.78rem;margin-bottom:1rem}html{scrollbar-width:thin;scrollbar-color:var(--panel-bd) transparent}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--panel-bd);border-radius:5px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:var(--muted);border:2px solid transparent;background-clip:padding-box}</style></head><body data-page-id="docs-adr-adr-007-ingesta-ea-watermark"><div class="pnote">Render derivado de spec/ (mdview) — no editar a mano; la fuente es el .md</div><h1>ADR-007: Ingesta EA incremental por watermark, idempotente por GUID</h1>
+<h2>Metadata</h2>
+<ul><li><b>Status</b>: Adopted</li><li><b>Risk Tier</b>: 2</li><li><b>Decision Owner</b>: Carlos Salamando (Software Architect)</li><li><b>Date Proposed</b>: 2026-08-05</li><li><b>Date Adopted</b>: 2026-08-08</li><li><b>Last Responsible Moment</b>: 2026-08-12</li><li><b>Decision Package</b>: N/A (retro-documentado en Sprint 12, gobernanza v2.12.1)</li><li><b>Supersedes</b>: ADR-002/005 de la PoC</li><li><b>Superseded By</b>: N/A</li></ul>
+<h2>Paso 1: Problem Statement</h2>
+<p>El inventario de activos ya existe en la herramienta de arquitectura empresarial y se mantiene allí; si la aplicación exige redigitar ese inventario, se duplica el trabajo y las dos fuentes divergen. La sincronización debe poder re-ejecutarse sin efectos secundarios (reintentos de red, corridas parciales) sin crear duplicados ni omitir cambios.</p>
+<h2>Paso 2: Last Responsible Moment</h2>
+<ul><li><b>Fecha límite</b>: 2026-08-12</li><li><b>Razón</b>: la estrategia de sincronización define tablas de soporte (mapeos, marcas de agua) y la identidad de la ingesta; cambiarla después invalida datos ya conciliados</li><li><b>Costo de reversa</b>: Medio</li><li><b>Restricciones</b>:</li><li>Presupuesto: N/A</li><li>Headcount: 1</li><li>Regulatorias: N/A</li><li>Dependencias externas: acceso de lectura a la base de la herramienta EA</li></ul>
+<h2>Paso 3: Criterios de Evaluación</h2>
+<table><tr><th>Criterio</th><th>Peso</th><th>Métrica</th><th>Umbral Mínimo</th></tr><tr><td>Idempotencia</td><td>35%</td><td>Duplicados tras re-ejecutar una corrida</td><td>0</td></tr><tr><td>Cobertura de cambios</td><td>35%</td><td>Altas/modificaciones detectadas</td><td>100% por fecha de modificación</td></tr><tr><td>Complejidad operativa</td><td>30%</td><td>Componentes a monitorear</td><td>1 proceso programado</td></tr></table>
+<p><b>Fuente de criterios</b>: Definidos por el Arquitecto</p>
+<h2>Paso 4: Opciones Consideradas</h2>
+<h3>Opción A: Delta por watermark + conciliación por GUID</h3>
+<ul><li><b>Descripción</b>: Delta por fecha de modificación (watermark persistido), conciliación por GUID de EA en tagged values con tabla <code>key_mappings</code> como fallback; proceso idempotente y re-ejecutable.</li><li><b>Paved Road</b>: Sí</li><li><b>Tecnologías</b>: consultas SQL de solo lectura sobre la fuente EA, tabla de watermarks propia</li><li><b>Esfuerzo estimado</b>: 2 semanas</li><li><b>Riesgos</b>: borrados en la fuente no se detectan (trade-off aceptado; Change Tracking queda como evolución EP-14, Won't este ciclo)</li></ul>
+<h3>Opción B: Change Tracking / CDC de la fuente</h3>
+<ul><li><b>Descripción</b>: Captura de cambios nativa del motor de la fuente, incluyendo borrados.</li><li><b>Paved Road</b>: No</li><li><b>Tecnologías</b>: SQL Server Change Tracking</li><li><b>Esfuerzo estimado</b>: 3 semanas</li><li><b>Riesgos</b>: requiere habilitación y operación en la base de un tercero (custodio EA); mayor acoplamiento a su esquema interno</li></ul>
+<h3>Opción C: Carga full periódica con diff en aplicación</h3>
+<ul><li><b>Descripción</b>: Leer todo y comparar en memoria.</li><li><b>Paved Road</b>: No</li><li><b>Tecnologías</b>: N/A</li><li><b>Esfuerzo estimado</b>: 1 semana</li><li><b>Riesgos</b>: costo de lectura creciente; ventana de inconsistencia larga entre cargas</li></ul>
+<h2>Paso 5: Advice Log</h2>
+<h3>Stakeholders Consultados</h3>
+<table><tr><th>Rol</th><th>Nombre</th><th>Fecha</th><th>Consejo</th><th>Aplicado</th></tr><tr><td>Data Engineer</td><td>Carlos Salamando (rol Data)</td><td>2026-08-07</td><td>Conciliar por GUID de EA y guardar el mapeo como fallback; sin eso, una recreación en la fuente rompe la continuidad</td><td>Sí</td></tr><tr><td>Product Owner (dueño)</td><td>Carlos Salamando</td><td>2026-08-08</td><td>Acepta el trade-off: borrados sin reconciliación automática este ciclo (EP-14 Won't)</td><td>Sí</td></tr></table>
+<h3>Detalle del Consejo</h3>
+<h4>Data Engineer — 2026-08-07</h4>
+<blockquote>El GUID de EA en tagged values es la llave estable; la tabla key_mappings cubre los registros que no lo tengan.</blockquote>
+<p><b>Respuesta del Arquitecto</b>: Aplicado — la doble vía de conciliación quedó implementada y probada.</p>
+<h2>Paso 6: Scorecard de Trade-Offs</h2>
+<table><tr><th>Criterio</th><th>Peso</th><th>Opción A</th><th>Opción B</th><th>Opción C</th></tr><tr><td>Idempotencia</td><td>35%</td><td>9</td><td>9</td><td>5</td></tr><tr><td>Cobertura de cambios</td><td>35%</td><td>8</td><td>10</td><td>6</td></tr><tr><td>Complejidad operativa</td><td>30%</td><td>9</td><td>5</td><td>7</td></tr><tr><td><b>TOTAL</b></td><td><b>100%</b></td><td><b>8.65</b></td><td><b>8.15</b></td><td><b>5.35</b></td></tr></table>
+<p><b>Opción ganadora</b>: Opción A <b>Justificación si no es la de mayor puntaje</b>: N/A</p>
+<h2>Paso 7: Decisión</h2>
+<h3>Decisión Adoptada</h3>
+<p>Ingesta delta por watermark (fecha de modificación), conciliación por GUID de EA con <code>key_mappings</code> como fallback, proceso idempotente y re-ejecutable.</p>
+<h3>Razones Principales</h3>
+<ul><li>Cero doble digitación y cero duplicados ante reintentos</li><li>Sin acoplamiento a mecanismos internos de la fuente</li><li>Operación simple: un proceso programado monitoreable</li></ul>
+<h3>Consecuencias Positivas Esperadas</h3>
+<ul><li>Re-ejecuciones seguras tras fallos parciales</li><li>Evolución a Change Tracking posible sin rediseño (EP-14)</li></ul>
+<h3>Consecuencias Negativas Aceptadas</h3>
+<ul><li>Borrados en la fuente no se detectan sin reconciliación periódica (trade-off aceptado por el dueño)</li></ul>
+<h3>Qué NO se Decidió</h3>
+<ul><li>CDC/Change Tracking: acoplamiento y permisos sobre base de tercero</li><li>Carga full: costo y ventana de inconsistencia crecientes</li></ul>
+<h2>Paso 8: Re-evaluation Triggers</h2>
+<ul><li>Necesidad de negocio de detectar borrados en la fuente (activaría EP-14)</li><li>Que el custodio de EA habilite Change Tracking y ofrezca consumo oficial</li><li>Fecha de revisión programada: 2027-02-01</li></ul>
+<h2>Firma Arquitectónica</h2>
+<ul><li><b>Arquitecto</b>: Carlos Salamando</li><li><b>Rol</b>: Software Architect</li><li><b>Fecha de firma</b>: 2026-08-24 (retro-firma de gobernanza Sprint 12)</li><li><b>Receipt ID</b>: ARCH-007</li><li><b>SHA-256 de artefactos</b>: ver spec/receipts/ARCH-007.json</li></ul><script>
+(function(){
+  var root=document.documentElement;
+  function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
+  function apl(t){root.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');}
+  apl(saved());
+  window.addEventListener('message',function(e){var d=e.data||{};if(d.portal==='tema'){apl(d.tema);}});
+  var pid=document.body&&document.body.getAttribute('data-page-id');
+  if(pid&&window.parent!==window){
+    try{window.parent.postMessage({portal:'abierto',id:pid},'*');}catch(e){}
+  }
+  /* Ctrl+K dentro del iframe: la tecla nunca llega al shell (el navegador se
+     la queda) — la página la consume y la reenvía por postMessage. */
+  document.addEventListener('keydown',function(e){
+    if(window.parent===window)return;
+    var tag=(e.target&&e.target.tagName||'').toLowerCase();
+    var typing=tag==='input'||tag==='textarea'||tag==='select'||(e.target&&e.target.isContentEditable);
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }else if(e.key==='/'&&!typing){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }
+  },true);
+})();
+</script></body></html>

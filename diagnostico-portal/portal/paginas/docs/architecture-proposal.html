@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Propuesta de Arquitectura — Catálogo TI (CATI)</title><style>:root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);--gline:#334155;--gnode:#1e293b;color-scheme:dark}:root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);--gline:#94a3b8;--gnode:#f1f5f9;color-scheme:light}body{background:var(--bg);color:var(--fg);font-family:system-ui,'Segoe UI',sans-serif;margin:0;padding:1.5rem 1.8rem 3rem;line-height:1.55;font-size:15px}h1{font-size:1.35rem;color:var(--txt);margin:.2rem 0 .8rem}h2{font-size:1.08rem;color:var(--txt);margin:1.4rem 0 .6rem}h3{font-size:.92rem;color:var(--sub);margin:1.1rem 0 .4rem}h4{font-size:.85rem;color:var(--sub);margin:1rem 0 .3rem}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:5px;padding:.12em .4em;font-size:.88em;font-family:ui-monospace,'Cascadia Code',Consolas,monospace}pre{background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:10px;padding:1rem;overflow-x:auto}pre code{background:none;border:none;padding:0}table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.88em;display:block;overflow-x:auto}th,td{border-bottom:1px solid var(--panel-bd);padding:.45em .7em;text-align:left;vertical-align:top}th{color:var(--sub);font-size:.78em;text-transform:uppercase;letter-spacing:.04em}blockquote{border-left:3px solid var(--panel-bd);margin:1em 0;padding:.2em 1em;color:var(--sub)}hr{border:none;border-top:1px solid var(--panel-bd);margin:1.6em 0}img{max-width:100%}li{margin:.2em 0}.pnote{color:var(--muted);font-size:.78rem;margin-bottom:1rem}html{scrollbar-width:thin;scrollbar-color:var(--panel-bd) transparent}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--panel-bd);border-radius:5px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:var(--muted);border:2px solid transparent;background-clip:padding-box}</style></head><body data-page-id="docs-architecture-proposal"><div class="pnote">Render derivado de spec/ (mdview) — no editar a mano; la fuente es el .md</div><h1>Propuesta de Arquitectura — Catálogo TI (CATI)</h1>
+<p>Versión: 1.0 | Fecha: 2026-09-10 | Autor: Solution Architect Estado: <b>retroactiva</b> — documenta la propuesta que fue evaluada y decidida en ADR-005 (2026-08-08); se formaliza ahora para cumplir GATE 0 del arnés v2.23.</p>
+<h2>Contexto y objetivo de negocio</h2>
+<p>El inventario tecnológico de la organización está disperso y sin gobierno unificado (ver <code>spec/vision.md</code>). La PoC CatalogoTI_V41 validó el modelo de datos y la UX, pero es monousuario, sin autenticación real y persiste en <code>localStorage</code>. El objetivo es llevar ese valor a producción: plataforma multiusuario, autenticada con la identidad corporativa, auditable end-to-end y explotable por reportería/MCP, con presupuesto de ≤ USD 450/mes PRD (techo FinOps).</p>
+<p>Restricciones duras de partida:</p>
+<ul><li>Identidad corporativa: Microsoft Entra ID (App Roles), admin consent a nivel tenant — heredado de la PoC (ADR-001).</li><li>Base de datos: PostgreSQL como excepción aprobada al estándar corporativo (ADR-004); aplica a cualquier nube.</li><li>Ingesta desde Enterprise Architect (SQL Server on-prem) unidireccional e idempotente (ADR-007).</li><li>Reutilizar capacidad corporativa ya contratada (WAF y gateway/API Management) a costo incremental cero, sujeto a onboarding formal con el custodio.</li></ul>
+<h2>Opción A — Microsoft Azure (recomendada)</h2>
+<p>Diagrama: <code>spec/diagrams/arquitectura-runtime.ir.json</code></p>
+<p><b>Descripción</b>: Static Web Apps (SPA Angular) + WAF corporativo compartido + APIM Premium corporativo reutilizado (validate-jwt + routing por path) + 3 Azure Functions Flex Consumption (crud / gobierno / bulk-ingesta, split latente por path) + PostgreSQL Flexible Server (primary + read replica, VNet-integrado) + PgBouncer integrado + Key Vault + Monitor/App Insights. Identidad Entra ID validada nativamente en APIM y revalidada en cada función (defensa en profundidad, BR-007).</p>
+<p><b>Costo</b>: USD 357,35/mes con reserva FinOps 25 % (ver <code>spec/cost-estimation.md</code>).</p>
+<p><b>Pros</b>: −20 % de costo vs alternativa; identidad nativa end-to-end (mismo tenant que emite los JWT); ingesta EA co-localizada sin egress cross-cloud; PgBouncer integrado sin costo separado; WAF/APIM corporativos a costo incremental cero. <b>Contras</b>: dependencia del onboarding al WAF/APIM corporativos (custodio externo); lock-in moderado en Functions/APIM.</p>
+<h2>Opción B — AWS</h2>
+<p>Diagrama: <code>spec/diagrams/opcion-b-aws.ir.json</code></p>
+<p><b>Descripción</b>: Amplify + CloudFront/WAF + API Gateway + Lambda + Aurora Serverless v2 + RDS Proxy + Secrets Manager/KMS + CloudWatch/GuardDuty. Authorizer PoP/SHR propio (Lambda REQUEST) para validar los JWT de Entra ID.</p>
+<p><b>Costo</b>: USD 445,06/mes con reserva FinOps.</p>
+<p><b>Pros</b>: sin dependencia del custodio corporativo de red; madurez serverless. <b>Contras</b>: +25 % de costo; authorizer de identidad a medida (superficie de seguridad propia); egress cross-cloud en la ingesta EA; no reutiliza la capacidad corporativa ya contratada.</p>
+<h2>Comparativa</h2>
+<table><tr><th>Criterio</th><th>Peso</th><th>Opción A (Azure)</th><th>Opción B (AWS)</th></tr><tr><td>Costo operativo mensual</td><td>35 %</td><td>9 (USD 357)</td><td>7 (USD 445)</td></tr><tr><td>Reutilización de capacidad corporativa</td><td>25 %</td><td>9 (WAF + APIM)</td><td>4</td></tr><tr><td>Identidad nativa Entra ID</td><td>20 %</td><td>9 (validate-jwt nativo)</td><td>6 (authorizer propio)</td></tr><tr><td>Ingesta EA (egress/latencia)</td><td>10 %</td><td>9</td><td>6</td></tr><tr><td>Reversibilidad</td><td>10 %</td><td>6</td><td>6</td></tr><tr><td><b>Score ponderado</b></td><td></td><td><b>8,75</b></td><td><b>5,90</b></td></tr></table>
+<h2>Recomendación</h2>
+<p><b>Opción A — Azure</b>, decidida el 2026-08-08 y firmada en ADR-005 (recibo ARCH-005). Factores decisivos: costo −20 % apalancado en capacidad corporativa, validación nativa de JWT Entra ID en APIM, e ingesta EA sin egress. La dependencia del custodio WAF/APIM se gestiona como acción derivada de onboarding formal antes del ARB (pendiente a la fecha; ver <code>spec/exception-log.md</code>).</p>
+<h2>Estimación de costos</h2>
+<p>Detalle completo en <code>spec/cost-estimation.md</code> y supuestos en <code>spec/cost-assumptions.yaml</code>: USD 356/mes consumo técnico + 25 % reserva FinOps = <b>USD 445/mes PRD</b> techo presupuestado. Validez de precios: pendiente confirmación en Azure Pricing Calculator y descuentos corporativos (ver excepciones).</p>
+<h2>Decisiones preliminares derivadas</h2>
+<table><tr><th>ID</th><th>Decisión</th><th>Estado</th></tr><tr><td>ADR-P-1</td><td>Nube destino Azure (Opción A)</td><td>Promovida a ADR-005 (firmada)</td></tr><tr><td>ADR-P-2</td><td>Split de 3 Function Apps con routing por path en APIM</td><td>Promovida a architecture.md §3.1 (split latente en dev)</td></tr><tr><td>ADR-P-3</td><td>PostgreSQL Flexible Server + réplica de lectura + PgBouncer</td><td>Promovida a ADR-004 / ADR-006 (firmados)</td></tr></table>
+<h2>Historias técnicas asociadas</h2>
+<p>Ver <code>spec/technical-stories.md</code> (TS-01 a TS-08: IaC Terraform, pipelines CI/CD, onboarding APIM, observabilidad, etc.).</p><script>
+(function(){
+  var root=document.documentElement;
+  function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
+  function apl(t){root.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');}
+  apl(saved());
+  window.addEventListener('message',function(e){var d=e.data||{};if(d.portal==='tema'){apl(d.tema);}});
+  var pid=document.body&&document.body.getAttribute('data-page-id');
+  if(pid&&window.parent!==window){
+    try{window.parent.postMessage({portal:'abierto',id:pid},'*');}catch(e){}
+  }
+  /* Ctrl+K dentro del iframe: la tecla nunca llega al shell (el navegador se
+     la queda) — la página la consume y la reenvía por postMessage. */
+  document.addEventListener('keydown',function(e){
+    if(window.parent===window)return;
+    var tag=(e.target&&e.target.tagName||'').toLowerCase();
+    var typing=tag==='input'||tag==='textarea'||tag==='select'||(e.target&&e.target.isContentEditable);
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }else if(e.key==='/'&&!typing){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }
+  },true);
+})();
+</script></body></html>

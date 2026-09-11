@@ -198,6 +198,33 @@ def check_sprint_learning(artefacto):
             "los sprints limpios la autogeneran)"]
 
 
+def check_sprint_continuity(artefacto):
+    """Continuidad de reviews: abrir/cerrar el sprint N exige el review de N-1 (v2.29).
+
+    Detectado en CATI: solo existían los reviews de los sprints 11, 12 y 14 —
+    el mecanismo existía pero nada verificaba que se generara en cada sprint.
+    Regla: un sprint-review de N>1 sin el review de N-1 en el mismo directorio
+    es una cadena de evidencia rota.
+    """
+    base = os.path.basename(artefacto)
+    m = re.search(r"(\d+)", base)
+    if not m:
+        return ["Sprint review sin número de sprint en el nombre "
+                "(convención: sprint-review-NN.md)"]
+    n = int(m.group(1))
+    if n <= 1:
+        return []
+    d = os.path.dirname(os.path.abspath(artefacto))
+    prev = [f for f in os.listdir(d)
+            if "sprint" in f.lower() and "review" in f.lower()
+            and re.search(r"(\d+)", f) and int(re.search(r"(\d+)", f).group(1)) == n - 1]
+    if prev:
+        return []
+    return [f"Falta el sprint review del sprint {n - 1} en {d} — la cadena de "
+            f"evidencia se rompió. Regenerar con sprint_review.py --sprint {n - 1} "
+            "(usa métricas y auditoría histórica; es reconstruible)"]
+
+
 def check_roles_refs(roles_path, stories_path):
     """Verifica que los ROL-xx citados en las historias existan en el catálogo.
 
@@ -401,6 +428,7 @@ def main():
         semantic += check_screens_refs(a.artefacto, resolve_spec_path("spec/user-stories.md", a.artefacto))
     if a.tipo == "sprint-review":
         semantic += check_sprint_learning(a.artefacto)
+        semantic += check_sprint_continuity(a.artefacto)
     if a.tipo == "architecture":
         semantic += check_architecture_diagrams(a.artefacto)
     if a.tipo == "architecture-proposal":

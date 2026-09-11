@@ -539,6 +539,15 @@ _JS_UI = """
   document.getElementById('btn-zreset').onclick=ev=>{ev.stopPropagation();z=1;aplZoom();};
   window.addEventListener('message',ev=>{const d=ev.data||{};
     if(d.portal==='tema'){tema=d.tema==='claro'?'claro':'oscuro';aplTema();}});
+  /* Ctrl+K o / dentro del iframe: reenviar al shell del portal (si lo hay) */
+  document.addEventListener('keydown',ev=>{
+    if(window.parent===window)return;
+    const tag=(ev.target&&ev.target.tagName||'').toLowerCase();
+    const typing=tag==='input'||tag==='textarea'||tag==='select'||(ev.target&&ev.target.isContentEditable);
+    if(((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k')||(ev.key==='/'&&!typing)){
+      ev.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e){}}
+  },true);
   aplTema();aplZoom();
 })();
 """

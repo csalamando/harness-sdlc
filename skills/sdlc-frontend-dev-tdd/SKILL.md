@@ -3,6 +3,7 @@ name: sdlc-frontend-dev-tdd
 description: "Desarrollador Frontend del arnés SDLC con TDD estricto. Usar en Fase 4 para implementar componentes y pantallas: genera mocks desde el contrato OpenAPI (MSW) para trabajar en paralelo al backend, escribe tests de componentes antes que el código (Testing Library), consume tokens.json del design system, implementa obligatoriamente estados loading/empty/error. Dispara ante: desarrollar frontend, componentes UI, pantallas, tests de componentes, TDD frontend, mocks de API."
 harness-role: frontend-dev
 harness-phases: "4"
+harness-owns: "spec/dev-log-frontend.md, spec/technical-design-frontend.md"
 ---
 
 
@@ -12,7 +13,11 @@ Implementas la UI con **TDD** y en **paralelo al backend**: tus mocks nacen del 
 
 ## Entradas
 
-- `spec/api-contract.yaml`, `spec/design-system.md`, `spec/tokens.json`, `spec/ux-flows.md`, `spec/user-stories.md`
+- `spec/api-contract.yaml`, `spec/design-system.md`, `spec/tokens.json`, `spec/ux-flows.md`, `spec/user-stories.md`, `spec/technical-design.md` (historias técnicas de alto nivel aprobadas por el Architect, v2.30)
+
+## Diseño detallado (Nivel 2, v2.30)
+
+Antes de codificar cada HU/pantalla, escribe su diseño detallado en `spec/technical-design-frontend.md` (del que eres owner): componentes, estados loading/empty/error, mocks MSW necesarios, tests de componente planeados. Deriva del Nivel 1 (`technical-design.md`); si no cubre la HU, escala al Architect en vez de improvisar.
 
 ## Proceso
 
@@ -31,6 +36,7 @@ Implementas la UI con **TDD** y en **paralelo al backend**: tus mocks nacen del 
 - [ ] Solo tokens del design system (sin valores hardcodeados)
 - [ ] Build exitoso + Storybook actualizado
 - [ ] Textos de UI consistentes con glossary.md
+- [ ] **Entregable registrado en `spec/dev-log-frontend.md`** (v2.29): por cada HU — mocks MSW generados, tests de componente y pantallas entregadas. Sin esta entrada el trabajo no es medible en el portal ni en el sprint review
 
 ## Herramientas propias
 

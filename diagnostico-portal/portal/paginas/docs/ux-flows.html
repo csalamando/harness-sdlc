@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Flujos UX — Catálogo TI</title><style>:root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);--gline:#334155;--gnode:#1e293b;color-scheme:dark}:root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);--gline:#94a3b8;--gnode:#f1f5f9;color-scheme:light}body{background:var(--bg);color:var(--fg);font-family:system-ui,'Segoe UI',sans-serif;margin:0;padding:1.5rem 1.8rem 3rem;line-height:1.55;font-size:15px}h1{font-size:1.35rem;color:var(--txt);margin:.2rem 0 .8rem}h2{font-size:1.08rem;color:var(--txt);margin:1.4rem 0 .6rem}h3{font-size:.92rem;color:var(--sub);margin:1.1rem 0 .4rem}h4{font-size:.85rem;color:var(--sub);margin:1rem 0 .3rem}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:5px;padding:.12em .4em;font-size:.88em;font-family:ui-monospace,'Cascadia Code',Consolas,monospace}pre{background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:10px;padding:1rem;overflow-x:auto}pre code{background:none;border:none;padding:0}table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.88em;display:block;overflow-x:auto}th,td{border-bottom:1px solid var(--panel-bd);padding:.45em .7em;text-align:left;vertical-align:top}th{color:var(--sub);font-size:.78em;text-transform:uppercase;letter-spacing:.04em}blockquote{border-left:3px solid var(--panel-bd);margin:1em 0;padding:.2em 1em;color:var(--sub)}hr{border:none;border-top:1px solid var(--panel-bd);margin:1.6em 0}img{max-width:100%}li{margin:.2em 0}.pnote{color:var(--muted);font-size:.78rem;margin-bottom:1rem}html{scrollbar-width:thin;scrollbar-color:var(--panel-bd) transparent}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--panel-bd);border-radius:5px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:var(--muted);border:2px solid transparent;background-clip:padding-box}</style></head><body data-page-id="docs-ux-flows"><div class="pnote">Render derivado de spec/ (mdview) — no editar a mano; la fuente es el .md</div><h1>Flujos UX — Catálogo TI</h1>
+<p>Versión: 0.4 | Fecha: 2026-08-19 | Fuente: user-stories.md v0.2 + PoC validada (CatalogoTI_V41) + CR S3-UX + CR-S6-UX "Corporate Precision" (Stitch)</p>
+<p>La PoC validó la navegación por sidebar con ~30 secciones agrupadas (Inicio / Vistas de Gobierno / Catálogos Principales / Maestros / Administración). La reescritura Angular conserva esta taxonomía de navegación y el patrón: lista con filtros → <b>ficha en drawer</b> → acciones según rol.</p>
+<p><b>BR-017 transversal</b>: nombres por encima de IDs/GUIDs en toda vista (listas, fichas, relaciones, breadcrumbs, chips FK). Excepción: <code>aplicaciones.codigo</code>, que se muestra destacado.</p>
+<h2>Convenciones globales de estado (todas las pantallas)</h2>
+<table><tr><th>Estado</th><th>Comportamiento canónico</th></tr><tr><td><b>Loading</b></td><td>Skeleton de tabla/tarjeta en el layout final; spinner solo en acciones puntuales. Nunca pantalla en blanco.</td></tr><tr><td><b>Empty</b></td><td>Mensaje explícito + acción sugerida (ej.: "Todo al día ✅" en Pendientes; "Sin relaciones registradas" en ficha). Empty ≠ error.</td></tr><tr><td><b>Error</b></td><td>Toast/banner con causa y acción ("Reintentar", "Volver al catálogo"). Errores de permiso (403) y sesión (401) tienen textos propios.</td></tr><tr><td><b>Success</b></td><td>Confirmación vía toast no bloqueante; badges y contadores se refrescan sin recargar.</td></tr></table>
+<p>Accesibilidad: contraste AA (4.5:1 texto), foco visible en sidebar/tablas/modales, navegación completa por teclado, <code>aria-label</code> en iconos-acción, textos de error accionables.</p>
+<h2>UX-F1 — Consulta y edición de un registro de catálogo (HU-001, HU-002, HU-016)</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart TD
+  A[Catálogo: tabla con filtros persistentes y columna Acciones] --&gt;|click fila / Ver| B[Drawer ficha: tabs General/Relaciones/Cumplimiento/Auditoría]
+  A --&gt;|+ Nuevo, si Editor+| C[Modal formulario]
+  A --&gt;|Duplicar, si Editor+| C2[Prompt nueva PK + formulario precargado con sufijo copia]
+  B --&gt;|Editar, si Editor+| C
+  B --&gt;|Duplicar, si Editor+| C2
+  B --&gt;|Favorito| B2[Estrella persistida en cat-favs]
+  B --&gt;|Copiar enlace| B3[URL /catalogos/:cat/:pk al portapapeles]
+  C --&gt;|Guardar| D{Validación BR-001/002/003}
+  C2 --&gt;|Guardar| D
+  D --&gt;|PK duplicada| F2[409 CONFLICT: error inline en campo código]
+  D --&gt;|OK| E[¿Cambio crítico?]
+  D --&gt;|FK inexistente| F[Error inline en campo + foco]
+  E --&gt;|No| G[Persistido + toast + audit]
+  E --&gt;|Sí| H[Solicitud maker-checker creada]
+  A --&gt;|Eliminar, solo Admin| I[Confirmación → baja soft + toast]</code></pre>
+<ul><li>Loading: skeleton de la tabla (filas) y del drawer (bloques).</li><li>Empty: catálogo sin registros → ilustración + "Importar Excel o crear el primero".</li><li>Error: FK inválida señala el campo exacto; 403 muestra "Sin permisos de edición"; <b>409 PK duplicada</b> se muestra inline en el campo código ("El código ya existe en {catalog}: {pk}").</li><li>Success: toast + registro visible en su posición ordenada; al duplicar, la copia se selecciona y ofrece abrir su drawer.</li><li>El drawer no destruye el contexto de la lista (filtros/scroll intactos al cerrar); ESC y backdrop cierran.</li></ul>
+<h2>UX-F2 — Trazabilidad E2E e impacto (HU-004, HU-005)</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart TD
+  A[Selector de componente con búsqueda] --&gt; B{Dirección}
+  B --&gt;|Hacia arriba: trazabilidad| C[Cadena MP→SN→ET·STI→INT→APP→BD]
+  B --&gt;|Hacia abajo: impacto| D[Dependientes agrupados por tipo + criticidad]
+  C --&gt; E[Eslabón roto marcado en rojo si aplica]
+  D --&gt; F[&quot;Sin dependientes&quot; → sugiere vista Reuso]</code></pre>
+<ul><li>Empty: SN sin cadena → "Sin STI asociados — brecha de cobertura" (accionable: enlazar STI).</li><li>Error: código inexistente → "Componente no encontrado" + volver.</li></ul>
+<h2>UX-F3 — Bandeja maker-checker (HU-006)</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart TD
+  A[Bandeja: Pendientes + Historial] --&gt; B[Diff visual campo a campo]
+  B --&gt; C{Decisión del Aprobador}
+  C --&gt;|Aprobar| D[Aplica cambio + audit approve]
+  C --&gt;|Rechazar| E[Original intacto + audit reject]
+  C --&gt;|Delegar| F[Reasigna aprobador + notificación]
+  B --&gt; G[Comentario obligatorio visible en historial]</code></pre>
+<ul><li>Empty: "Sin pendientes" (alert-success).</li><li>Error: 403 si no es Aprobador; conflicto si el registro cambió desde la solicitud → "El registro fue modificado; revise el diff actualizado".</li><li>Success: toast + la tarjeta sale de Pendientes.</li></ul>
+<h2>UX-F4 — Calidad de datos y llaves rotas (HU-008, HU-009)</h2>
+<p>Flujo: dashboard DQ (violaciones por criticidad) → drill-down por regla → registro origen → corregir (si Editor+). Reglas DQ: CRUD solo Admin, con validación de sintaxis en línea. Llaves rotas lista cada FK rota con destino de corrección. Empty global: "Todo al día ✅". Error: sintaxis de condición inválida → mensaje con la condición esperada (ej.: <code>requerido_si:campo=valor</code>).</p>
+<h2>UX-F5 — Importación Excel (HU-011)</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart TD
+  A[Zona de carga + descarga de plantilla] --&gt; B[Validación en previsualización]
+  B --&gt; C{¿Filas inválidas?}
+  C --&gt;|No| D[Confirmación con conteo] --&gt; E[Import + audit]
+  C --&gt;|Sí| F[Reporte línea a línea descargable]</code></pre>
+<ul><li>Error: archivo sin columnas requeridas → rechazo completo con columnas faltantes listadas.</li><li>Empty: plantilla sin datos → guía de ejemplo en la primera fila.</li></ul>
+<h2>UX-F6 — Audit log (HU-010)</h2>
+<p>Tabla virtualizada (hasta 5.000 eventos) con filtro por acción/catálogo/texto y exportación del resultado filtrado. Empty: "Sin eventos". Error: exportación vacía → "No hay eventos para exportar".</p>
+<h2>UX-F7 — Paleta de comandos y búsqueda global (v0.2, HU-001/002, EP-08)</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart TD
+  A[Ctrl+K desde cualquier pantalla] --&gt; B[Paleta con input enfocado]
+  B --&gt; C[Búsqueda multi-catálogo en tiempo real]
+  C --&gt; D[Resultados agrupados por catálogo con PK y nombre]
+  D --&gt;|Enter / click| E[Ficha 360° del registro]
+  D --&gt;|Flechas| F[Navegación completa por teclado]</code></pre>
+<ul><li>Loading: resultados con skeleton mientras busca (debounce 250 ms).</li><li>Empty: "Sin resultados para 'xyz'" + sugerencia de revisar ortografía.</li><li>Error: fallo de búsqueda → toast no bloqueante; la paleta sigue usable al reintentar.</li><li>Accesibilidad: <code>role="dialog"</code>, foco atrapado, Escape cierra, <code>aria-activedescendant</code> en la lista.</li></ul>
+<h2>UX-F8 — Tour guiado de onboarding (v0.2, EP-10)</h2>
+<p>Tour por rol en el primer ingreso (persistido por usuario: <code>tour_completado</code>): 4-6 pasos sobre navegación, bandeja de aprobaciones (si Aprobador), DQ y Mi Catálogo. Dismissible en cualquier momento ("Saltar tour"); re-lanzable desde Ayuda. Empty: si el usuario ya lo completó, no se muestra. Error: si falla la persistencia, se ofrece de nuevo en el próximo login sin bloquear.</p>
+<h2>UX-F9 — Personalización de tablas persistida por usuario (v0.2, EP-10)</h2>
+<p>En toda tabla de catálogo: visibilidad de columnas, densidad (compacta/normal), ordenamiento y columna congelada. Preferencias persistidas en backend (<code>preferencias_usuario</code>, V003) con fallback a almacenamiento local si el endpoint falla (toast informativo, sin perder la sesión de trabajo). "Restablecer" vuelve a los defaults del catálogo. Empty: primera vez → defaults. Error: 403/500 al guardar → la preferencia aplica solo en memoria y se informa.</p>
+<h2>UX-F10 — Drawer de notificaciones (v0.2, HU-014)</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart TD
+  A[Campana con badge de no leídas] --&gt; B[Drawer lateral: últimas 50]
+  B --&gt; C{Click notificación}
+  C --&gt; D[Marca leída + navega al registro/bandeja origen]
+  B --&gt; E[Marcar todas leídas]</code></pre>
+<ul><li>Loading: skeleton de ítems. Empty: "Sin notificaciones". Error: fallo de carga → "Reintentar" dentro del drawer.</li><li>Badge se actualiza tras cada evento sin recargar (polling ligero o tras acción propia).</li></ul>
+<h2>UX-F11 — Administración de permisos por catálogo (v0.4, HU-017/018/019, BR-018)</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart TD
+  A[Administración → Permisos] --&gt; B[Matriz usuario × catálogo]
+  B --&gt; C{Buscador de usuario: nombre/correo, no oid}
+  C --&gt; D[Fila del usuario: rol base Entra + checkboxes por catálogo edit/approve/delete/manage-grants]
+  D --&gt;|Guardar| E{Validación server-side BR-018}
+  E --&gt;|Otorga permiso que no posee| F[403: &quot;No puedes otorgar permisos que no tienes&quot;]
+  E --&gt;|OK| G[Grant persistido + audit grant + toast]
+  B --&gt;|Revocar| H[Confirmación → revoke + audit]</code></pre>
+<ul><li>Acceso: la entrada del menú y la página solo se muestran con <code>manage-grants</code> (al menos un catálogo) o admin global; un admin de catálogo ve y edita <b>únicamente sus catálogos</b> (los demás en solo lectura u ocultos).</li><li>La matriz muestra el <b>rol base Entra</b> como contexto (badge) y las asignaciones granulares encima; marca visualmente los permisos que ya vienen del rol base (no editables desde aquí).</li><li>Revocación con confirmación explícita ("Carlos dejará de editar Proveedores"); la fila audita quién otorgó/revocó y cuándo (visible en tooltip/historial).</li><li>Empty: usuario sin asignaciones → "Solo tiene su rol base ({rol})". Error: 403 con texto propio; 409 si ya existe la asignación.</li><li>El permiso efectivo resultante se refleja en la UI del usuario afectado sin re-login (el front consulta <code>/access/effective</code>).</li></ul>
+<h2>UX-F12 — Shell y Dashboard con hero de KPIs (v0.4, CR-S6-UX)</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart TD
+  A[Shell: sidebar 260px con grupos GOBIERNO / CATALOGOS / MAESTROS] --&gt; B[Toggle Colapsar menu: 64px solo iconos, persistido]
+  A --&gt; C[Dashboard: hero con KPIs en display 36px]
+  C --&gt; D[Barras de alerta: llaves rotas N / violaciones DQ N]
+  D --&gt;|Revisar| E[Navega al destino de correccion: Llaves rotas o DQ]
+  C --&gt; F[Cards de catalogos con conteo + chips de maestros]
+  F --&gt;|click| G[Tabla del catalogo]</code></pre>
+<ul><li>Los badges de la sidebar muestran conteos reales desde <code>/dashboard/summary</code> (sin cambios) con radius pill.</li><li>Las alertas del hero son <b>accionables</b>: cada barra enlaza a la vista de corrección; en cero → "Todo al día ✅".</li><li>Empty: catálogo sin registros → card con acción "Importar Excel o crear el primero".</li><li>Loading: skeleton del hero y de las cards en su layout final.</li><li>La fuente Hanken Grotesk carga con <code>display=swap</code>; si la red corporativa bloquea Google Fonts, el fallback system stack se aplica sin cambio de layout (métricas compatibles).</li></ul>
+<h2>UX-F13 — Mapa de relaciones por columnas (v0.4, CR-S6-UX)</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart TD
+  A[Mapa: columnas por tipo SN / STI / App / INT / ITSM] --&gt; B[Busqueda por columna filtra sus nodos]
+  A --&gt;|seleccionar nodo| C[Resaltado de dependencias cruzadas en las demas columnas]
+  C --&gt; D[Contador de seleccion: N relacionados]
+  C --&gt;|click en relacionado| E[Drawer ficha del registro]</code></pre>
+<ul><li>Reemplaza la visualización previa del mapa; la trazabilidad E2E (UX-F2) sigue disponible desde la ficha.</li><li>Eslabón roto (FK ausente) visible con chip danger "Por clasificar".</li><li>Empty: columna sin datos → "Sin registros de este tipo"; nodo sin relaciones → "Sin dependencias registradas".</li><li>Responsive: &lt;1280px las columnas pasan a scroll horizontal; &lt;768px a acordeón por tipo.</li></ul>
+<h2>UX-F14 — EOL Roadmap kanban de 3 columnas (v0.4, CR-S6-UX)</h2>
+<p>Columnas fijas <b>Vencidas / Próximas (&lt;12 meses) / Vigentes</b> con encabezado de conteo; cada card muestra nombre (BR-017), chip pill de criticidad (Alta/Media/Baja) y días restantes/vencidos. Click en card → drawer de la aplicación. Empty por columna: "Sin aplicaciones en este estado". Reskin visual de HU-020 sin cambios de lógica ni de API.</p>
+<h2>UX-F15 — Reskin pantallas de gobierno Sprint 5 (v0.4, CR-S6-UX)</h2>
+<p>Glosario (HU-022), Mi Catálogo (HU-021) y Arquitectura Viva (HU-023) adoptan los tokens v0.3 y los componentes actualizados (<code>cat-data-table</code> compacta con sticky header, <code>cat-chip</code> pill, <code>cat-empty-state</code>) <b>sin cambios funcionales</b>. La administración de permisos (UX-F11) adopta el layout de formulario Stitch (ficha del usuario a la izquierda, matriz a la derecha). La <b>vigencia/expiración de grants</b> que aparece en el diseño Stitch NO se implementa en este sprint: queda registrada como HU-025 (Tier 2, requiere Advice Process con security-engineer).</p>
+<h2>Responsive y densidad</h2>
+<ul><li>Desktop-first (herramienta interna); usable hasta 1280 px sin scroll horizontal en tablas (wrapper con scroll propio).</li><li>Breakpoints v0.4: <b>1280px</b> (sidebar colapsa a iconos) y <b>768px</b> (tablas → cards apiladas).</li><li>Densidad de tabla <b>compacta por defecto</b> (padding 12px/16px, body-sm 13px); "normal" disponible como preferencia (UX-F9).</li><li>Tema claro/oscuro vía tokens (sin colores hardcodeados).</li></ul>
+<h2>UX-F16 — Landing pública y logout seguro (v0.5, HU-026, Sprint 7)</h2>
+<ul><li><b>Ruta pública <code>/bienvenida</code></b>: página sin shell (sin sidebar, buscador ni campana). Contenido: marca "Catálogo TI — Organización de prueba", una línea de propuesta de valor ("Fuente única gobernada de los catálogos de TI"), ilustración/marca de agua tonal Banking Blue, y un único CTA "Iniciar sesión con Entra ID". Fondo <code>--color-primary-700</code> con texto sobre-primario; CTA pill <code>--color-tertiary-400</code>.</li><li><b>Guard de autenticación</b>: cualquier ruta interna sin sesión redirige a <code>/bienvenida</code>. La landing NO hace llamadas a la API (cero datos antes de login).</li><li><b>Logout</b>: "Cerrar sesión" limpia el estado en memoria (stores de catálogos, grants, notificaciones, preferencias), cierra sesión MSAL y termina en la landing. El botón atrás no debe mostrar datos: las rutas internas revalidan sesión al activarse.</li><li><b>Estado de sesión expirada</b> (token vencido en medio del uso): mismo comportamiento que logout — limpieza + landing con aviso "Tu sesión expiró".</li></ul>
+<h2>UX-F17 — Dashboard sin cifras duplicadas (v0.5, Sprint 7)</h2>
+<ul><li><b>Principio</b>: cada indicador aparece UNA sola vez por pantalla.</li><li><b>Estructura</b>: (1) Hero conserva los KPIs primarios (una cifra por catálogo principal) — se eliminan las stat cards redundantes del tope. (2) Barras de alerta (llaves rotas/DQ/pendientes) conservan su conteo porque es accionable ("Revisar"). (3) Las catalog-cards pasan a ser navegación pura (icono + nombre) sin repetir conteos, salvo catálogos que no estén en el hero (p. ej. Etapas) — esos conservan su cifra solo aquí. (4) Chips de maestros sin cambio. (5) Charts (obsolescencia, reuso, ITSM) sin cambio: el donut NO repite el total del hero en su centro si ya está arriba — el centro muestra solo la etiqueta.</li></ul>
+<h2>UX-F18 — Sidebar colapsado usable y scrollbar integrado (v0.5, Sprint 7)</h2>
+<ul><li><b>Scrollbar integrado</b>: delgado (8px), track transparente, thumb <code>--color-primary-300</code> al 40% que sube a 70% en hover; se oculta cuando no hay hover (overlay). Aplica al sidebar y a cualquier zona con fondo oscuro; nunca gris/blanco nativo sobre Banking Blue.</li><li><b>Sidebar colapsado (64px)</b>: cada icono muestra <b>tooltip</b> con el nombre de la opción al hover (tooltip a la derecha, fondo <code>--color-primary-600</code>, texto sobre-primario, pill). Los badges de conteo se omiten colapsado (el tooltip incluye el conteo: "Aplicaciones · 341").</li><li><b>Footer colapsado</b>: los botones "Colapsar menú", "Tema oscuro" y "Cerrar/Iniciar sesión" se muestran como <b>iconos centrados con tooltip</b>, nunca texto envuelto ni cortado. El email del usuario pasa al tooltip del avatar.</li></ul>
+<h2>UX-F19 — Dashboard compacto y tabla de integraciones al final (v0.6, Sprint 8)</h2>
+<ul><li><b>Sin fila de acceso rápido duplicada</b>: se elimina la fila de cards de navegación con conteos (SN / Etapas / STI / Apps / INT / ITSM) — las cifras ya viven en el hero (UX-F17) y los enlaces en el sidebar; la fila solo agregaba espacio vertical.</li><li><b>"Tipos de Integración" al final</b>: la tabla sale del grid superior y pasa a ser la última sección del dashboard (tiende a crecer; no debe empujar el contenido accionable hacia abajo). Ancho completo, encabezado con conteo.</li><li><b>Espaciado compacto</b>: se eliminan los huecos verticales entre hero, alertas y charts (margen estándar 16px entre secciones, sin bloques vacíos). Orden final: hero KPIs → alertas accionables → chips de maestros → charts (obsolescencia / reuso / ITSM) → Tipos de Integración.</li></ul>
+<h2>UX-F20 — Columnas Servicios TI: Nombre Técnico + Operaciones (v0.6, HU-028, Sprint 8)</h2>
+<ul><li>La lista de serviciosTI <b>no muestra la columna "Código" (GUID)</b>. En su lugar: <b>Nombre</b> (funcional), <b>Nombre Técnico</b>, <b>Operaciones</b> (chips; "+N" si superan 2, tooltip con la lista completa), <b>Detalle</b>, <b>Activo</b>.</li><li>Regla general de render (todos los catálogos): un valor de celda nunca se imprime como <code>[object Object]</code> — arrays se unen con ", " y objetos se omiten o se resumen; un valor que parezca GUID nunca se muestra fuera de la ficha/drawer (BR-017).</li><li><b>Reuso STI</b>: el nombre funcional es el enlace principal de la fila (tipografía body-strong); el GUID desaparece del listado. App Proveedora muestra el código homologado; si la llave está rota se muestra el chip "Por clasificar" (ya soportado), no el código heredado crudo.</li><li><b>Mapa de Relaciones</b>: las tarjetas SN/STI muestran solo el nombre; se elimina la línea <code>SN-{GUID}</code> / <code>{GUID}</code> bajo el nombre. La llave sigue accesible en el drawer de la ficha.</li><li><b>Búsqueda global (search-hit)</b>: título = nombre legible; en aplicaciones <code>codigo · nombre</code>; el subtítulo ya no muestra la PK si es GUID (se omite); el detalle omite atributos cuyo valor parezca GUID.</li></ul>
+<h2>UX-F21 — Administrador inline de valores enum + radio Sí/No (v0.7, HU-029, Sprint 9)</h2>
+<ul><li><b>Administrador inline</b>: en el formulario de registro (modal), cada campo enum muestra un ícono ⚙ junto al label — visible solo si el usuario tiene permiso de edición sobre ese catálogo. Abre un panel dentro del modal: lista de valores con chip de estado (activo/inactivo), botón de baja lógica (🗑 con confirmación inline), botón de reactivar en los inactivos, y campo de texto + "Agregar" para valores nuevos.</li><li><b>Feedback</b>: al agregar/retirar un valor, el dropdown del campo se actualiza de inmediato (SEC-021) y aparece un toast "Valor agregado / retirado". Valor en uso por el registro actual que fue retirado: se muestra en el dropdown con sufijo "(retirado)" solo para ese registro, para no perder su dato al editar.</li><li><b>Radio Sí/No</b>: campo enum cuyos valores activos son exactamente Sí/No se renderiza como radio group horizontal (2 opciones, sin opción vacía una vez elegido; requerido respeta validación actual). Nunca dropdown de 2 opciones.</li><li>Estados: lista vacía (enum sin valores administrados aún) → "Sin valores administrados — se usan los del diccionario base"; error de red → toast y panel reintenta.</li></ul>
+<h2>UX-F22 — Tabla con columnas del diccionario, vista por defecto significativa y nombre sticky (v0.7, HU-030, Sprint 9)</h2>
+<ul><li><b>Menú "⚙ Columnas" completo</b>: lista todos los atributos del diccionario del catálogo (con su label), agrupados: primero los de la vista por defecto, luego el resto alfabético. Checkboxes con la preferencia persistida por catálogo (localStorage, como hoy) + "Restablecer" vuelve a la vista por defecto.</li><li><b>Vista por defecto por catálogo</b> (marca <code>colDefault</code> en el diccionario; gobernable): nombre/código primero (BR-017) + campos significativos. serviciosTI: Nombre Funcional, Nombre Técnico, Operaciones, App Proveedora, Apps Consumidoras, Endpoints, Tipo de Servicio. <b>Activo ya no es columna por defecto</b> (el 90% está activo); sigue disponible en el menú y como filtro.</li><li><b>Columnas array como chips</b>: valores múltiples se muestran como chips (máx. 2 + "+N" con tooltip), consistente con Operaciones de UX-F20. FK rotas conservan el chip "Por clasificar".</li><li><b>Sticky primera columna</b>: la columna Nombre/Código queda fija (sticky left, fondo de superficie, sombra sutil al hacer scroll) en tablas con overflow horizontal; el header ya es sticky vertical — ambos coexisten (esquina con z-index superior).</li></ul>
+<h2>UX-F23 — Typeahead por nombre/código en Trazabilidad y Qué-se-cae-si (v0.8, HU-031, Sprint 10)</h2>
+<p>Buscador del punto de partida con sugerencias (nombre + catálogo + código en apps), igual patrón del buscador global. Teclado: ↑↓ seleccionan, Enter confirma, Esc cierra.</p>
+<h2>UX-F24 — Trazabilidad e impacto como vistas visuales de nodos (v0.8, HU-032, Sprint 10)</h2>
+<p>Cadena Negocio→Etapas→STI→Apps→BD como nodos conectados con estado por color; impacto agrupado por nivel con conteos expandibles. Sin listas planas como vista principal.</p>
+<h2>UX-F25 — Página Reglas de Calidad con formulario controlado (v0.8, HU-033, Sprint 10)</h2>
+<p>Tabla de reglas (código, catálogo, campo, condición, criticidad, activa) + modal de creación/edición con selects dependientes catálogo→campo→tipo de condición y parámetros por tipo. Toggle activa (borrado lógico).</p><script>
+(function(){
+  var root=document.documentElement;
+  function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
+  function apl(t){root.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');}
+  apl(saved());
+  window.addEventListener('message',function(e){var d=e.data||{};if(d.portal==='tema'){apl(d.tema);}});
+  var pid=document.body&&document.body.getAttribute('data-page-id');
+  if(pid&&window.parent!==window){
+    try{window.parent.postMessage({portal:'abierto',id:pid},'*');}catch(e){}
+  }
+  /* Ctrl+K dentro del iframe: la tecla nunca llega al shell (el navegador se
+     la queda) — la página la consume y la reenvía por postMessage. */
+  document.addEventListener('keydown',function(e){
+    if(window.parent===window)return;
+    var tag=(e.target&&e.target.tagName||'').toLowerCase();
+    var typing=tag==='input'||tag==='textarea'||tag==='select'||(e.target&&e.target.isContentEditable);
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }else if(e.key==='/'&&!typing){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }
+  },true);
+})();
+</script></body></html>

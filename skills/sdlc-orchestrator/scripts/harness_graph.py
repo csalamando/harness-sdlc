@@ -265,12 +265,23 @@ def parse_reviews(spec_dir):
             mins = _span_minutes(row.group(2).strip())
             if mins is not None:
                 lead[row.group(1)] = mins
+        # v2.31 — contribución por skill: tabla de la sección 3 del review
+        # (| Skill | Activaciones | Artefactos | Gates 1er intento | Tokens |)
+        skills = {}
+        sec = re.search(r"## 3\..*?(?=\n## |\Z)", text, re.S)
+        if sec:
+            for row in re.finditer(
+                    r"^\| ([a-z][a-z0-9_-]+) \| (\d+) \| (\d+) \| [^|]+ \| [^|]+ \|$",
+                    sec.group(0), re.M):
+                skills[row.group(1)] = {"activaciones": int(row.group(2)),
+                                        "artefactos": int(row.group(3))}
         out.append({"sprint": int(m.group(1)),
                     "fecha": fecha.group(1) if fecha else None,
                     "artefactos": int(kpi("Artefactos aprobados") or 0),
                     "gates_1er": int(float(kpi("Gates al primer intento") or 0)),
                     "rehechos": int(r.group(1)) if r else 0,
-                    "lead": lead})
+                    "lead": lead,
+                    "skills": skills})
     return out
 
 
@@ -808,12 +819,12 @@ def _dash_graph_svg(model):
     X = lambda m: m["x"] / 100 * W
     parts = ['<defs>'
              '<marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">'
-             '<path d="M0,0 L8,4 L0,8 z" fill="#334155"/></marker>'
+             '<path d="M0,0 L8,4 L0,8 z" style="fill:var(--gline)"/></marker>'
              '<marker id="la" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">'
              '<path d="M0,0 L9,4.5 L0,9 z" fill="#f59e0b"/></marker></defs>']
     for i in range(len(MACRO) - 1):
         parts.append(f'<line x1="{X(MACRO[i]):.0f}" y1="{Y}" x2="{X(MACRO[i+1]):.0f}" y2="{Y}" '
-                     f'stroke="#334155" stroke-width="2" marker-end="url(#a)"/>')
+                     f'style="stroke:var(--gline)" stroke-width="2" marker-end="url(#a)"/>')
     # Banda de progreso: tramo completado del pipeline en azul sobre la línea principal
     cur_x = X(MACRO[model["fase_actual"] - 1])
     if model["fase_actual"] == 6 and all(
@@ -839,7 +850,7 @@ def _dash_graph_svg(model):
                          f'fill="none" stroke="#f59e0b" stroke-opacity="{op}" stroke-dasharray="4 3" marker-end="url(#la)">{tip}</path>')
             if show_txt:
                 parts.append(f'<text x="{x:.0f}" y="{Y-122}" text-anchor="middle" font-size="13" font-weight="600" '
-                             f'fill="#fbbf24" fill-opacity="{op}">{tag}</text>')
+                             f'style="fill:var(--warn)" fill-opacity="{op}">{tag}</text>')
             continue
         x1, x2 = X(MACRO[f - 1]), X(MACRO[t - 1])
         span = abs(f - t)
@@ -852,7 +863,7 @@ def _dash_graph_svg(model):
                      f'stroke-opacity="{op}" stroke-width="{w}" stroke-dasharray="4 3" marker-end="url(#la)">{tip}</path>')
         if show_txt:
             parts.append(f'<text x="{(x1+x2)/2:.0f}" y="{apex + (20 if f>t else -10):.0f}" text-anchor="middle" '
-                         f'font-size="13" font-weight="600" fill="#fbbf24" fill-opacity="{op}">↺ {tag}</text>')
+                         f'font-size="13" font-weight="600" style="fill:var(--warn)" fill-opacity="{op}">↺ {tag}</text>')
     for m in MACRO:
         st = model["gate_status"].get(str(m["id"])) or model["gate_status"].get(m["id"])
         estado = st["estado"] if st else "none"
@@ -877,13 +888,13 @@ def _dash_graph_svg(model):
         # de nodos vecinos nunca comparten la misma línea horizontal.
         ty_t = Y + 56 + ((m["id"] - 1) % 2) * 40
         ty_a = ty_t + 20
-        arts_txt = (f'<text x="{tx:.0f}" y="{ty_a}" text-anchor="{anchor}" font-size="11" fill="#64748b">'
+        arts_txt = (f'<text x="{tx:.0f}" y="{ty_a}" text-anchor="{anchor}" font-size="11" style="fill:var(--muted)">'
                     f'{len(arts)} artefacto{"s" if len(arts) != 1 else ""} ✓</text>') if arts else ""
         parts.append(f'<g data-fase="{m["id"]}" style="cursor:pointer">'
                      f'<title>Ver skills, entradas y salidas de la fase {m["id"]}</title>'
-                     f'{ring}<circle cx="{x:.0f}" cy="{Y}" r="28" fill="#1e293b" stroke="{color}" stroke-width="3"/>'
-                     f'<text x="{x:.0f}" y="{Y+6}" text-anchor="middle" font-size="17" font-weight="700" fill="#e2e8f0">{m["id"]}</text>'
-                     f'<text x="{tx:.0f}" y="{ty_t}" text-anchor="{anchor}" font-size="14.5" font-weight="600" fill="#cbd5e1">{m["title"]}{here}</text>'
+                     f'{ring}<circle cx="{x:.0f}" cy="{Y}" r="28" style="fill:var(--gnode)" stroke="{color}" stroke-width="3"/>'
+                     f'<text x="{x:.0f}" y="{Y+6}" text-anchor="middle" font-size="17" font-weight="700" style="fill:var(--txt)">{m["id"]}</text>'
+                     f'<text x="{tx:.0f}" y="{ty_t}" text-anchor="{anchor}" font-size="14.5" font-weight="600" style="fill:var(--fg)">{m["title"]}{here}</text>'
                      f'{gate_txt}{arts_txt}</g>')
     return (f'<svg viewBox="0 0 {W} {H}" style="width:100%;height:auto;display:block">'
             + "".join(parts) + "</svg>")
@@ -904,10 +915,10 @@ def _svg_line_chart(series_list, xlabels, fmt, w=520, h=190):
     parts = []
     for frac in (0, 0.5, 1):
         y = Yp(vmax * frac)
-        parts.append(f'<line x1="{pad_l}" y1="{y:.0f}" x2="{w-pad_r+10}" y2="{y:.0f}" stroke="#1e293b"/>'
-                     f'<text x="{pad_l-6}" y="{y+4:.0f}" text-anchor="end" font-size="10" fill="#64748b">{fmt(vmax*frac)}</text>')
+        parts.append(f'<line x1="{pad_l}" y1="{y:.0f}" x2="{w-pad_r+10}" y2="{y:.0f}" style="stroke:var(--panel-bd)"/>'
+                     f'<text x="{pad_l-6}" y="{y+4:.0f}" text-anchor="end" font-size="10" style="fill:var(--muted)">{fmt(vmax*frac)}</text>')
     for i, lab in enumerate(xlabels):
-        parts.append(f'<text x="{Xp(i):.0f}" y="{h-10}" text-anchor="middle" font-size="10" fill="#64748b">{lab}</text>')
+        parts.append(f'<text x="{Xp(i):.0f}" y="{h-10}" text-anchor="middle" font-size="10" style="fill:var(--muted)">{lab}</text>')
     legend = ""
     for si, (name, vs) in enumerate(series_list):
         color = colors[si % len(colors)]
@@ -922,7 +933,51 @@ def _svg_line_chart(series_list, xlabels, fmt, w=520, h=190):
             x, y = pts[-1]
             parts.append(f'<text x="{min(x+7, w-pad_r+14):.0f}" y="{y+4:.0f}" font-size="10.5" font-weight="600" fill="{color}">{fmt(last)}</text>')
         legend += (f'<span style="color:{color};margin-right:.4rem">●</span>'
-                   f'<span style="color:#94a3b8;margin-right:1rem">{name}</span>')
+                   f'<span style="color:var(--sub);margin-right:1rem">{name}</span>')
+    return (f'<svg viewBox="0 0 {w} {h}" style="width:100%;height:auto;display:block">{"".join(parts)}</svg>'
+            f'<div style="font-size:.72rem;margin-top:.2rem">{legend}</div>')
+
+
+def _svg_stacked_bars(series_list, xlabels, fmt, w=520, h=210):
+    """Barras apiladas SVG (self-contained) — series_list: [(skill, [valores]), ...].
+
+    Una barra por sprint; cada segmento es la contribución de una skill.
+    """
+    colors = ["#3b82f6", "#f59e0b", "#22c55e", "#a78bfa", "#ef4444",
+              "#14b8a6", "#f472b6", "#eab308", "#64748b", "#0ea5e9"]
+    series_list = [(n, vs) for n, vs in series_list if any(v for v in vs)]
+    if not series_list:
+        return '<div class="empty">Sin datos de contribución por skill en los sprint reviews.</div>'
+    pad_l, pad_b, pad_t, pad_r = 34, 30, 12, 8
+    n = len(xlabels)
+    totals = [sum((vs[i] or 0) for _, vs in series_list) for i in range(n)]
+    vmax = max(totals) or 1
+    Xp = lambda i: pad_l + (w - pad_l - pad_r) * (i / max(n, 1))
+    bw = min(46, (w - pad_l - pad_r) / max(n, 1) * 0.62)
+    Yh = lambda v: (h - pad_b - pad_t) * v / vmax
+    parts = []
+    for frac in (0, 0.5, 1):
+        y = pad_t + (h - pad_b - pad_t) * (1 - frac)
+        parts.append(f'<line x1="{pad_l}" y1="{y:.0f}" x2="{w-pad_r}" y2="{y:.0f}" style="stroke:var(--panel-bd)"/>'
+                     f'<text x="{pad_l-6}" y="{y+4:.0f}" text-anchor="end" font-size="10" style="fill:var(--muted)">{fmt(vmax*frac)}</text>')
+    for i in range(n):
+        x = Xp(i) + ((w - pad_l - pad_r) / max(n, 1) - bw) / 2
+        parts.append(f'<text x="{x + bw/2:.0f}" y="{h-10}" text-anchor="middle" font-size="10" style="fill:var(--muted)">{xlabels[i]}</text>')
+        y = h - pad_b
+        for si, (name, vs) in enumerate(series_list):
+            v = vs[i] or 0
+            if not v:
+                continue
+            hh = Yh(v)
+            y -= hh
+            parts.append(f'<rect x="{x:.0f}" y="{y:.0f}" width="{bw:.0f}" height="{max(hh-1,1):.0f}" rx="2" '
+                         f'fill="{colors[si % len(colors)]}" opacity=".88"><title>S{xlabels[i]} · {name}: {fmt(v)}</title></rect>')
+        if totals[i]:
+            parts.append(f'<text x="{x + bw/2:.0f}" y="{y - 4:.0f}" text-anchor="middle" font-size="10" '
+                         f'font-weight="600" style="fill:var(--txt)">{fmt(totals[i])}</text>')
+    legend = "".join(f'<span style="color:{colors[si % len(colors)]};margin-right:.3rem">●</span>'
+                     f'<span style="color:var(--sub);margin-right:.9rem">{name}</span>'
+                     for si, (name, _) in enumerate(series_list))
     return (f'<svg viewBox="0 0 {w} {h}" style="width:100%;height:auto;display:block">{"".join(parts)}</svg>'
             f'<div style="font-size:.72rem;margin-top:.2rem">{legend}</div>')
 
@@ -941,10 +996,10 @@ def _svg_barh(items, fmt, color="#3b82f6", row_h=30, label_w=110, w=520):
     for i, (lab, v) in enumerate(items):
         y = 4 + i * row_h
         bw = max(2, (w - label_w - 60) * v / vmax)
-        parts.append(f'<text x="{label_w-8}" y="{y+row_h/2+4:.0f}" text-anchor="end" font-size="11" fill="#94a3b8">{lab}</text>'
+        parts.append(f'<text x="{label_w-8}" y="{y+row_h/2+4:.0f}" text-anchor="end" font-size="11" style="fill:var(--sub)">{lab}</text>'
                      f'<rect x="{label_w}" y="{y+4}" width="{bw:.0f}" height="{row_h-10}" rx="4" fill="{color}" opacity=".85">'
                      f'<title>{lab}: {fmt(v)}</title></rect>'
-                     f'<text x="{label_w+bw+7:.0f}" y="{y+row_h/2+4:.0f}" font-size="11" font-weight="600" fill="#e2e8f0">{fmt(v)}</text>')
+                     f'<text x="{label_w+bw+7:.0f}" y="{y+row_h/2+4:.0f}" font-size="11" font-weight="600" style="fill:var(--txt)">{fmt(v)}</text>')
     return f'<svg viewBox="0 0 {w} {h}" style="width:100%;max-width:640px;height:auto;display:block">{"".join(parts)}</svg>'
 
 
@@ -953,7 +1008,7 @@ def _delta_card(titulo, prev, cur, fmt, invertir=False):
     if cur is None:
         return ""
     if prev is None or prev == cur:
-        delta = '<span style="color:#64748b">= sin cambio</span>' if prev is not None else ""
+        delta = '<span style="color:var(--muted)">= sin cambio</span>' if prev is not None else ""
     else:
         up = cur > prev
         peor = up if not invertir else not up
@@ -1134,14 +1189,14 @@ def _stepper_html(model):
         done = st == "ok" if st else m["id"] < cur
         is_cur = m["id"] == cur
         dot_style = ("background:#22c55e;border-color:#22c55e;color:#052e1b" if done and not is_cur
-                     else "background:#1e293b;border-color:#3b82f6;box-shadow:0 0 0 5px rgba(59,130,246,.25)" if is_cur
-                     else "background:#1e293b;border-color:#475569")
+                     else "background:var(--gnode);border-color:#3b82f6;box-shadow:0 0 0 5px rgba(59,130,246,.25)" if is_cur
+                     else "background:var(--gnode);border-color:var(--muted)")
         mark = "✓" if done and not is_cur else str(m["id"])
         steps += (f'<div data-fase="{m["id"]}" title="Ver skills, entradas y salidas de la fase" '
                   f'style="flex:1;text-align:center;position:relative;cursor:pointer">'
-                  f'<div style="width:30px;height:30px;border-radius:50%;margin:0 auto;border:2px solid #475569;'
+                  f'<div style="width:30px;height:30px;border-radius:50%;margin:0 auto;border:2px solid var(--muted);'
                   f'display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;{dot_style}">{mark}</div>'
-                  f'<div style="font-size:.68rem;color:#94a3b8;margin-top:.3rem">{esc(m["title"])}</div></div>')
+                  f'<div style="font-size:.68rem;color:var(--sub);margin-top:.3rem">{esc(m["title"])}</div></div>')
     # Ciclos ejecutados (recorridos históricos de cada loop del pipeline)
     loop_names = {"4->4": "sprints", "5->4": "bugs QA→TDD", "6->4": "hotfixes",
                   "3->4": "replans", "6->1": "impact-reports"}
@@ -1152,15 +1207,15 @@ def _stepper_html(model):
     return f"""
 <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.8rem">
   <div><span style="font-size:1.25rem;font-weight:700">Fase {cur}: {esc(cur_title)}</span>
-       <span style="color:#94a3b8;font-size:.8rem;margin-left:.6rem">estás aquí</span></div>
-  <div style="font-size:.85rem;color:#94a3b8">PROGRESO (HU cerradas):
+       <span style="color:var(--sub);font-size:.8rem;margin-left:.6rem">estás aquí</span></div>
+  <div style="font-size:.85rem;color:var(--sub)">PROGRESO (HU cerradas):
        <span style="font-size:1.15rem;font-weight:700;color:#22c55e">{pct}%</span>
-       <span style="font-size:.75rem;color:#64748b"> · {esc(pct_label)}</span></div>
+       <span style="font-size:.75rem;color:var(--muted)"> · {esc(pct_label)}</span></div>
 </div>
-<div style="background:#1e293b;border-radius:6px;height:8px;margin-bottom:.6rem">
+<div style="background:var(--panel-bd);border-radius:6px;height:8px;margin-bottom:.6rem">
   <div style="background:linear-gradient(90deg,#3b82f6,#22c55e);height:8px;border-radius:6px;width:{pct}%"></div>
 </div>
-<div style="font-size:.72rem;color:#94a3b8;margin-bottom:1rem">Ciclos ejecutados: {chips}</div>
+<div style="font-size:.72rem;color:var(--sub);margin-bottom:1rem">Ciclos ejecutados: {chips}</div>
 <div style="display:flex;gap:.2rem">{steps}</div>
 """
 
@@ -1227,14 +1282,14 @@ def _dashboard_blocks(model):
         step = max(1, len(timeline) // 8)          # máximo ~8 etiquetas en el eje X
         xl = [t["fecha"][5:] if i % step == 0 or i == len(timeline) - 1 else ""
               for i, t in enumerate(timeline)]
-        hist_html = ('<h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">'
+        hist_html = ('<h3 style="font-size:.78rem;color:var(--sub);margin:0 0 .3rem">'
                      'Histórico completo por fecha (derivado de los recibos — incluye los sprints sin review)</h3>'
                      + _svg_line_chart(
                          [("artefactos aprobados (acum)", [t["aprobados"] for t in timeline]),
                           ("retrabajo (acum)", [t["rehechos"] for t in timeline]),
                           ("% 1er intento (acum)", [t["gates_1er"] for t in timeline])],
                          xl, lambda v: f"{v:.0f}")
-                     + '<div style="font-size:.7rem;color:#475569;margin-bottom:1rem">Los recibos no llevan etiqueta '
+                     + '<div style="font-size:.7rem;color:var(--muted);margin-bottom:1rem">Los recibos no llevan etiqueta '
                        'de sprint: los puntos anteriores al primer sprint-review son la historia real por fecha, no por sprint.</div>')
 
     # Tendencias: lead time y retrabajo por sprint (serie de sprint-review-NN.md)
@@ -1280,13 +1335,13 @@ def _dashboard_blocks(model):
         else:
             xlabels = [(s.get("fecha") or f'S{s["sprint"]}')[5:] for s in model["tendencias"]]
             charts = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:1rem;margin-bottom:1rem">'
-            charts += ('<div><h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">Lead time por gate</h3>'
+            charts += ('<div><h3 style="font-size:.78rem;color:var(--sub);margin:0 0 .3rem">Lead time por gate</h3>'
                        + _svg_line_chart([(g, [s["lead"].get(g) for s in model["tendencias"]]) for g in gates_lt],
                                          xlabels, _fmt_span) + "</div>")
-            charts += ('<div><h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">Gates al primer intento</h3>'
+            charts += ('<div><h3 style="font-size:.78rem;color:var(--sub);margin:0 0 .3rem">Gates al primer intento</h3>'
                        + _svg_line_chart([("% 1er intento", [s["gates_1er"] for s in model["tendencias"]])],
                                          xlabels, lambda v: f"{v:.0f}%") + "</div>")
-            charts += ('<div><h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">Retrabajo y artefactos vigentes</h3>'
+            charts += ('<div><h3 style="font-size:.78rem;color:var(--sub);margin:0 0 .3rem">Retrabajo y artefactos vigentes</h3>'
                        + _svg_line_chart([("rehechos", [s["rehechos"] for s in model["tendencias"]]),
                                           ("artefactos vigentes", [s["artefactos"] for s in model["tendencias"]])],
                                          xlabels, lambda v: f"{v:.0f}") + "</div></div>")
@@ -1296,6 +1351,35 @@ def _dashboard_blocks(model):
     else:
         trends = (hist_html
                   + '<div class="empty">Sin sprint reviews aún — la tabla de tendencias aparece desde el primer <code>sprint_review.py</code>.</div>')
+
+    # Contribución por skill por sprint (v2.31): barras apiladas derivadas de la
+    # sección 3 de cada sprint-review (se actualiza sola al regenerar el portal,
+    # que corre en Fase 8 y tras cada recibo).
+    skills_html = ""
+    if model["tendencias"]:
+        all_skills = sorted({sk for s in model["tendencias"] for sk in s.get("skills", {})},
+                            key=lambda sk: -sum(s.get("skills", {}).get(sk, {}).get("activaciones", 0)
+                                                for s in model["tendencias"]))
+        if all_skills:
+            xl = [f'S{s["sprint"]}' for s in model["tendencias"]]
+            series = [(sk, [s.get("skills", {}).get(sk, {}).get("activaciones", 0)
+                            for s in model["tendencias"]]) for sk in all_skills]
+            skills_html = _svg_stacked_bars(series, xl, lambda v: f"{v:.0f}")
+            # skills que NUNCA aparecen en ningún sprint: la alerta de trazabilidad
+            # (detectado en CATI v2.29: devs sin entregables medibles)
+            try:
+                import skill_metrics as _sm
+                esperadas = sorted({r for rs in _sm.EXPECTED.values() for r in rs})
+                silent = [r for r in esperadas if r not in all_skills]
+                if silent:
+                    skills_html += ('<div class="warn-line">⚠ Skills sin activación registrada en '
+                                    'ningún sprint: <b>' + ", ".join(silent) + '</b> — si trabajaron, '
+                                    'su aporte no es medible (registrar con <code>skill_metrics.py use</code>).</div>')
+            except Exception:
+                pass
+    if not skills_html:
+        skills_html = ('<div class="empty">La contribución por skill aparece desde el primer '
+                       'sprint review con métricas de skills (sección 3 del review).</div>')
 
     # Tiempos de fase y de ciclo (v2.14): tabla + barras, todo derivado de
     # timestamps de recibos y fechas de cierre de los sprint reviews.
@@ -1309,12 +1393,12 @@ def _dashboard_blocks(model):
             tit = f'Fase {f["macro"]} · {MACRO_TITLE.get(f["macro"], "")}'
             if "cierre_dia" not in f:
                 rows += (f'<tr><td><b>{esc(f["gate"])}</b></td><td>{esc(tit)}</td>'
-                         f'<td colspan="4" style="color:#64748b">sin recibos aún</td></tr>')
+                         f'<td colspan="4" style="color:var(--muted)">sin recibos aún</td></tr>')
                 continue
             rows += (f'<tr><td><b>{esc(f["gate"])}</b></td><td>{esc(tit)}</td>'
                      f'<td>{esc(f["apertura"])}</td><td>{esc(f["cierre"])}</td>'
                      f'<td>{_fmt_span(f["trabajo_min"])}</td><td><b>día {f["cierre_dia"]:g}</b></td></tr>')
-        t_html += ('<h3 style="font-size:.78rem;color:#94a3b8;margin:0 0 .3rem">Trabajo dentro de cada gate (primer → último recibo del gate)</h3>'
+        t_html += ('<h3 style="font-size:.78rem;color:var(--sub);margin:0 0 .3rem">Trabajo dentro de cada gate (primer → último recibo del gate)</h3>'
                    + _svg_barh([(f["gate"], f.get("trabajo_min")) for f in fases_t], _fmt_span)
                    + "<table><tr><th>Gate</th><th>Fase</th><th>Apertura</th><th>Cierre</th>"
                      "<th>Trabajo en el gate</th><th>Cierre (día del proyecto)</th></tr>"
@@ -1323,12 +1407,12 @@ def _dashboard_blocks(model):
         rows = ""
         for c in ciclos_t:
             if c.get("dias") is None:
-                rows += f'<tr><td><b>Sprint {c["sprint"]}</b></td><td colspan="3" style="color:#64748b">sin fecha de cierre</td></tr>'
+                rows += f'<tr><td><b>Sprint {c["sprint"]}</b></td><td colspan="3" style="color:var(--muted)">sin fecha de cierre</td></tr>'
                 continue
             d = c["dias"]
             rows += (f'<tr><td><b>Sprint {c["sprint"]}</b></td><td>{esc(c.get("desde") or "inicio")} → {esc(c["cierre"])}</td>'
                      f'<td><b>{d} día{"s" if d != 1 else ""}</b></td></tr>')
-        t_html += ('<h3 style="font-size:.78rem;color:#94a3b8;margin:1.2rem 0 .3rem">Duración de cada ciclo (sprint)</h3>'
+        t_html += ('<h3 style="font-size:.78rem;color:var(--sub);margin:1.2rem 0 .3rem">Duración de cada ciclo (sprint)</h3>'
                    + _svg_barh([(f'S{c["sprint"]}', c.get("dias")) for c in ciclos_t],
                                lambda v: f"{v:.0f} d", color="#22c55e")
                    + "<table><tr><th>Ciclo</th><th>Periodo</th><th>Duración</th></tr>" + rows + "</table>")
@@ -1343,8 +1427,8 @@ def _dashboard_blocks(model):
     if model.get("sesiones"):
         sess = "".join(
             f'<div class="learn">🕓 <b>{esc(s["id"])}</b><br>'
-            f'<span style="color:#94a3b8">hecho:</span> {esc(s["done"])}<br>'
-            f'<span style="color:#94a3b8">sigue:</span> {esc(s["next"])}</div>'
+            f'<span style="color:var(--sub)">hecho:</span> {esc(s["done"])}<br>'
+            f'<span style="color:var(--sub)">sigue:</span> {esc(s["next"])}</div>'
             for s in model["sesiones"])
     else:
         sess = '<div class="empty">Sin handoffs de sesión — cerrar con mem.py session end.</div>'
@@ -1417,6 +1501,7 @@ def _dashboard_blocks(model):
         "pipeline": pipeline,
         "acumulado": f'<div class="kpis">{kpi_html}</div>',
         "tendencias": trends,
+        "skills_sprint": skills_html,
         "tiempos": t_html,
         "adrs": adr_html,
         "radar": radar_html,
@@ -1560,8 +1645,8 @@ def emit_portal(model, spec_dir):
 
     paginas = [
         # Inicio: de entrada, cómo va el proyecto (pipeline compacto + acumulado + gobernanza)
-        ("inicio.html", f'Inicio — {model["proyecto"]}',
-         f'<h1>🏠 {esc(model["proyecto"])}</h1>' + sub + alerta
+        ("inicio.html", "Inicio",
+         '<h1>🏠 Estado del proyecto</h1>' + sub + alerta
          + '<div class="panel graph-wrap"><h2>Pipeline — estado actual</h2>'
          + blocks["pipeline"] + "</div>"
          + "<h2>Acumulado del proyecto</h2>" + blocks["acumulado"]
@@ -1572,14 +1657,18 @@ def emit_portal(model, spec_dir):
          audit_body,
          "metrica", "auditoria", "",
          "auditoría eventos revocaciones recibos aprobador cadena hash harness trazabilidad"),
-        # Métricas: tendencias + tiempos en dos columnas (densidad sin scroll)
+        # Métricas: tendencias + tiempos en dos columnas + contribución por skill (v2.31)
         ("metricas.html", "Métricas del proyecto",
          "<h1>📊 Métricas del proyecto</h1>" + sub
          + '<div class="dense2"><div class="panel"><h2>Tendencias por sprint</h2>' + blocks["tendencias"]
          + '</div><div class="panel"><h2>Tiempos de fase y de ciclo</h2>' + blocks["tiempos"]
-         + "</div></div>",
+         + "</div></div>"
+         + '<div class="panel"><h2>Contribución por skill por sprint</h2>'
+         + '<div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">Activaciones registradas por cada skill en cada sprint '
+         + '(sección 3 del sprint review). Las skills que trabajan sin registrar no aparecen — lo invisible no se puede medir.</div>'
+         + blocks["skills_sprint"] + "</div>",
          "metrica", "agilidad", "",
-         "lead time retrabajo gates primer intento gráficas duración ciclos sprints cierre apertura"),
+         "lead time retrabajo gates primer intento gráficas duración ciclos sprints cierre apertura skills contribución aporte"),
         # Arquitectura: diagramas vivos + ADRs ↔ Tech Radar vinculados
         ("arquitectura.html", "Arquitectura — diagramas y decisiones",
          "<h1>🏛 Arquitectura</h1>" + sub

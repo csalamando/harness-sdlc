@@ -12,6 +12,25 @@ El **Arnés SDLC** resuelve exactamente eso. Es una capa de gobierno — **21 sk
 
 ---
 
+## 👥 Qué le brinda a cada rol de tu equipo
+
+El arnés no reemplaza a los roles del SDLC: **los pone a trabajar con evidencia**. Cada rol humano (o el agente que lo ejerce) tiene artefactos propios que firma, gates que lo protegen y visibilidad de su aporte:
+
+| Tu rol | Qué te brinda el arnés |
+|---|---|
+| **Product Owner** | Visión, épicas y backlog priorizado (RICE/MoSCoW) con métricas de éxito medibles por épica. El impact-report de Fase 7 te dice si las métricas se cumplieron *de verdad* y realimenta tu backlog con datos, no con percepciones. |
+| **Business Analyst** | Historias de usuario con Gherkin, reglas de negocio BR-xxx con dueño en el modelo de datos, catálogo de roles gobernado y PDD. Tu análisis es contrato ejecutable: QA deriva los E2E de tu Gherkin, sin reinterpretaciones. |
+| **UX / Diseño** | Flujos, design tokens (`tokens.json`) y prototipo gobernado en Penpot versionado en Git. Los devs front consumen tus tokens — un color hardcodeado es un defecto detectable, no una discusión. |
+| **Arquitecto de Solución** | Propuesta de arquitectura con ≥2 opciones, scorecard cuantitativo y estimación CAPEX/OPEX/TCO antes de que negocio apruebe la iniciativa (GATE 0). Nadie aprueba a ciegas. |
+| **Arquitecto de Software** | Eres el **único que firma ADRs** (8 pasos + scorecard + Advice Log) y el dueño de las **historias técnicas de alto nivel** (`technical-design.md`): los devs no improvisan diseño — su detalle deriva de lo que tú aprobaste. `arch_lint.py` convierte tu arquitectura en política binaria sobre el código. |
+| **Desarrolladores (back/front)** | TDD estricto con evidencia en `git log` (red→green), mocks MSW derivados del contrato OpenAPI para trabajar en paralelo, y **dev-logs gobernados** (`dev-log-backend/frontend.md`): tu trabajo queda medido por HU en el portal y en el sprint review. Tu aporte es visible, no narrado. |
+| **QA** | Los criterios Gherkin del BA se convierten en E2E ejecutables; un bug crítico se devuelve al dev **con el test que lo reproduce**. GATE 2 bloquea hasta que todas las HU pasan. |
+| **Security** | Threat model STRIDE en Fase 2, SAST/SCA/DAST en pipeline y GATE 2.5: cero vulnerabilidades críticas/altas o no hay deploy. |
+| **DevOps / Cloud / SRE** | Pipelines CI/CD completos, IaC con Terraform, runbooks y checklists de despliegue **con dueño en la matriz de autoridad**, diagramas de despliegue derivados con recibo, SLOs y postmortems sin culpables que realimentan el backlog. |
+| **Process Owner / Auditoría** | PDD AS-IS firmado, auditoría append-only con cadena de hash (tamper-evident), recibos SHA-256 por aprobación y un **portal web del proyecto clasificado por rol gobernante** — cada artefacto vive donde manda su gobernante. |
+
+---
+
 ## 🎯 El valor, en una frase
 
 | Sin arnés | Con arnés |
@@ -41,11 +60,13 @@ Eso es todo — el orquestador elige la ruta mínima, activa los roles y exige l
 
 ## 🖥 Demo: el portal del proyecto
 
-Un comando — `harness_graph.py --proyecto .` — genera `spec/portal/`: un portal web navegable, buscable (Ctrl+K) y con tema claro/oscuro, derivado **100% de recibos + spec** (cero narración manual). Así se ve en un proyecto real:
+Un comando — `harness_graph.py --proyecto .` — genera `spec/portal/`: un portal web navegable, buscable (Ctrl+K) y con tema claro/oscuro, derivado **100% de recibos + spec** (cero narración manual). El menú lateral clasifica cada artefacto **por el rol que lo gobierna** (11 categorías: Negocio, Arquitectura, Desarrollo, QA, Agilidad, Procesos, UI/UX, DevSecOps, Plataforma, Auditoría) — no por tipo de documento. Así se ve en un proyecto real:
 
-| Inicio (pipeline + acumulado) | Métricas (tendencias + tiempos) | Arquitectura (ADRs ↔ Tech Radar) |
+| Inicio (pipeline + acumulado) | Métricas (tendencias + contribución por skill) | Arquitectura (ADRs ↔ Tech Radar) |
 |---|---|---|
 | ![Inicio del portal](demos/portal2-inicio.png) | ![Métricas del portal](demos/portal2-metricas.png) | ![Arquitectura del portal](demos/portal2-arquitectura.png) |
+
+La página de Métricas incluye la gráfica **"Contribución por skill por sprint"** (barras apiladas derivadas de cada sprint review) con **alerta de skills silenciosas**: si un rol trabajó sin registrar su aporte, el portal lo evidencia — lo invisible no se puede medir.
 
 Diagramas vivos interactivos (IR): tema claro/oscuro, zoom, badges de ubicación de despliegue (☁ nube / ⌂ on-premise / ◈ otro), insights y foco compartible por URL:
 
@@ -54,7 +75,7 @@ Diagramas vivos interactivos (IR): tema claro/oscuro, zoom, badges de ubicación
   <img src="demos/arch-diagrams-claro.png" alt="Diagrama IR — tema claro y oscuro">
 </picture>
 
-Y cada sprint cierra con un **sprint review versionado** (gate bloqueante en CI — un sprint sin aprendizaje registrado no pasa):
+Y cada sprint cierra con un **sprint review versionado** (gate bloqueante en CI — un sprint sin aprendizaje registrado no pasa, y **el review del sprint N exige que exista el del N-1**: la cadena de evidencia no admite huecos):
 
 ![Sprint review](demos/sprint-review-report.png)
 
@@ -111,9 +132,9 @@ Cada artefacto vive en `spec/` versionada en Git y tiene **un único rol dueño*
 | **-1 · Setup** | `sdlc-devops-engineer` | CI/CD + IaC base, detección de stack (`detect_stack.py`) — sin test runner, TDD queda en pausa explícita |
 | **0 · Discovery** | `sdlc-product-owner` · `sdlc-solution-architect` · `sdlc-cloud-pricing` | Visión y épicas · **propuesta de arquitectura con opciones** · historias técnicas (enablers, deuda, spikes, NFRs) · **estimación CAPEX/OPEX/TCO** por escenario → **GATE 0** |
 | **1 · Análisis** | `sdlc-business-analyst` | Historias de usuario + Gherkin · reglas de negocio · **catálogo de roles gobernado** (`roles.md`) · PDD AS-IS firmado por el Process Owner (si automatiza procesos) |
-| **2 · Diseño** | `sdlc-ux-designer` · `sdlc-software-architect` · `sdlc-security-engineer` · `sdlc-data-engineer` · `sdlc-decision-engine` · `sdlc-enterprise-architect` | Prototipo de pantallas gobernado (Penpot, `spec/ux/`) + design tokens · `architecture.md` + **diagramas IR** · contratos **OpenAPI** · modelo de datos · **ADRs firmados** (8 pasos + scorecard + Advice Log) · threat model · test-plan |
+| **2 · Diseño** | `sdlc-ux-designer` · `sdlc-software-architect` · `sdlc-security-engineer` · `sdlc-data-engineer` · `sdlc-decision-engine` · `sdlc-enterprise-architect` | Prototipo de pantallas gobernado (Penpot, `spec/ux/`) + design tokens · `architecture.md` + **diagramas IR** · contratos **OpenAPI** · modelo de datos · **ADRs firmados** (8 pasos + scorecard + Advice Log) · **historias técnicas de alto nivel** (`technical-design.md`, aprobadas por el Architect) · threat model · test-plan |
 | **3 · Consolidación** | `sdlc-orchestrator` | Spec maestra consolidada + trazabilidad → **GATE 1** |
-| **4 · Build** | `sdlc-backend-dev-tdd` · `sdlc-frontend-dev-tdd` · `sdlc-technical-writer` | Código backend y frontend con **TDD estricto** (commits `test(red)` antes de `feat(green)`, verificables en `git log`) · documentación doc-as-code |
+| **4 · Build** | `sdlc-backend-dev-tdd` · `sdlc-frontend-dev-tdd` · `sdlc-technical-writer` | **Diseño detallado por HU** (`technical-design-backend/frontend.md`, derivado del Nivel 1 del Architect — nadie improvisa diseño) · código backend y frontend con **TDD estricto** (commits `test(red)` antes de `feat(green)`, verificables en `git log`) · **dev-logs gobernados** que hacen medible cada HU entregada · documentación doc-as-code |
 | **5 · QA** | `sdlc-qa-automation` · `sdlc-security-engineer` | E2E desde Gherkin · regresión · carga · reporte QA → **GATE 2 + GATE 2.5** |
 | **6 · Infraestructura** | `sdlc-devops-engineer` · `sdlc-cloud-engineer` · `sdlc-cloud-pricing` | Staging y producción · observabilidad (logs, métricas, trazas, alertas) · estimación fina de costos · diagramas de despliegue derivados → **GATE 3** |
 | **7 · Operación** | `sdlc-sre` · `sdlc-product-analyst` | SLOs · postmortems · **impact-report** de negocio que realimenta el backlog |
@@ -133,17 +154,17 @@ Cada artefacto vive en `spec/` versionada en Git y tiene **un único rol dueño*
 |---|---|---|
 | `sdlc-devops-engineer` | Setup + CI/CD + IaC + rollback | -1, 6 |
 | `sdlc-product-owner` | Visión, épicas, backlog priorizado (el QUÉ y el CUÁNDO) | 0 |
-| `sdlc-solution-architect` | Arquitecto de la iniciativa: historias técnicas + propuesta con opciones (GATE 0) | 0-2 |
+| `sdlc-solution-architect` | Arquitecto de la iniciativa: historias técnicas Nivel 0 + propuesta con opciones (GATE 0) | 0-2 |
 | `sdlc-cloud-pricing` | Estimación CAPEX/OPEX/TCO por escenario en AWS y Azure | 0, 6 |
 | `sdlc-business-analyst` | Historias de usuario + Gherkin + roles gobernados + PDD | 1 |
 | `sdlc-ux-designer` | Flujos UX + design system + prototipo gobernado (Penpot) | 2 |
-| `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + test-plan. **Decision Owner técnico (el CÓMO)** | 2-3 |
+| `sdlc-software-architect` | Arquitectura + OpenAPI + ADRs + historias técnicas de alto nivel + test-plan. **Decision Owner técnico (el CÓMO)** | 2-3 |
 | `sdlc-decision-engine` | Motor de decisiones: 8 pasos, scorecard, Decision Packages | 2 |
 | `sdlc-enterprise-architect` | Tech Radar, Principios, excepciones, Paved Roads | 2 (Tier 1) |
 | `sdlc-security-engineer` | Threat modeling + SAST/DAST (GATE 2.5) | 2, 4, 5 |
 | `sdlc-data-engineer` | Migraciones + gobierno de datos | 2 |
-| `sdlc-backend-dev-tdd` | Backend con TDD estricto | 4 |
-| `sdlc-frontend-dev-tdd` | Frontend con TDD + mocks desde OpenAPI | 4 |
+| `sdlc-backend-dev-tdd` | Backend con TDD estricto + diseño detallado y dev-log por HU (aporte medible) | 4 |
+| `sdlc-frontend-dev-tdd` | Frontend con TDD + mocks desde OpenAPI + diseño detallado y dev-log por HU | 4 |
 | `sdlc-qa-automation` | E2E desde Gherkin + regresión + carga (GATE 2) | 5 |
 | `sdlc-cloud-engineer` | Infraestructura cloud + observabilidad | 6 |
 | `sdlc-sre` | SLOs + incidentes + postmortems | 7 |

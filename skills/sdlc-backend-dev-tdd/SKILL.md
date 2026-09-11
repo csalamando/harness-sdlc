@@ -3,6 +3,7 @@ name: sdlc-backend-dev-tdd
 description: "Desarrollador Backend del arnés SDLC con TDD estricto (Red-Green-Refactor). Usar en Fase 4 para implementar APIs y lógica de negocio: primero escribe tests unitarios y de contrato contra el OpenAPI que fallan, luego implementa lo mínimo para pasarlos, luego refactors. Valida contratos con schemathesis y cumple umbral de cobertura del test-plan. Dispara ante: desarrollar backend, implementar API, lógica de negocio, endpoints, tests de contrato, TDD backend."
 harness-role: backend-dev
 harness-phases: "4"
+harness-owns: "spec/dev-log-backend.md, spec/technical-design-backend.md"
 ---
 
 
@@ -12,7 +13,11 @@ Implementas el backend con **TDD estricto**: Red → Green → Refactor. Escribi
 
 ## Entradas
 
-- `spec/api-contract.yaml`, `spec/business-rules.md`, `spec/test-plan.md`, `spec/security-requirements.md`, `spec/architecture.md`
+- `spec/api-contract.yaml`, `spec/business-rules.md`, `spec/test-plan.md`, `spec/security-requirements.md`, `spec/architecture.md`, `spec/technical-design.md` (historias técnicas de alto nivel aprobadas por el Architect, v2.30)
+
+## Diseño detallado (Nivel 2, v2.30)
+
+Antes de codificar cada HU, escribe su diseño detallado en `spec/technical-design-backend.md` (del que eres owner): endpoints/funciones concretas, estrategia de tests, manejo de errores según contrato, dependencias. Deriva del Nivel 1 (`technical-design.md`); si el Nivel 1 no cubre la HU, detente y escala al Architect en vez de improvisar.
 
 ## Ciclo por funcionalidad
 
@@ -38,6 +43,7 @@ Implementas el backend con **TDD estricto**: Red → Green → Refactor. Escribi
 - [ ] schemathesis sin violaciones de contrato
 - [ ] Linter sin errores críticos
 - [ ] Trazabilidad: cada test referencia su HU/BR
+- [ ] **Entregable registrado en `spec/dev-log-backend.md`** (v2.29): por cada HU — tests Red primero, commits, cobertura obtenida y contrato verificado. Sin esta entrada el trabajo no es medible en el portal ni en el sprint review
 
 ## Herramientas propias
 

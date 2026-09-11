@@ -24,7 +24,9 @@ Generado: 2026-08-11 | Periodo (recibos): 2026-08-01 → 2026-08-11
 
 | Skill | Activaciones | Artefactos | Gates 1er intento | Tokens |
 |---|---|---|---|---|
-| product-owner | 1 | 1 | 100% | 1,000 est. |
+| product-owner | 2 | 1 | 100% | 1,000 est. |
+| business-analyst | 3 | 2 | 100% | 2,500 est. |
+| software-architect | 1 | 1 | 100% | 1,800 est. |
 
 ## 4. Tiempos del pipeline (lead time por gate)
 

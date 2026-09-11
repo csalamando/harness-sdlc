@@ -7,6 +7,60 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.31.0] - 2026-09-11
+
+**"Lo invisible no se puede medir."** La página de Métricas del portal gana la vista que faltaba para detectar skills que trabajan sin dejar traza: contribución de cada skill por sprint.
+
+### Added
+- **Gráfica "Contribución por skill por sprint"** en la página 📊 Métricas del portal: barras apiladas (un sprint por barra, un segmento por skill) derivadas de la tabla de la sección 3 de cada `sprint-review-NN.md`. `parse_reviews` ahora extrae `skills: {skill: {activaciones, artefactos}}` de cada snapshot; nuevo helper `_svg_stacked_bars` (SVG self-contained, tooltip por segmento, leyenda, total sobre cada barra).
+- **Alerta de skills silenciosas**: bajo la gráfica, el portal advierte qué roles del catálogo `EXPECTED` (skill_metrics) no tienen ninguna activación registrada en ningún sprint — el síntoma exacto detectado en CATI (devs front/back sin entregables medibles, resuelto estructuralmente en v2.29 con los dev-logs).
+- **Actualización garantizada**: como todo el portal, la gráfica es una vista derivada — se regenera con `harness_graph.py --proyecto` (Fase 8 de cada sprint y tras cada emisión/revocación de recibo); nunca se edita a mano. Cada nuevo sprint review la extiende automáticamente.
+
+### Verificación
+- Self-test en verde (**312 checks**, +3: presencia de la gráfica en `metricas.html`, barras apiladas con las skills del fixture, alerta de skills silenciosas). Fixture `proyecto-demo` enriquecido con tablas de skills multi-skill en sus dos sprint reviews; SVG validado como XML bien formado.
+
+### Added (post-release)
+- Plantilla `assets/technical-design-template.md` en `sdlc-software-architect`: formato de la TD-xxx de Nivel 1 (tipo, deriva-de TS, cubre HU/BR, base arquitectónica, criterio verificable, handoff a Nivel 2) con 5 reglas (aprobación del Architect, trazabilidad completa, nivel de detalle correcto, cobertura del sprint, cambios = change-request). Referenciada desde el paso 6 del proceso del skill.
+
+## [2.30.0] - 2026-09-11
+
+**"Nadie improvisa diseño."** Las historias técnicas pasan a tener niveles explícitos con dueño y fase: el arquitecto define y aprueba el alto nivel; los desarrolladores escriben el diseño detallado antes de codificar.
+
+### Added
+- **Historias técnicas en 3 niveles gobernados** (matriz de autoridad + `harness-owns`):
+  - **Nivel 0 — decisión de iniciativa**: `spec/technical-stories.md` (sin cambios: owner `solution-architect`, GATE 0, enablers/deuda/spikes/NFRs para el caso de negocio).
+  - **Nivel 1 — alto nivel de construcción**: `spec/technical-design.md` (nuevo, owner `software-architect`, Fase 2-3): historias técnicas derivadas de `architecture.md`/`api-contract.yaml`/`data-model.md`, con aceptación verificable y trazabilidad a HU/BR. El Architect las genera y las aprueba.
+  - **Nivel 2 — diseño detallado**: `spec/technical-design-backend.md` y `spec/technical-design-frontend.md` (nuevos, owners `backend-dev`/`frontend-dev`, Fase 4): diseño por HU **antes de codificar** (endpoints/funciones, estrategia de tests, mocks MSW, estados). Si el Nivel 1 no cubre la HU, el dev escala al Architect en vez de improvisar. Alimenta el `dev-log` (v2.29).
+- Docs actualizados: proceso del Software Architect (paso nuevo de Nivel 1), entradas y sección "Diseño detallado" en ambos skills dev, aclaración de niveles en Solution Architect, y pipeline del orquestador (Fases 2 y 4 anotadas).
+- Portal: `technical-design.md` clasifica en 🏛️ Arquitectura; las variantes `-backend`/`-frontend` en 💻 Desarrollo (regla específica antes que la genérica).
+
+### Verificación
+- Self-test en verde (**309 checks**, +9: clasificación portal de los 3 niveles y owners de matriz v2.29/v2.30).
+- `manifest_check.py --write` y `harness_graph.py --write` regenerados sin drift.
+
+## [2.29.0] - 2026-09-11
+
+**"El trabajo que no deja traza no se puede medir."** Correcciones detectadas en la operación real de CATI: los skills de desarrollo no dejaban entregables medibles, la cadena de sprint reviews tenía huecos silenciosos, y 6 artefactos del portal caían en la categoría equivocada por keywords y precedencia de reglas.
+
+### Added
+- **Traza de entregables de los skills dev (Fase 4)**: nuevos artefactos gobernados `spec/dev-log-backend.md` (owner: `backend-dev`) y `spec/dev-log-frontend.md` (owner: `frontend-dev`) en la matriz de autoridad — por cada HU: tests Red primero, commits, cobertura, mocks MSW y contrato verificado. Checklist de salida (DoD) de ambos skills actualizado: sin entrada en el dev-log el trabajo no es medible en el portal ni en el sprint review. La categoría 💻 Desarrollo del portal deja de estar vacía.
+- **Owners faltantes en la matriz**: `spec/runbook-deploy-rollback.md` y `spec/checklist-validacion-dev.md` → `devops-engineer`; `spec/docs/` → `technical-writer` (antes no poseía ningún artefacto). `harness-owns` actualizado en las 4 skills.
+- **Gate de continuidad de sprint reviews**: `gate_checker.py --tipo sprint-review` ahora exige que el review del sprint N-1 exista en el mismo directorio (`check_sprint_continuity`). Detectado en CATI: solo existían los reviews de los sprints 11, 12 y 14 — el mecanismo existía pero nada verificaba que se generara en cada sprint. El review faltante es reconstruible con `sprint_review.py --sprint <N>` desde métricas y auditoría histórica.
+
+### Fixed
+- **Portal — 6 reclasificaciones** (`_REGLES` en `portal_lib.py`):
+  - ADR-010 "lecciones del despliegue dev": plataforma → **arquitectura**. Bug de precedencia: `plataforma` se evaluaba antes que `arquitectura` y "despliegue" ganaba sobre "adr". La regla de arquitectura ahora precede a plataforma.
+  - Checklist de validación post-deploy dev: procesos → **devsecops** (nueva keyword `"checklist"`).
+  - Gap Analysis PoC vs Spec: procesos → **negocio** (nueva keyword `"gap"`).
+  - Épicas (`epics.md`): procesos → **negocio** (la keyword era `"epica"` y `"epics"` no la contenía; ahora `"epic"`).
+  - Pipeline State (derivado de recibos + cadena de auditoría): procesos → **auditoría**.
+  - Estimación de Costos y supuestos (`cost-estimation.md`, `cost-assumptions.yaml`, owner real cloud-pricing): negocio → **plataforma**.
+- Registry del portal de CATI reclasificado (6 items corregidos in place).
+
+### Verificación
+- Self-test completo en verde (**300 checks**, +9: seis de clasificación portal v2.29 y tres de continuidad de sprint reviews, incluido el caso CATI "review 14 sin 13 falla").
+- `manifest_check.py --write` y `harness_graph.py --write` regenerados sin drift.
+
 ## [2.28.0] - 2026-09-11
 
 **"Cada artefacto vive donde manda su gobernante."** El menú lateral del portal deja de clasificar por *tipo de documento* y pasa a clasificar **por el rol que gobierna cada artefacto** (quién lo crea, lo aprueba y responde por su vigencia). Desaparece el cajón de sastre "Documentos".

@@ -1,0 +1,939 @@
+<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Historias de Usuario — Catálogo TI</title><style>:root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);--gline:#334155;--gnode:#1e293b;color-scheme:dark}:root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);--gline:#94a3b8;--gnode:#f1f5f9;color-scheme:light}body{background:var(--bg);color:var(--fg);font-family:system-ui,'Segoe UI',sans-serif;margin:0;padding:1.5rem 1.8rem 3rem;line-height:1.55;font-size:15px}h1{font-size:1.35rem;color:var(--txt);margin:.2rem 0 .8rem}h2{font-size:1.08rem;color:var(--txt);margin:1.4rem 0 .6rem}h3{font-size:.92rem;color:var(--sub);margin:1.1rem 0 .4rem}h4{font-size:.85rem;color:var(--sub);margin:1rem 0 .3rem}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:5px;padding:.12em .4em;font-size:.88em;font-family:ui-monospace,'Cascadia Code',Consolas,monospace}pre{background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:10px;padding:1rem;overflow-x:auto}pre code{background:none;border:none;padding:0}table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.88em;display:block;overflow-x:auto}th,td{border-bottom:1px solid var(--panel-bd);padding:.45em .7em;text-align:left;vertical-align:top}th{color:var(--sub);font-size:.78em;text-transform:uppercase;letter-spacing:.04em}blockquote{border-left:3px solid var(--panel-bd);margin:1em 0;padding:.2em 1em;color:var(--sub)}hr{border:none;border-top:1px solid var(--panel-bd);margin:1.6em 0}img{max-width:100%}li{margin:.2em 0}.pnote{color:var(--muted);font-size:.78rem;margin-bottom:1rem}html{scrollbar-width:thin;scrollbar-color:var(--panel-bd) transparent}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--panel-bd);border-radius:5px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:var(--muted);border:2px solid transparent;background-clip:padding-box}</style></head><body data-page-id="docs-user-stories"><div class="pnote">Render derivado de spec/ (mdview) — no editar a mano; la fuente es el .md</div><h1>Historias de Usuario — Catálogo TI</h1>
+<p>Versión: 0.4 | Sprint: 1-5 | Fuente: backlog.md v0.4 + poc-gap-analysis.md v0.1 + Sprint 5 (EP-08d, EP-10, EP-11, EP-12, BR-016)</p>
+<p>Roles usados: <b>Lector</b>, <b>Editor</b>, <b>Aprobador</b>, <b>Admin</b> (ver glossary.md). Identificadores de catálogo: SN, ET, STI, APP, INT, ITSM, MP, GRP, BD, PR, REG, PRD.</p>
+<hr>
+<h2>HU-001 — Crear y editar registros de catálogo con validación de llaves</h2>
+<p><b>Roles:</b> ROL-02 (spec/roles.md) <b>Épica:</b> EP-01 | <b>Prioridad:</b> Must</p>
+<p>Como Editor quiero crear y editar registros de cualquier catálogo (SN, ET, STI, APP, INT, ITSM y maestros) con validación de campos requeridos y llaves foráneas para mantener el inventario completo y referencialmente íntegro.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — crear STI válido
+  Dado que estoy autenticado con rol Editor
+    Y existe la aplicación &quot;APP-PORTAL&quot; en estado distinto de &quot;Retirada&quot;
+  Cuando creo un STI con nombreFuncional &quot;Consulta Saldos&quot;, appProveedoraCodigo &quot;APP-PORTAL&quot; y criticidad &quot;Alto&quot;
+  Entonces el STI queda persistido con ID asignado, fechaCreacion y usuarioCreacion
+    Y queda registrado un evento &quot;create&quot; en el audit log
+
+Escenario: error de validación — FK inexistente
+  Dado que estoy autenticado con rol Editor
+  Cuando intento crear un STI con appProveedoraCodigo &quot;APP-NO-EXISTE&quot;
+  Entonces el sistema rechaza la operación con mensaje &quot;La aplicación APP-NO-EXISTE no existe&quot;
+    Y no se persiste ningún cambio
+
+Escenario: caso borde — app proveedora retirada
+  Dado que la aplicación &quot;APP-LEGACY&quot; tiene cicloVidaCMDB &quot;Retirada&quot;
+  Cuando intento crear un STI activo con appProveedoraCodigo &quot;APP-LEGACY&quot;
+  Entonces el sistema rechaza la operación según BR-006 (regla DQ-010)</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-001, BR-002, BR-003, BR-006</p>
+<h3>Dependencias</h3>
+<p>HU-006 (RBAC define quién es Editor); fuente de verdad de SN/ET es EA (EP-07, Sprint 2) — en Sprint 1 la creación manual está permitida.</p>
+<hr>
+<h2>HU-002 — Consultar la ficha 360° de un registro con sus relaciones</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-01 | <b>Prioridad:</b> Must</p>
+<p>Como Lector quiero ver el detalle de cualquier registro con todas sus relaciones resueltas (hacia arriba y hacia abajo) para entender su contexto sin recorrer varias pantallas.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — ficha de aplicación
+  Dado que existe la aplicación &quot;APP-PORTAL&quot; con 2 BD asociadas y 3 STI expuestos
+  Cuando abro la ficha de &quot;APP-PORTAL&quot;
+  Entonces veo sus atributos, las 2 bases de datos, los 3 STI, su fabricante y su historial de cambios
+
+Escenario: error — registro inexistente
+  Dado que no existe ningún registro con código &quot;APP-XXXX&quot;
+  Cuando intento abrir la ficha de &quot;APP-XXXX&quot;
+  Entonces el sistema muestra &quot;Registro no encontrado&quot; con opción de volver al catálogo
+
+Escenario: caso borde — registro sin relaciones
+  Dado una aplicación sin BD ni STI asociados
+  Cuando abro su ficha
+  Entonces las secciones de relaciones muestran estado vacío explícito (&quot;Sin relaciones registradas&quot;)</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-001, BR-004</p>
+<h3>Dependencias</h3>
+<p>Ninguna externa.</p>
+<hr>
+<h2>HU-003 — Autenticación corporativa y permisos por rol</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-02 | <b>Prioridad:</b> Must</p>
+<p>Como Admin quiero que el acceso y las acciones se rijan por los App Roles de Entra ID (Lector/Editor/Aprobador/Admin) validados vía PoP/SHR para que solo personal autorizado consulte y modifique el catálogo.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — editor edita
+  Dado un usuario con token Entra ID válido y App Role &quot;Editor&quot;
+  Cuando modifica un registro de un catálogo habilitado
+  Entonces el cambio se acepta y queda auditado con su identidad corporativa
+
+Escenario: error — lector intenta editar
+  Dado un usuario con App Role &quot;Lector&quot;
+  Cuando intenta crear o modificar un registro
+  Entonces el sistema responde 403 &quot;Sin permisos de edición&quot; y no persiste nada
+
+Escenario: caso borde — token expirado o firma PoP inválida
+  Dado un usuario con token expirado
+  Cuando invoca cualquier endpoint
+  Entonces el sistema responde 401 y registra el intento en auditoría de seguridad</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-007, BR-008</p>
+<h3>Dependencias</h3>
+<p><b>Externa:</b> Entra ID (App Registration + App Roles) — dueño: Seguridad Informática. Validación OAuth 2.0 en APIM Premium corporativo (Azure, ADR-005); verificar equivalencia PoP/SHR con Seguridad (SEC-002).</p>
+<hr>
+<h2>HU-004 — Trazabilidad E2E de un servicio de negocio</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-03 | <b>Prioridad:</b> Must</p>
+<p>Como arquitecto quiero visualizar la cadena completa Macroproceso → SN → Etapa · STI → INT → APP → BD (con ITSM transversal) de cualquier servicio para responder con evidencia qué soporta cada proceso de negocio.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — cadena completa
+  Dado el SN &quot;SN-PAGOS&quot; relacionado con STI &quot;STI-01&quot;, que usa INT &quot;INT-05&quot; hacia &quot;APP-CORE&quot; con BD &quot;BD-01&quot;
+  Cuando consulto la trazabilidad E2E de &quot;SN-PAGOS&quot;
+  Entonces veo la cadena completa con cada eslabón enlazable a su ficha
+
+Escenario: error — eslabón roto
+  Dado un STI cuya app proveedora fue eliminada físicamente sin limpieza
+  Cuando consulto la trazabilidad de un SN que lo usa
+  Entonces el eslabón aparece marcado como &quot;referencia rota&quot; y se cuenta en Llaves Rotas (BR-005)
+
+Escenario: caso borde — SN sin cadena
+  Dado un SN sin STI relacionados
+  Cuando consulto su trazabilidad
+  Entonces el sistema muestra la cadena hasta donde existe y marca &quot;Sin STI asociados&quot; como brecha de cobertura</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-004, BR-005</p>
+<h3>Dependencias</h3>
+<p>HU-001 (datos), tabla puente relaciones SN↔STI y bdAppRel APP↔BD.</p>
+<hr>
+<h2>HU-005 — Análisis de impacto inverso ("¿Qué se cae si...?")</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-03 | <b>Prioridad:</b> Must</p>
+<p>Como arquitecto quiero seleccionar cualquier componente (APP, BD, STI, INT) y ver todo lo que depende de él transitivamente para evaluar el impacto de una falla, retiro o cambio.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — impacto de una app
+  Dado que &quot;APP-CORE&quot; expone 2 STI usados por 3 INT que soportan 4 SN
+  Cuando ejecuto &quot;¿Qué se cae si falla APP-CORE?&quot;
+  Entonces obtengo la lista agrupada de STI, INT y SN afectados, con criticidad de cada SN
+
+Escenario: error — componente inexistente
+  Dado un código inexistente &quot;APP-XXXX&quot;
+  Cuando ejecuto el análisis de impacto
+  Entonces el sistema informa &quot;Componente no encontrado&quot;
+
+Escenario: caso borde — componente huérfano
+  Dado un STI sin integraciones consumidoras ni SN relacionados
+  Cuando ejecuto el análisis de impacto sobre él
+  Entonces el resultado es &quot;Sin dependientes&quot; y el STI se reporta como huérfano en la vista de reuso</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-004, BR-009</p>
+<h3>Dependencias</h3>
+<p>HU-004 (mismo grafo de relaciones).</p>
+<hr>
+<h2>HU-006 — Flujo maker-checker con diff visual</h2>
+<p><b>Roles:</b> ROL-02, ROL-03 (spec/roles.md) <b>Épica:</b> EP-04 | <b>Prioridad:</b> Must</p>
+<p>Como Aprobador quiero revisar los cambios pendientes con un diff campo a campo (valor anterior vs. nuevo), comentarlos, aprobarlos, rechazarlos o delegarlos para garantizar que los cambios críticos tengan control de cuatro ojos.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — aprobación aplica el cambio
+  Dado una aprobación &quot;Pendiente&quot; sobre el STI &quot;STI-01&quot; con diff en 2 campos
+    Y estoy autenticado como Aprobador
+  Cuando apruebo con comentario &quot;OK&quot;
+  Entonces el cambio se aplica al registro, la aprobación queda &quot;Aprobada&quot; con aprobador y comentario
+    Y se registra &quot;approve&quot; en el audit log
+
+Escenario: error — aprobador sin permiso
+  Dado un usuario con rol Editor (sin permiso canApprove)
+  Cuando intenta aprobar una solicitud
+  Entonces el sistema responde 403 y la solicitud permanece &quot;Pendiente&quot;
+
+Escenario: caso borde — rechazo preserva el original
+  Dado una aprobación &quot;Pendiente&quot; de actualización sobre &quot;STI-01&quot;
+  Cuando la rechazo con comentario &quot;Clasificación incorrecta&quot;
+  Entonces el registro original queda intacto y la aprobación pasa a &quot;Rechazada&quot; con su comentario</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-007, BR-010, BR-011</p>
+<h3>Dependencias</h3>
+<p>HU-003 (roles); notificaciones en app (EP-10) avisan al solicitante — en Sprint 1 basta el estado visible en la bandeja.</p>
+<hr>
+<h2>HU-007 — Integridad y ciclo de vida de registros (soft/hard delete + historial)</h2>
+<p><b>Roles:</b> ROL-02, ROL-04 (spec/roles.md) <b>Épica:</b> EP-04 | <b>Prioridad:</b> Must</p>
+<p>Como Admin quiero que toda eliminación ofrezca baja lógica (soft-delete, recomendada) o eliminación física con limpieza de FKs, y que cada cambio quede en el historial del registro con hash de integridad para preservar la evidencia histórica y la consistencia referencial.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — soft-delete
+  Dado un registro &quot;PR-01&quot; con historial de cambios
+  Cuando aplico soft-delete
+  Entonces el registro queda con activo=false, conserva su historial y se audita &quot;soft-delete&quot;
+
+Escenario: error — eliminar sin permiso
+  Dado un usuario con rol Editor (canDelete=0)
+  Cuando intenta eliminar un registro
+  Entonces el sistema responde 403 y nada cambia
+
+Escenario: caso borde — eliminación física con referencias
+  Dado la BD &quot;BD-01&quot; referenciada por 2 aplicaciones vía bdAppRel
+  Cuando confirmo la eliminación física (doble confirmación)
+  Entonces el sistema limpia las 2 referencias, audita &quot;hard-delete&quot; con el conteo de FKs limpiadas</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-005, BR-010, BR-012</p>
+<h3>Dependencias</h3>
+<p>HU-003, HU-006.</p>
+<hr>
+<h2>HU-008 — Motor de reglas de calidad de datos</h2>
+<p><b>Roles:</b> ROL-04 (spec/roles.md) <b>Épica:</b> EP-05 | <b>Prioridad:</b> Must</p>
+<p>Como Admin quiero definir reglas DQ por catálogo/campo (requerido, requerido_si, regex, mínimo, no_vencido_proximo, fecha_futura, no_vacio_si…) con criticidad y SLA de corrección para medir la calidad del catálogo de forma continua.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — evaluación del tablero DQ
+  Dado la regla DQ-001 &quot;Apps BIA=SI deben tener RTO&quot; activa
+    Y una app con bia=&quot;SI&quot; y rto vacío
+  Cuando se evalúa el motor DQ
+  Entonces la app aparece como violación de criticidad &quot;Alto&quot; en el tablero y el contador del badge se actualiza
+
+Escenario: error — regla mal configurada
+  Dado que soy Admin
+  Cuando creo una regla con condición sintácticamente inválida
+  Entonces el sistema rechaza la regla indicando el error de sintaxis y no la activa
+
+Escenario: caso borde — regla inactiva
+  Dado la regla DQ-009 marcada activa=false
+  Cuando se evalúa el motor DQ
+  Entonces esa regla no genera violaciones ni cuenta en los badges</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-003, BR-006, BR-013</p>
+<h3>Dependencias</h3>
+<p>HU-001 (campos del modelo); SLA por criticidad: Alto=7d, Medio=30d, Bajo=90d (BR-013).</p>
+<hr>
+<h2>HU-009 — Detección de llaves rotas y pendientes</h2>
+<p><b>Roles:</b> ROL-01, ROL-02 (spec/roles.md) <b>Épica:</b> EP-05 | <b>Prioridad:</b> Must</p>
+<p>Como responsable de catálogo quiero ver las FK que apuntan a códigos inexistentes y los registros con campos críticos vacíos para corregirlos antes de que afecten reportes y trazabilidad.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — listado de llaves rotas
+  Dado una integración &quot;INT-09&quot; con origenCodigo &quot;APP-BORRADA&quot;
+  Cuando abro la vista Llaves Rotas
+  Entonces veo &quot;INT-09.origenCodigo → APP-BORRADA&quot; listada con enlace al registro y badge global actualizado
+
+Escenario: error — sin acceso de edición
+  Dado un Lector
+  Cuando intenta corregir una llave rota desde la vista
+  Entonces solo puede verla; la acción de corregir exige rol Editor (403 si la invoca)
+
+Escenario: caso borde — cero problemas
+  Dado un catálogo sin llaves rotas ni campos críticos vacíos
+  Cuando abro Llaves Rotas o Pendientes
+  Entonces el sistema muestra el estado vacío &quot;Todo al día&quot;</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-005, BR-003</p>
+<h3>Dependencias</h3>
+<p>HU-008 (comparten evaluación); corrección puede requerir aprobación según BR-011.</p>
+<hr>
+<h2>HU-010 — Audit log consolidado y exportable</h2>
+<p><b>Roles:</b> ROL-03, ROL-04 (spec/roles.md) <b>Épica:</b> EP-06 | <b>Prioridad:</b> Must</p>
+<p>Como auditor quiero consultar y exportar la bitácora global de eventos (create/update/approve/reject/soft-delete/hard-delete/import) filtrada por acción, catálogo y texto para evidenciar quién cambió qué y cuándo.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — filtrado y exportación
+  Dado un audit log con 1.200 eventos de varios tipos
+  Cuando filtro por acción &quot;approve&quot; y exporto a Excel
+  Entonces obtengo un archivo con exactamente los eventos &quot;approve&quot; visibles en pantalla
+
+Escenario: error — acción sobre log vacío
+  Dado un audit log sin eventos
+  Cuando exporto
+  Entonces el sistema informa &quot;No hay eventos para exportar&quot; y no genera archivo
+
+Escenario: caso borde — límite de retención
+  Dado que el audit log supera 5.000 eventos
+  Cuando se registra un nuevo evento
+  Entonces se conservan los últimos 5.000 y los más antiguos se archivan según BR-012</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-010, BR-012</p>
+<h3>Dependencias</h3>
+<p>Todos los módulos transaccionales emiten eventos (HU-001, HU-006, HU-007, HU-011).</p>
+<hr>
+<h2>HU-011 — Importación masiva por Excel con plantilla</h2>
+<p><b>Roles:</b> ROL-02 (spec/roles.md) <b>Épica:</b> EP-06 | <b>Prioridad:</b> Must</p>
+<p>Como Editor quiero descargar la plantilla de un catálogo, importar un Excel validado y exportar el catálogo (o el consolidado E2E) para cargar y explotar datos sin usar la interfaz registro a registro.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — importación válida
+  Dado la plantilla de Aplicaciones con columnas vigentes
+  Cuando importo un Excel con 50 filas válidas
+  Entonces se crean/actualizan 50 registros, se audita &quot;import&quot; con el conteo y se notifica el resultado
+
+Escenario: error — filas inválidas
+  Dado un Excel con 3 filas con FK inexistentes y 1 con código duplicado
+  Cuando ejecuto la importación
+  Entonces el sistema rechaza las 4 filas con reporte línea a línea y aplica solo las válidas (o rechaza todo según BR-014)
+
+Escenario: caso borde — archivo sin columnas requeridas
+  Dado un Excel al que le falta la columna &quot;codigo&quot;
+  Cuando intento importarlo
+  Entonces el sistema rechaza el archivo completo indicando las columnas faltantes
+
+Escenario: mapeo de llaves portal ↔ EA (v0.2, EP-07)
+  Dado un Excel cuyas filas referencian GUIDs de EA sin código portal asignado
+    Y existe un key_mapping previo para uno de esos GUIDs
+  Cuando ejecuto la importación
+  Entonces la fila mapeada se concilia contra el registro portal existente
+    Y los GUID sin mapeo quedan listados en el reporte para crear el mapping antes de reintentar</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-001, BR-014</p>
+<h3>Dependencias</h3>
+<p>HU-001 (validaciones idénticas al CRUD); decisión de importación atómica vs. parcial documentada en BR-014 (validar con PO en refinamiento).</p>
+<hr>
+<h2>HU-012 — Exportación consolidada E2E y backup</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-06 | <b>Prioridad:</b> Must</p>
+<p>Como gestor de arquitectura quiero exportar el consolidado E2E (todas las entidades con sus relaciones) y un backup completo para explotación externa y contingencia.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — E2E consolidado
+  Dado el catálogo con datos en todas las entidades
+  Cuando exporto el consolidado E2E
+  Entonces obtengo un Excel con una hoja por entidad y las hojas puente (relaciones, bdAppRel) consistentes
+
+Escenario: error — sin permisos de exportación sensible
+  Dado un usuario Lector en un entorno donde la exportación masiva está restringida (BR-015)
+  Cuando intenta exportar el backup completo
+  Entonces el sistema responde 403
+
+Escenario: caso borde — catálogo vacío
+  Dado un catálogo sin registros
+  Cuando exporto el consolidado
+  Entonces obtengo un archivo con las hojas y cabeceras, sin filas, y el evento queda auditado</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-012, BR-015</p>
+<h3>Dependencias</h3>
+<p>Clasificación de datos (BR-015) puede restringir exportación de campos Confidencial/Restringido — validar alcance Sprint 1 con Seguridad.</p>
+<hr>
+<h2>HU-013 — Vista de revisiones periódicas por criticidad</h2>
+<p><b>Roles:</b> ROL-01, ROL-02 (spec/roles.md) <b>Épica:</b> EP-08a (Vistas de gestión, división de EP-08 — v0.2) | <b>Prioridad:</b> Should (Sprint 2)</p>
+<p>Como responsable de catálogo quiero ver los registros con revisión vencida o próxima a vencer según su criticidad (BR-013: Alto=3m, Medio=6m, Bajo=12m) para mantener la información vigente antes de que caduque.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — listado por vencer
+  Dado un SN con criticidad &quot;Alto&quot; cuya fechaProximaRevision vence en 15 días
+  Cuando abro la vista Revisiones
+  Entonces el SN aparece en la banda &quot;Próximos 30 días&quot; con su fecha y enlace a su ficha
+
+Escenario: error — sin acceso de edición
+  Dado un usuario con rol Lector
+  Cuando intenta marcar un registro como revisado
+  Entonces solo puede consultarlo; la acción exige rol Editor (403 si la invoca)
+
+Escenario: caso borde — todo al día
+  Dado un catálogo sin revisiones vencidas ni próximas
+  Cuando abro la vista Revisiones
+  Entonces el sistema muestra el estado vacío &quot;Todo al día ✅&quot;</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-013, BR-003</p>
+<h3>Dependencias</h3>
+<p>fechaProximaRevision calculada por criticidad (ya en modelo); marcar revisado actualiza la fecha base y audita (BR-010).</p>
+<hr>
+<h2>HU-014 — Notificaciones en app y alertas reactivas DQ</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-10 | <b>Prioridad:</b> Should (Sprint 2) / Must (Sprint 5 Extensión)</p>
+<p>Como usuario y responsable de activos de catálogo quiero recibir notificaciones dentro de la app cuando se resuelve una aprobación que solicité, me delegan una aprobación o aparece una violación DQ de criticidad Alta en un registro de mi responsabilidad, para actuar sin revisar cada bandeja manualmente y resolver incidentes de calidad dentro del SLA.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — aprobación resuelta notifica al solicitante
+  Dado que solicité un cambio sobre &quot;STI-01&quot; y el Aprobador lo aprueba
+  Cuando se aplica el cambio
+  Entonces se crea una notificación para mí con título y enlace al registro
+    Y el badge del drawer muestra el contador de no leídas
+
+Escenario: disparo reactivo — violación DQ-Alta genera notificación automática al responsable (Sprint 5)
+  Dado una aplicación de criticidad &quot;Alto&quot; donde soy responsable
+  Cuando el motor DQ detecta una violación de criticidad Alta (ej. BIA=SI sin RTO registrado)
+  Entonces se genera automáticamente una notificación dirigida a mi usuario
+    Y el contador de notificaciones no leídas en la campana se incrementa en 1
+
+Escenario: navegación desde la notificación a la ficha afectada (Sprint 5)
+  Dado que recibí una notificación de alerta DQ-Alta sobre &quot;APP-PORTAL&quot;
+  Cuando hago clic en la notificación desde el drawer
+  Entonces el sistema marca la notificación como leída y abre la ficha de &quot;APP-PORTAL&quot; en modo edición
+
+Escenario: error — consulta sin sesión
+  Dado un usuario sin token válido
+  Cuando intenta consultar sus notificaciones
+  Entonces el sistema responde 401
+
+Escenario: caso borde — marcar todas leídas
+  Dado que tengo 5 notificaciones no leídas
+  Cuando las marco como leídas
+  Entonces el badge vuelve a cero y las notificaciones conservan su historial</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-010, BR-011, BR-006, BR-013</p>
+<h3>Dependencias</h3>
+<p>V003/V008: tabla <code>notificaciones</code>; eventos disparadores: aprobación resuelta (HU-006), delegación, violación DQ Alta nueva sobre activo propio (HU-008, HU-021).</p>
+<hr>
+<h2>HU-015 — Vista de reuso de STI (score y huérfanos)</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-08b (Vistas de gestión — v0.2) | <b>Prioridad:</b> Should (Sprint 2)</p>
+<p>Como arquitecto quiero ver el score de reuso de cada STI (apps consumidoras + SN relacionados + factor de criticidad, BR-009 v2) y detectar huérfanos (sin consumidoras, sin SN y sin INT) para priorizar consolidación y eliminación de servicios redundantes.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — ranking de reuso
+  Dado un STI con 3 apps consumidoras registradas y relacionado con 2 SN
+  Cuando abro la vista Reuso
+  Entonces el STI aparece en la banda &quot;Alto reuso (≥3)&quot; con su score desglosado
+
+Escenario: camino feliz — INT como evidencia adicional
+  Dado un STI sin apps consumidoras pero usado por 2 integraciones explícitas
+  Cuando abro la vista Reuso
+  Entonces el score incluye las 2 INT y el STI no es huérfano
+
+Escenario: error — sin datos
+  Dado un catálogo sin consumidoras, integraciones ni relaciones SN cargadas
+  Cuando abro la vista Reuso
+  Entonces todos los STI aparecen como huérfanos con acción sugerida &quot;Revisar consumidores&quot;
+
+Escenario: caso borde — STI nuevo sin consumidores
+  Dado un STI creado hoy sin apps consumidoras, sin integraciones ni SN
+  Cuando abro la vista Reuso
+  Entonces aparece como huérfano y en el análisis de impacto devuelve &quot;Sin dependientes&quot; (HU-005)</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-009, BR-004</p>
+<h3>Dependencias</h3>
+<p>HU-005 (mismo grafo); datos seed (S2-5) para que la vista tenga contenido real.</p>
+<hr>
+<h2>HU-016 — Duplicar registro de catálogo</h2>
+<p><b>Roles:</b> ROL-02 (spec/roles.md) <b>Épica:</b> EP-01 | <b>Prioridad:</b> Could (Sprint 2-3)</p>
+<p>Como Editor quiero duplicar un registro existente con nueva PK para capturar registros similares sin reescribir todos los campos.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — duplicar aplicación
+  Dado la aplicación &quot;APP-PORTAL&quot; con stack y fabricante cargados
+  Cuando la duplico como &quot;APP-PORTAL-2&quot; y guardo
+  Entonces el nuevo registro conserva los campos copiados, tiene fechaCreacion propia y se audita &quot;create&quot;
+
+Escenario: error — PK duplicada
+  Dado que ya existe &quot;APP-PORTAL-2&quot;
+  Cuando intento duplicar con esa misma PK
+  Entonces el sistema rechaza la operación con &quot;El código ya existe&quot; (BR-001)
+
+Escenario: caso borde — duplicar con FK rotas
+  Dado un registro con una referencia rota (BR-005)
+  Cuando lo duplico
+  Entonces la copia hereda la referencia rota marcada y la nueva llave rota cuenta en la vista homónima</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-001, BR-002, BR-010</p>
+<h3>Dependencias</h3>
+<p>HU-001 (mismas validaciones).</p>
+<hr>
+<h2>HU-017 — Permiso de edición granular por catálogo</h2>
+<p><b>Roles:</b> ROL-04 (spec/roles.md) <b>Épica:</b> EP-02 | <b>Prioridad:</b> Must (Sprint 4, CR S4-RBAC)</p>
+<p>Como Admin quiero otorgar a un usuario permisos de edición/aprobación solo sobre catálogos específicos (sin cambiar su rol base en Entra) para aplicar mínimo privilegio por dominio de datos — ej.: el analista de infraestructura edita Bases de Datos y Proveedores, y del resto solo lee.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — lector base con asignación de edición edita su catálogo
+  Dado un usuario con rol base &quot;reader&quot; y una asignación vigente edit sobre &quot;proveedores&quot;
+  Cuando modifica un registro de &quot;proveedores&quot;
+  Entonces el cambio se acepta y queda auditado con su identidad corporativa
+
+Escenario: error — la asignación no cubre otro catálogo
+  Dado el mismo usuario con asignación edit solo sobre &quot;proveedores&quot;
+  Cuando intenta modificar un registro de &quot;aplicaciones&quot;
+  Entonces el sistema responde 403 &quot;Sin permisos de edición&quot; y no persiste nada
+
+Escenario: caso borde — asignación vencida
+  Dado un usuario cuya asignación edit sobre &quot;proveedores&quot; tiene vigenciaHasta en el pasado
+  Cuando intenta editar &quot;proveedores&quot;
+  Entonces el sistema responde 403 y el permiso efectivo vuelve a ser solo su rol base
+
+Escenario: la asignación amplía pero nunca reduce el rol base
+  Dado un usuario con rol base &quot;editor&quot; (edita todos los catálogos, BR-007)
+  Cuando se revocan todas sus asignaciones granulares
+  Entonces conserva la edición global que le otorga su rol base</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-007, BR-018, BR-010</p>
+<h3>Dependencias</h3>
+<p>Entra ID (rol base); migración V007 (<code>asignaciones_catalogo</code>); HU-019 (UI de administración).</p>
+<hr>
+<h2>HU-018 — Delegar la administración de permisos por catálogo</h2>
+<p><b>Roles:</b> ROL-04 (spec/roles.md) <b>Épica:</b> EP-02 | <b>Prioridad:</b> Must (Sprint 4, CR S4-RBAC)</p>
+<p>Como Admin global quiero delegar a un responsable de dominio el permiso <code>manage-grants</code> sobre sus catálogos para que él mismo asigne editores/aprobadores de su área sin escalar a Seguridad ni al admin global, y sin poder salirse de su ámbito.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — admin de catálogo asigna editor en su ámbito
+  Dado un usuario con asignación manage-grants sobre &quot;serviciosTI&quot;
+  Cuando otorga edit sobre &quot;serviciosTI&quot; a otro usuario
+  Entonces la asignación se crea, se audita como &quot;grant&quot; con ambos actores (BR-010)
+
+Escenario: error — fuera de ámbito
+  Dado el mismo admin de catálogo (manage-grants solo en &quot;serviciosTI&quot;)
+  Cuando intenta otorgar un permiso sobre &quot;aplicaciones&quot; o con catalogo=&quot;*&quot;
+  Entonces el sistema responde 403 y registra el intento
+
+Escenario: error — nadie otorga lo que no posee
+  Dado un admin de catálogo con permiso edit (sin approve) sobre &quot;serviciosTI&quot;
+  Cuando intenta otorgar approve sobre &quot;serviciosTI&quot; a otro usuario
+  Entonces el sistema responde 403 &quot;No puedes otorgar permisos que no tienes&quot;
+
+Escenario: caso borde — revocar retira el permiso efectivo de inmediato
+  Dado un usuario con asignación edit vigente sobre &quot;proveedores&quot;
+  Cuando un admin autorizado la revoca
+  Entonces el siguiente request de edición de ese usuario en &quot;proveedores&quot; responde 403 (sin esperar re-login) y queda auditado como &quot;revoke&quot;</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-018, BR-010; mitigación T-17 (threat-model)</p>
+<h3>Dependencias</h3>
+<p>HU-017; la validación es siempre server-side (SEC-004) — el JWT solo transporta identidad y rol base.</p>
+<hr>
+<h2>HU-019 — UI de administración de permisos (matriz usuario × catálogo)</h2>
+<p><b>Roles:</b> ROL-04 (spec/roles.md) <b>Épica:</b> EP-02 | <b>Prioridad:</b> Must (Sprint 4, CR S4-RBAC)</p>
+<p>Como Admin (global o de catálogo) quiero una página "Administración → Permisos" con una matriz usuario × catálogo para ver y gestionar asignaciones con nombres legibles (BR-017), sin tocar Entra ID ni la base de datos a mano.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — otorgar permiso desde la matriz
+  Dado un admin de catálogo en &quot;Administración → Permisos&quot;
+  Cuando busca al usuario por nombre, marca edit en &quot;proveedores&quot; y guarda
+  Entonces la asignación queda creada, el usuario la ve reflejada en su sesión (vía /access/effective) y se muestra toast de confirmación
+
+Escenario: error — usuario sin manage-grants no ve la página
+  Dado un usuario sin permiso manage-grants en ningún catálogo ni rol admin
+  Cuando navega a la ruta de administración de permisos
+  Entonces la entrada de menú no existe y la ruta responde con la vista 403 canónica
+
+Escenario: caso borde — admin de catálogo ve solo su ámbito
+  Dado un usuario con manage-grants solo sobre &quot;basesdatos&quot;
+  Cuando abre la matriz de permisos
+  Entonces solo &quot;basesdatos&quot; es editable y los demás catálogos se muestran en solo lectura</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-017, BR-018; flujo UX-F11</p>
+<h3>Dependencias</h3>
+<p>HU-017, HU-018; endpoints <code>/access/grants</code> y <code>/access/effective</code> del contrato v0.3.</p>
+<hr>
+<h2>HU-020 — EOL Roadmap y gestión de obsolescencia tecnológica</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-08d | <b>Prioridad:</b> Must (Sprint 5)</p>
+<p>Como responsable de arquitectura o tecnología quiero consultar el roadmap de fin de soporte (EOL) de componentes y aplicaciones con filtros por criticidad, fabricante y timeline de retiro para planificar oportunamente modernizaciones y retiros tecnológicos antes de incurrir en riesgos operativos.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — consulta del roadmap EOL con timeline y filtros
+  Dado que estoy autenticado con rol Lector o superior
+    Y existen aplicaciones con fechas de fin de soporte registradas
+  Cuando consulto el roadmap EOL filtrando por criticidad &quot;Alto&quot; y fabricante &quot;Oracle&quot;
+  Entonces obtengo la lista de componentes agrupados por timeline de retiro (trimestres/años)
+    Y cada componente muestra su estado de obsolescencia, días restantes y criticidad
+
+Escenario: detección y alerta de componentes en riesgo o vencidos
+  Dado una aplicación con eolFabricante vencido o a menos de 365 días sin tratamiento (DQ-007)
+  Cuando se evalúa el roadmap EOL
+  Entonces el componente aparece marcado en estado &quot;Obsoleto&quot; o &quot;En Riesgo&quot;
+    Y muestra una advertencia de obsolescencia con acción sugerida
+
+Escenario: caso borde — componentes sin fecha EOL registrada
+  Dado un conjunto de aplicaciones sin eolFabricante registrado
+  Cuando filtro el roadmap por estado &quot;Sin Fecha&quot;
+  Entonces se listan explícitamente para remediación de calidad de datos</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-006 (DQ-007), BR-013</p>
+<h3>Dependencias</h3>
+<p>Modelo de aplicaciones con <code>eolFabricante</code> y <code>eolExtendido</code>; endpoint <code>/eol/roadmap</code> (v0.4.0).</p>
+<hr>
+<h2>HU-021 — Vista personal "Mi Catálogo" y seguimiento de activos propios</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-10 | <b>Prioridad:</b> Must (Sprint 5)</p>
+<p>Como usuario de la organización quiero una vista personalizada "Mi Catálogo" que consolide los servicios y componentes de los cuales soy responsable, creador, asignado o favorito, para consultar su estado, alertas DQ y pendientes sin buscarlos manualmente en cada catálogo.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — consulta de activos propios
+  Dado que estoy autenticado como el usuario &quot;carlos.perez@orgprueba.com&quot;
+    Y soy responsable del SN &quot;SN-PAGOS&quot; y tengo asignación de edición en &quot;serviciosTI&quot;
+  Cuando abro la vista &quot;Mi Catálogo&quot;
+  Entonces veo agrupados mis activos con su estado de salud, llaves rotas y conteo de pendientes
+
+Escenario: filtrado por favoritos y pendientes
+  Dado que tengo activos marcados como favoritos y algunos presentan campos críticos vacíos
+  Cuando aplico el filtro &quot;Solo pendientes&quot; en &quot;Mi Catálogo&quot;
+  Entonces la lista muestra únicamente los registros que requieren remediación inmediata
+
+Escenario: caso borde — usuario sin activos asignados
+  Dado un usuario nuevo sin asignaciones, responsabilidades ni favoritos
+  Cuando abre &quot;Mi Catálogo&quot;
+  Entonces el sistema muestra el estado vacío canónico con opción de explorar catálogos</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-003, BR-005, BR-010, BR-018</p>
+<h3>Dependencias</h3>
+<p>Token de usuario autenticado; endpoint <code>/my-catalog</code>; vista <code>/mi-catalogo</code> (UX-F10).</p>
+<hr>
+<h2>HU-022 — Glosario interactivo y tooltips contextuales en la app</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-11 | <b>Prioridad:</b> Must (Sprint 5)</p>
+<p>Como usuario de Catálogo TI quiero consultar el glosario canónico interactivo y ver tooltips explicativos al interactuar con términos técnicos en la app, para utilizar un vocabulario unificado y evitar errores de interpretación o captura.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — búsqueda semántica en el glosario
+  Dado cualquier usuario autenticado en la sección &quot;Glosario&quot;
+  Cuando busca el término &quot;STI&quot; o filtra por categoría &quot;Catálogos Principales&quot;
+  Entonces ve la definición canónica (&quot;Servicio técnico expuesto por una app proveedora...&quot;), sus sinónimos prohibidos y enlaces a catálogos relacionados
+
+Escenario: tooltips contextuales en tablas y formularios
+  Dado un usuario interactuando con una tabla o formulario guiado
+  Cuando pasa el cursor o enfoca una etiqueta con término técnico (ej. &quot;BIA&quot;, &quot;RTO&quot;, &quot;ITSM&quot;)
+  Entonces se despliega un tooltip contextual con la definición canónica del glosario
+
+Escenario: caso borde — búsqueda sin resultados
+  Dado un término de búsqueda inexistente &quot;XYZ_UNKNOWN&quot;
+  Cuando busco en el glosario
+  Entonces el sistema muestra &quot;Sin resultados&quot; con opción de sugerir la incorporación del término</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-001, BR-017 (vocablo canónico sin sinónimos prohibidos)</p>
+<h3>Dependencias</h3>
+<p>Migración V008 (<code>glosario</code> poblado); endpoint <code>/knowledge/glossary</code>; directiva <code>[catGlossaryTooltip]</code> (UX).</p>
+<hr>
+<h2>HU-023 — Visor vivo de arquitectura y catálogo interactivo de ADRs</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md) <b>Épica:</b> EP-12 | <b>Prioridad:</b> Must (Sprint 5)</p>
+<p>Como arquitecto, ingeniero o auditor quiero visualizar la documentación viva de arquitectura (19 secciones alineadas a <code>spec/architecture.md</code>) y el catálogo interactivo de ADRs dentro de la interfaz web, para disponer de conocimiento técnico gobernado, trazable y actualizado junto al dato.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — navegación de secciones de arquitectura viva
+  Dado un usuario con acceso a la sección &quot;Arquitectura&quot;
+  Cuando navega por el documento vivo
+  Entonces puede consultar interactivamente las 19 secciones (C4 Contexto, Contenedores, Componentes, NFRs, Patrones, etc.) con sus diagramas
+
+Escenario: catálogo interactivo de ADRs con filtros
+  Dado un usuario en la pestaña &quot;Decisiones de Arquitectura (ADRs)&quot;
+  Cuando filtra los ADRs por estado &quot;Aceptada&quot; o busca &quot;PostgreSQL&quot;
+  Entonces visualiza las decisiones ADR-001 a ADR-010 con su contexto, decisión, consecuencias y estado
+
+Escenario: copia de enlace y trazabilidad de decisión
+  Dado un ADR consultado en la interfaz
+  Cuando el usuario hace clic en &quot;Copiar enlace permanente&quot;
+  Entonces la URL directa al ADR queda en el portapapeles para citación formal en comités</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>ADR-001 a ADR-010; gobernanza documental viva</p>
+<h3>Dependencias</h3>
+<p><code>spec/architecture.md</code>, <code>spec/adr/</code>; endpoints <code>/knowledge/architecture</code> y <code>/knowledge/adrs</code>.</p>
+<hr>
+<h2>HU-024 — Renombre atómico de Primary Keys con propagación en cascada (BR-016)</h2>
+<p><b>Roles:</b> ROL-04 (spec/roles.md) <b>Épica:</b> EP-01 / BR-016 | <b>Prioridad:</b> Must (Sprint 5)</p>
+<p>Como Editor o Admin quiero renombrar el código/identificador Primary Key de un registro existente y que el cambio se propague atómicamente a todas las referencias en tablas puente, catálogos dependientes y estructuras JSONB, para corregir llaves sin romper la integridad referencial ni generar llaves rotas.</p>
+<h3>Criterios de aceptación (Gherkin)</h3>
+<pre><code>Escenario: camino feliz — renombre de aplicación propaga a todas las relaciones
+  Dado que existe la aplicación &quot;APP-OLD&quot; referenciada por 2 STI, 1 integración y 1 base de datos
+    Y estoy autenticado con rol Editor sobre &quot;aplicaciones&quot;
+  Cuando renombro la PK de &quot;APP-OLD&quot; a &quot;APP-NEW&quot;
+  Entonces la aplicación queda con código &quot;APP-NEW&quot;
+    Y las referencias en serviciosTI (appProveedoraCodigo), integraciones (origenCodigo) y bd_app_rel se actualizan a &quot;APP-NEW&quot;
+    Y se registra un evento &quot;rename&quot; en el audit log con el conteo de 4 referencias actualizadas
+
+Escenario: error — conflicto por PK destino existente (409)
+  Dado que existe la aplicación &quot;APP-OLD&quot;
+    Y que ya existe un registro con código &quot;APP-DUPLICADA&quot;
+    Y estoy autenticado con rol Editor sobre &quot;aplicaciones&quot;
+  Cuando intento renombrar &quot;APP-OLD&quot; a &quot;APP-DUPLICADA&quot;
+  Entonces el sistema responde 409 CONFLICT informando que el código ya existe
+    Y no se modifica ningún registro
+
+Escenario: caso borde — atomicidad y reversión ante fallo (ROLLBACK)
+  Dado un renombre donde una tabla puente o relación dependiente experimenta un error de base de datos
+  Cuando se ejecuta la transacción
+  Entonces la operación completa se cancela (ROLLBACK)
+    Y la PK original &quot;APP-OLD&quot; y todas sus referencias se conservan sin cambio alguno</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-016, BR-001, BR-005, BR-010</p>
+<h3>Dependencias</h3>
+<p>Endpoint <code>POST /catalogs/{catalog}/records/{pk}/rename</code>; función de dominio <code>renameRecordKey</code>.</p>
+<h2>HU-026 — Landing pública para no autenticados y cierre de sesión seguro (Sprint 7)</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md)</p>
+<p><b>Como</b> usuario que llega a la app sin sesión (o que acaba de cerrarla), <b>quiero</b> ver solo una página de bienvenida pública (sin menú, sin datos del catálogo) y que al cerrar sesión no quede información visible, <b>para</b> proteger la confidencialidad de los activos de TI (SEC-001) y tener un punto de entrada/salida claro.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: camino feliz — usuario autenticado entra normal
+  Dado que tengo una sesión Entra ID válida
+  Cuando navego a cualquier ruta de la app
+  Entonces veo el shell completo (sidebar, buscador, campana) y mis datos
+
+Escenario: no autenticado — solo landing pública, sin shell ni datos
+  Dado que NO tengo sesión Entra ID
+  Cuando navego a &quot;/&quot; o a cualquier ruta interna (ej. &quot;/dashboard&quot;, &quot;/catalogo/aplicaciones&quot;)
+  Entonces soy redirigido a la landing pública
+    Y la landing muestra solo marca, propuesta de valor y el botón &quot;Iniciar sesión con Entra ID&quot;
+    Y NO se renderiza el sidebar, el buscador global, la campana ni ningún dato del catálogo
+
+Escenario: logout — no queda información residual en pantalla
+  Dado que estoy autenticado consultando una pantalla con datos (ej. dashboard con cifras)
+  Cuando cierro sesión
+  Entonces el estado local se limpia (datos de catálogos, grants, notificaciones y preferencias en memoria)
+    Y soy redirigido a la landing pública
+    Y al navegar &quot;atrás&quot; en el navegador NO se muestran los datos que estaba consultando</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-001 (todo acceso autenticado), SEC-001 (Entra ID), SEC-021 (efecto inmediato).</p>
+<h3>Dependencias</h3>
+<p>MSAL logout con <code>postLogoutRedirectUri</code> a la landing; limpieza de signals/stores al evento de logout.</p>
+<h2>HU-027 — Navegación entre catálogos sin recargar la app (Sprint 8, bug)</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md)</p>
+<p><b>Como</b> usuario consultando un catálogo, <b>quiero</b> que al hacer clic en otro catálogo del menú la vista cambie de inmediato al nuevo catálogo, <b>para</b> no quedarme atrapado en la pantalla anterior con una URL que dice otra cosa.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: camino feliz — cambio de catálogo desde el menú
+  Dado que estoy autenticado y estoy viendo la lista del catálogo &quot;negocio&quot;
+  Cuando hago clic en &quot;Servicios TI&quot; en el menú lateral
+  Entonces la URL cambia a la ruta de &quot;serviciosTI&quot;
+    Y la tabla muestra los registros de serviciosTI (no los de negocio)
+    Y el título de la página refleja &quot;Servicios TI&quot;
+
+Escenario: cambios sucesivos — el componente reacciona a cada cambio de parámetro
+  Dado que estoy viendo &quot;aplicaciones&quot;
+  Cuando navego a &quot;proveedores&quot; y luego a &quot;serviciosTI&quot; sin recargar la página
+  Entonces cada navegación recarga datos, columnas y filtros del catálogo destino
+    Y no quedan columnas ni filtros del catálogo anterior
+
+Escenario: caso borde — navegar al catálogo que ya estoy viendo
+  Dado que estoy viendo &quot;serviciosTI&quot;
+  Cuando hago clic de nuevo en &quot;Servicios TI&quot;
+  Entonces la vista permanece estable sin errores ni doble cargue visible</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>Ninguna nueva; es un defecto de implementación (uso de <code>snapshot.paramMap</code> en vez de suscripción a <code>paramMap</code>).</p>
+<h3>Dependencias</h3>
+<p><code>catalog-list.page.ts</code> — suscripción a <code>route.paramMap</code>; <code>data-table</code> recibe columnas/filtros por catálogo.</p>
+<h2>HU-028 — Identificadores legibles en todas las vistas (BR-017, Sprint 8)</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md)</p>
+<p><b>Como</b> usuario del catálogo, <b>quiero</b> ver nombres (y códigos de aplicación) en lugar de GUIDs en la búsqueda global, la lista de Servicios TI, el Reuso STI y el Mapa de Relaciones, <b>para</b> poder reconocer y recordar los registros sin memorizar cadenas ilegibles.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: búsqueda global — aplicaciones muestran código y nombre
+  Dado que existe la aplicación con código &quot;409&quot; y nombre &quot;MAM&quot;
+  Cuando busco &quot;409&quot; en el buscador global
+  Entonces el resultado muestra &quot;409 · MAM&quot; como título
+    Y ningún resultado muestra un GUID como detalle (campos tipo eaGuid/id se omiten)
+
+Escenario: búsqueda global — otros catálogos nunca muestran GUID
+  Dado registros de serviciosTI y negocio con GUID como llave
+  Cuando busco por nombre funcional
+  Entonces el resultado muestra el nombre como título
+    Y el detalle muestra el atributo que hizo match solo si es legible (nunca un GUID)
+
+Escenario: lista serviciosTI — Nombre Técnico y Operaciones en lugar del GUID
+  Dado un STI con nombreFuncional, nombreTecnico y operaciones [&quot;consultarPagosPSE&quot;]
+  Cuando abro la lista de serviciosTI
+  Entonces la columna &quot;Código&quot; GUID no se muestra
+    Y se muestran las columnas &quot;Nombre Técnico&quot; y &quot;Operaciones&quot;
+    Y la columna &quot;Detalle&quot; nunca muestra &quot;[object Object]&quot; (arrays y objetos se serializan legible)
+
+Escenario: Reuso STI y Mapa de Relaciones — nombre como identificador principal
+  Dado un STI huérfano con nombreFuncional &quot;Consultar Cuenta Saldada&quot;
+  Cuando abro Reuso STI o el Mapa de Relaciones
+  Entonces el nombre funcional es el texto principal del elemento (enlace/título)
+    Y ningún GUID se muestra como texto visible (la llave sigue disponible en la ficha/drawer)</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-017 (nombre sobre GUID; excepción: código de aplicación sí es valioso).</p>
+<h3>Dependencias</h3>
+<p>Backend <code>search.ts</code> (nombre apps = <code>codigo · nombre</code>; detalle omite GUIDs); frontend <code>catalog-list.page.ts</code> (columnas serviciosTI), <code>reuso-sti.page.ts</code>, <code>relmap.page.ts</code>, <code>app.component.ts</code> (search-hit).</p>
+<h2>HU-029 — Listas de valores (enum) administrables desde el front con borrado lógico (Sprint 9)</h2>
+<p><b>Roles:</b> ROL-02 (spec/roles.md)</p>
+<p><b>Como</b> dueño de un catálogo (usuario con permiso de edición sobre ese catálogo), <b>quiero</b> administrar los valores de las listas desplegables (enum) desde la propia aplicación —agregar y dar de baja valores con borrado lógico— y que los campos Sí/No se editen con radio buttons, <b>para</b> gobernar las listas sin depender de despliegues y sin romper la integridad de los registros que ya usan un valor retirado.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: camino feliz — agregar un valor a una lista enum
+  Dado que estoy autenticado con permiso de edición sobre &quot;aplicaciones&quot;
+    Y el campo &quot;estado&quot; tiene los valores activos &quot;En Producción&quot;, &quot;Retirada&quot;
+  Cuando agrego el valor &quot;En Sunset&quot; desde el administrador inline del campo
+  Entonces el valor queda activo y disponible en el dropdown/radio del formulario
+    Y se registra un evento en el audit log (usuario, catálogo, campo, valor, acción &quot;enum-add&quot;)
+
+Escenario: borrado lógico — el valor retirado no rompe registros existentes
+  Dado que la aplicación &quot;APP-1&quot; tiene estado &quot;En Producción&quot;
+  Cuando doy de baja el valor &quot;En Producción&quot; de la lista del campo &quot;estado&quot;
+  Entonces el valor queda inactivo y NO se ofrece al crear o editar registros
+    Y &quot;APP-1&quot; conserva su estado &quot;En Producción&quot; sin marcarse como error de calidad
+    Y el administrador de valores muestra &quot;En Producción&quot; como inactivo con opción de reactivar
+
+Escenario: reactivación de un valor previamente retirado
+  Dado que el valor &quot;En Producción&quot; está inactivo en el campo &quot;estado&quot;
+  Cuando lo reactivo
+  Entonces vuelve a ofrecerse en el formulario de inmediato
+
+Escenario: permisos — solo quien puede editar el catálogo administra sus listas
+  Dado que estoy autenticado como reader sin grant de edición sobre &quot;aplicaciones&quot;
+  Cuando intento agregar o dar de baja un valor enum de &quot;aplicaciones&quot;
+  Entonces el sistema responde 403 FORBIDDEN
+
+Escenario: booleanos — campos Sí/No se editan con radio buttons
+  Dado un campo enum cuyos valores activos son exactamente &quot;Sí&quot; y &quot;No&quot;
+  Cuando abro el formulario de creación o edición
+  Entonces el campo se renderiza como radio group (Sí / No), no como lista desplegable</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-001 (autenticación), BR-010 (auditoría), BR-005 (integridad — borrado lógico, nunca físico), SEC-021 (efecto inmediato).</p>
+<h3>Dependencias</h3>
+<p>Tabla <code>enum_valores</code> (migración V009), endpoints <code>GET/POST/DELETE /dictionaries/{catalog}/{campo}/values</code> + <code>POST .../reactivar</code>; RBAC granular de Sprint 4 (<code>canEdit(catalog)</code>); <code>record-form-modal</code> (administrador inline ⚙ + radio group).</p>
+<h2>HU-030 — Columnas configurables desde el diccionario y nombre fijo al hacer scroll (Sprint 9)</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md)</p>
+<p><b>Como</b> usuario de un catálogo, <b>quiero</b> poder mostrar cualquier atributo del diccionario como columna de la tabla, con una vista por defecto de las columnas más significativas del catálogo (sin GUIDs) y la columna Nombre siempre visible al hacer scroll horizontal, <b>para</b> consultar y comparar registros sin abrir la ficha de cada uno.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: camino feliz — todas las columnas del diccionario son seleccionables
+  Dado que estoy en la lista de &quot;serviciosTI&quot; (cuyo diccionario tiene ~20 atributos)
+  Cuando abro el menú &quot;⚙ Columnas&quot;
+  Entonces puedo marcar/desmarcar cualquier atributo del diccionario como columna
+    Y las columnas de tipo array se muestran como chips legibles (nunca [object Object])
+    Y mi selección persiste por catálogo entre sesiones
+
+Escenario: vista por defecto — columnas significativas del catálogo, sin GUIDs ni Activo
+  Dado que nunca he personalizado las columnas de &quot;serviciosTI&quot;
+  Cuando abro la lista
+  Entonces veo por defecto: Nombre Funcional, Nombre Técnico, Operaciones, App Proveedora, Apps Consumidoras, Endpoints, Tipo de Servicio
+    Y NO veo la columna Activo (el 90% de los registros están activos — no aporta) ni ningún GUID
+    Y el botón &quot;Restablecer&quot; del menú de columnas vuelve a esta vista por defecto
+
+Escenario: scroll horizontal — la columna Nombre permanece fija
+  Dado una tabla con más columnas de las que caben en pantalla
+  Cuando hago scroll horizontal hacia la derecha
+  Entonces la primera columna (Nombre/Código según BR-017) permanece visible y fija
+    Y el resto de columnas se desplaza debajo de ella</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-017 (nombre primero, nunca GUID; excepción código de aplicación).</p>
+<h3>Dependencias</h3>
+<p>Diccionario por catálogo con marca <code>colDefault</code> por campo (migración V009 + seed); <code>data-table</code> con soporte de columna sticky; <code>catalog-list.page.ts</code> construye columnas desde el diccionario.</p>
+<hr>
+<h2>HU-031 — Búsqueda por código O nombre en Trazabilidad y Qué-se-cae-si (Sprint 10 — propuesta)</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md)</p>
+<p><b>Como</b> usuario de negocio o arquitecto <b>quiero</b> buscar el punto de partida de la trazabilidad E2E y del análisis de impacto ("¿Qué se cae si?") escribiendo el código O el nombre del elemento, con sugerencias tipo buscador global <b>para</b> no tener que memorizar códigos ni GUIDs (BR-017) y llegar al análisis en pocos clics.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: buscar por nombre con sugerencias
+  Dado que estoy en Trazabilidad E2E o en &quot;¿Qué se cae si?&quot;
+  Cuando escribo &quot;pagos&quot; en el buscador del punto de partida
+  Entonces veo sugerencias que coinciden por nombre O por código (typeahead, como el buscador global)
+    Y cada sugerencia muestra nombre + tipo de catálogo (+ código en aplicaciones)
+
+Escenario: buscar por código
+  Dado el mismo buscador
+  Cuando escribo &quot;APP-001&quot;
+  Entonces la aplicación correspondiente aparece como sugerencia seleccionable</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-017 (nombres por encima de códigos/GUIDs; excepción código de aplicación).</p>
+<h3>Dependencias</h3>
+<p>Endpoint de búsqueda global existente (reutilizable como fuente del typeahead); páginas trace.page.ts e impact.page.ts.</p>
+<hr>
+<h2>HU-032 — Rediseño visual de Trazabilidad E2E y ¿Qué se cae si? (Sprint 10 — propuesta)</h2>
+<p><b>Roles:</b> ROL-01 (spec/roles.md)</p>
+<p><b>Como</b> usuario de la plataforma <b>quiero</b> que la trazabilidad E2E y el análisis de impacto sean visuales (cadena de nodos conectados, niveles, estados con color) y no listas planas de texto <b>para</b> entender de un vistazo cómo se conecta el negocio con la tecnología y qué se afecta ante una falla — estas dos vistas son la principal vitrina de valor de la plataforma.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: trazabilidad como cadena visual
+  Dado que seleccioné un servicio de negocio
+  Cuando se carga la trazabilidad
+  Entonces veo la cadena Negocio → Etapas → Servicios TI → Aplicaciones → Bases de datos
+    como nodos conectados visualmente (no una lista plana), con el nombre de cada elemento
+    y estado (activo/inactivo/EOL) con color
+
+Escenario: impacto por niveles
+  Dado que seleccioné una aplicación en &quot;¿Qué se cae si?&quot;
+  Cuando se carga el análisis
+  Entonces veo el impacto agrupado por niveles de propagación con conteos y nombres,
+    y puedo expandir cada nivel sin perder el contexto</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-017. Design system "Corporate Precision" (v0.7) — tokens y componentes Stitch.</p>
+<h3>Dependencias</h3>
+<p>trace-chain.component.ts (base existente para nodos), design-system.md, datos de /api/trace y /api/impact existentes.</p>
+<hr>
+<h2>HU-033 — Administración guiada de reglas de calidad de datos (Sprint 10 — propuesta)</h2>
+<p><b>Roles:</b> ROL-04 (spec/roles.md)</p>
+<p><b>Como</b> gobernador de datos (dueño de catálogo o admin) <b>quiero</b> crear y administrar las reglas de calidad desde una página dedicada con campos controlados (catálogo, campo del diccionario, tipo de condición, criticidad, activa) <b>para</b> no escribir condiciones a mano alzada — hoy el formulario admite cualquier valor y eso genera reglas inválidas.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: crear regla con campos controlados
+  Dado que estoy en la página &quot;Reglas de Calidad&quot; y tengo permiso de edición
+  Cuando creo una regla nueva
+  Entonces el catálogo se elige de la lista de catálogos existentes
+    Y el campo se elige de los atributos del diccionario de ese catálogo
+    Y la condición se elige de un catálogo cerrado de tipos (NOT_NULL, REGEX, RANGO, LISTA, UNICO, FECHA)
+    Y cada tipo pide solo sus parámetros (ej.: REGEX pide el patrón; RANGO pide mínimo/máximo)
+    Y la criticidad se elige entre Bloqueante/Advertencia/Informativa
+
+Escenario: listado y ciclo de vida
+  Dado que existen reglas
+  Cuando abro la página
+  Entonces veo código, catálogo, campo, condición, criticidad y estado de cada regla
+    Y puedo activar/desactivar (borrado lógico) y editar cada regla con auditoría</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-003 (campos críticos), BR-012 (auditoría de cambios), BR-015 (permiso por catálogo/rol).</p>
+<h3>Dependencias</h3>
+<p>API /api/dq/rules existente (listar/evaluar); posible extensión backend para CRUD de reglas con tipos de condición cerrados (ADR si se persiste en tabla nueva — Risk Tier 2).</p>
+<h2>HU-034 — Política maker-checker configurable por campo crítico y por catálogo (Sprint 12, CR-S12-MKCK)</h2>
+<p><b>Roles:</b> ROL-02 (Editor), ROL-03 (Aprobador) (spec/roles.md)</p>
+<p><b>Como</b> gobernador del catálogo <b>quiero</b> que los cambios que tocan campos marcados como críticos en el diccionario —o cualquier cambio en catálogos declarados de gobierno estricto— generen automáticamente una solicitud de aprobación (HTTP 202) en lugar de persistir directo <b>para</b> que la regla BR-011 se cumpla de verdad: hoy toda alta/edición persiste directo ("Sprint 1: directo") y la bandeja de aprobaciones nunca recibe solicitudes reales.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: edición de campo crítico genera solicitud (no persiste)
+  Dado que el diccionario de &quot;aplicaciones&quot; marca el campo &quot;criticidad&quot; como crítico
+    Y existe el registro &quot;APP-CORE&quot; con criticidad &quot;Bajo&quot;
+  Cuando un Editor actualiza &quot;criticidad&quot; a &quot;Alto&quot;
+  Entonces la API responde 202 con la solicitud creada (id, operacion=update, cambio)
+    Y el registro &quot;APP-CORE&quot; conserva criticidad &quot;Bajo&quot; (no se aplica hasta aprobar)
+    Y la bandeja de Aprobaciones muestra la solicitud Pendiente con el diff campo a campo
+
+Escenario: edición de campo NO crítico persiste directo
+  Dado el mismo diccionario
+  Cuando un Editor actualiza solo campos no críticos
+  Entonces la API responde 200 y el cambio persiste de inmediato (comportamiento actual)
+
+Escenario: aprobar una solicitud de update aplica el cambio
+  Dada la solicitud Pendiente del primer escenario
+  Cuando un Aprobador (distinto del solicitante, BR-010) la aprueba con comentario
+  Entonces el registro refleja criticidad &quot;Alto&quot;, la solicitud queda Aprobada y se audita (BR-012)
+
+Escenario: aprobar una solicitud de create inserta el registro
+  Dado que el catálogo &quot;aplicaciones&quot; está en la lista de gobierno estricto (MAKER_CHECKER_CATALOGS)
+  Cuando un Editor crea un registro nuevo
+  Entonces la API responde 202 y el registro NO existe todavía
+    Y al aprobarse la solicitud (operacion=create) el registro se inserta con sus atributos
+    Y al rechazarse no queda rastro del registro (solo la solicitud Rechazada y la auditoría)
+
+Escenario: solicitud huérfana no se puede aprobar
+  Dada una solicitud de update Pendiente cuyo registro fue eliminado después
+  Cuando un Aprobador intenta aprobarla
+  Entonces la API responde 409 (el cambio ya no tiene destino)</code></pre>
+<h3>Política (configurable, sin cambio de esquema)</h3>
+<ul><li><b>Nivel campo</b>: un <code>update</code> cuyo diff toca al menos un campo con <code>critical: true</code> en el diccionario del catálogo → maker-checker. Resto → directo.</li><li><b>Nivel catálogo</b>: la variable de configuración <code>MAKER_CHECKER_CATALOGS</code> (lista separada por comas, <code>*</code> = todos) fuerza maker-checker para <code>create</code> y <code>update</code> en esos catálogos, aunque no se toquen campos críticos.</li><li><code>delete</code> (soft/hard) queda fuera de esta HU: sigue directo, restringido a admin (HU-007) y auditado.</li></ul>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-010 (cuatro ojos), BR-011 (maker-checker), BR-012 (auditoría), BR-003 (campos críticos del diccionario), BR-018 (permiso por catálogo).</p>
+<h3>Dependencias</h3>
+<p>Infra de aprobaciones existente (HU-006: tabla <code>aprobaciones</code>, endpoints <code>/api/approvals</code>, <code>decideApproval</code>, bandeja UX-F3). Esta HU cierra el hueco de generación: los comentarios "Sprint 1: directo" de <code>store.ts</code> y <code>catalogs-records.ts</code> quedan <b>superseded</b>.</p>
+<h2>HU-035 — Aviso a aprobadores vía asignaciones por catálogo y correo visible en Permisos (Sprint 12, CR-S12-MKCK extensión)</h2>
+<p><b>Roles:</b> ROL-03 (Aprobador), ROL-04 (Admin) (spec/roles.md)</p>
+<p><b>Como</b> gobernador del catálogo <b>quiero</b> que al generarse una solicitud maker-checker se notifique en la campana a los usuarios con asignación vigente de <code>approve</code> sobre ese catálogo (BR-018), con una opción por asignación para activar/silenciar ese aviso, y que la pantalla Permisos muestre el correo/OID del usuario además de su nombre <b>para</b> que las solicitudes no dependan de que el aprobador revise la bandeja por iniciativa propia, y para saber con qué usuario (correo) debo iniciar sesión — hoy solo se ve el nombre y con varios usuarios de prueba del mismo nombre es ambiguo.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: solicitud nueva notifica a los aprobadores del catálogo
+  Dado que &quot;ana@orgprueba.com&quot; tiene una asignación vigente con permiso &quot;approve&quot; sobre &quot;aplicaciones&quot; y notificar activo
+  Cuando un Editor genera una solicitud maker-checker sobre &quot;aplicaciones&quot; (HU-034, 202)
+  Entonces se crea una notificación para &quot;ana@orgprueba.com&quot; con título y enlace al registro
+    Y NO se notifica al solicitante ni a asignaciones revocadas, vencidas o con notificar apagado
+
+Escenario: Permisos muestra el correo del usuario
+  Dado que existen asignaciones
+  Cuando abro Administración → Permisos
+  Entonces cada fila muestra el correo/OID (usuario de login) y, aparte, el nombre visible
+    Y al otorgar puedo marcar si esa asignación recibe avisos de aprobación</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-018 (asignaciones por catálogo), BR-010 (cuatro ojos), BR-011 (maker-checker), BR-017 (legibilidad).</p>
+<h3>Notas técnicas</h3>
+<p>Migración V010: <code>asignaciones_catalogo.notificar BOOLEAN NOT NULL DEFAULT true</code>. Los usuarios con rol base <code>approver</code> SIN asignación no reciben aviso en esta versión (la bandeja sigue siendo la fuente de verdad); la asignación por catálogo se convierte en el directorio de aprobadores notificables.</p>
+<h2>HU-036 — Política maker-checker administrable por catálogo desde la UI (Sprint 14 — propuesta)</h2>
+<p><b>Roles:</b> ROL-04 (Administrador), ROL-03 (Aprobador), ROL-02 (Editor) (spec/roles.md)</p>
+<p><b>Como</b> administrador del catálogo (ROL-04 global o usuario con asignación de administración sobre ese catálogo, BR-018) <b>quiero</b> activar/desactivar la exigencia de aprobación por catálogo y elegir si aplica a todo el catálogo o campo a campo (marcando qué campos exigen aprobación), desde una pantalla de administración y con efecto inmediato <b>para</b> gobernar el maker-checker sin depender de un redeploy ni de editar la variable <code>MAKER_CHECKER_CATALOGS</code> de la Function App — hoy cambiar la política exige tocar configuración de infraestructura, lo que la hace inusable para los administradores funcionales.</p>
+<h3>Contexto y problema</h3>
+<p>HU-034 introdujo la política: nivel campo vía <code>critical</code> del diccionario y nivel catálogo vía <code>MAKER_CHECKER_CATALOGS</code> (env var). La env var es global a las 3 Function Apps, exige redeploy/ajuste de infra y no la puede operar un administrador funcional. Además el flag <code>critical</code> del diccionario mezcla dos preocupaciones: calidad de datos (DQ) y gobierno de cambios.</p>
+<h3>Criterios de aceptación</h3>
+<pre><code>Escenario: activar aprobación para todo un catálogo
+  Dado que soy administrador con permiso de administración sobre &quot;regulaciones&quot;
+  Cuando en Administración → Política de aprobación selecciono &quot;regulaciones&quot;, modo &quot;Todo el catálogo&quot; y guardo
+  Entonces todo create/update posterior sobre &quot;regulaciones&quot; genera solicitud maker-checker (202)
+    Y el cambio de política queda auditado (BR-012) con usuario, modo anterior y modo nuevo
+    Y los otros workers lo aplican sin reinicio (refresco de gobierno, S2-9)
+
+Escenario: política campo a campo
+  Dado que &quot;aplicaciones&quot; está en modo &quot;Campos seleccionados&quot;
+  Cuando marco &quot;criticidad&quot; y &quot;datosPersonales&quot; y desmarco &quot;nombre&quot;
+  Entonces un update que solo cambia &quot;nombre&quot; persiste directo (200)
+    Y un update que toca &quot;criticidad&quot; genera solicitud maker-checker (202)
+
+Escenario: desactivar la política de un catálogo
+  Dado que &quot;proveedores&quot; tiene modo &quot;Todo el catálogo&quot;
+  Cuando cambio a &quot;Sin aprobación&quot; y guardo
+  Entonces create/update sobre &quot;proveedores&quot; vuelven a ser directos
+    Y las solicitudes ya pendientes NO se cancelan: siguen decidiéndose en la bandeja
+
+Escenario: permiso insuficiente
+  Dado que soy Editor (ROL-02) sin asignación de administración sobre &quot;regulaciones&quot;
+  Cuando intento guardar la política de &quot;regulaciones&quot;
+  Entonces recibo 403 y la política vigente no cambia
+
+Escenario: precedencia y arranque
+  Dado que existe política persistida en BD para un catálogo
+  Entonces la BD manda sobre MAKER_CHECKER_CATALOGS
+    Y si un catálogo no tiene fila en BD, aplica la env var como fallback de arranque (compatibilidad)</code></pre>
+<h3>Reglas de negocio aplicables</h3>
+<p>BR-010 (cuatro ojos), BR-011 (maker-checker), BR-012 (auditoría), BR-018 (permiso por catálogo), SEC-004 (autorización server-side).</p>
+<h3>Decisiones de diseño propuestas (a validar en GATE 1)</h3>
+<ul><li><b>Persistencia</b>: tabla nueva <code>politicas_aprobacion</code> (migración V012): <code>catalogo</code> PK, <code>modo</code> (<code>inactivo</code> | <code>campos_criticos</code> | <code>todo_catalogo</code>), <code>campos</code> JSONB (lista de campos que exigen aprobación en modo <code>campos_criticos</code>), <code>actualizado_por</code>, <code>fecha_actualizacion</code>. ADR Tier 2 (afecta gobierno de cambios, no es PII).</li><li><b>Permiso</b>: nuevo permiso de asignación <code>manage-policy</code> por catálogo (BR-018); ROL-04 global lo posee implícito. El permiso <code>manage-grants</code> existente NO lo incluye (separación: otorgar permisos ≠ definir gobierno de cambios).</li><li><b>Relación con <code>critical</code> del diccionario</b>: el modo <code>campos_criticos</code> parte de los campos <code>critical</code> actuales como selección inicial, pero la lista editable pasa a vivir en la política; el flag del diccionario queda solo para DQ (una sola preocupación por artefacto). Transición: si el catálogo no tiene fila, se comporta como hoy.</li><li><b>Refresco</b>: la política es dato de gobierno — viaja en <code>refreshDiccionariosSiObsoleto</code> (TTL 60 s + forzado), mismo patrón que diccionarios/grants/enum.</li><li><code>delete</code> sigue fuera del maker-checker (HU-034): directo, solo admin, auditado.</li><li><b>Env var <code>MAKER_CHECKER_CATALOGS</code></b>: queda como fallback de arranque para catálogos sin fila en BD; se documenta como legado y su vaciado completo es el estado objetivo.</li></ul>
+<h3>Dependencias</h3>
+<p>HU-034 (motor maker-checker), HU-035 (avisos a aprobadores), S2-9/TD-008 (refresco de gobierno y frescura de records). Pantalla nueva PANT-22 en <code>spec/ux/screen-inventory.md</code>.</p><script>
+(function(){
+  var root=document.documentElement;
+  function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
+  function apl(t){root.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');}
+  apl(saved());
+  window.addEventListener('message',function(e){var d=e.data||{};if(d.portal==='tema'){apl(d.tema);}});
+  var pid=document.body&&document.body.getAttribute('data-page-id');
+  if(pid&&window.parent!==window){
+    try{window.parent.postMessage({portal:'abierto',id:pid},'*');}catch(e){}
+  }
+  /* Ctrl+K dentro del iframe: la tecla nunca llega al shell (el navegador se
+     la queda) — la página la consume y la reenvía por postMessage. */
+  document.addEventListener('keydown',function(e){
+    if(window.parent===window)return;
+    var tag=(e.target&&e.target.tagName||'').toLowerCase();
+    var typing=tag==='input'||tag==='textarea'||tag==='select'||(e.target&&e.target.isContentEditable);
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }else if(e.key==='/'&&!typing){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }
+  },true);
+})();
+</script></body></html>

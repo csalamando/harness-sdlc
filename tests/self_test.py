@@ -102,6 +102,16 @@ OWNED = {
     "spec/roles.md": "business-analyst",
     "spec/process-definition.md": "business-analyst",
     "spec/ux/": "ux-designer",
+    # v2.29 — traza de entregables dev + owners que faltaban
+    "spec/dev-log-backend.md": "backend-dev",
+    "spec/dev-log-frontend.md": "frontend-dev",
+    "spec/runbook-deploy-rollback.md": "devops-engineer",
+    "spec/checklist-validacion-dev.md": "devops-engineer",
+    "spec/docs/": "technical-writer",
+    # v2.30 — historias técnicas en 2 niveles
+    "spec/technical-design.md": "software-architect",
+    "spec/technical-design-backend.md": "backend-dev",
+    "spec/technical-design-frontend.md": "frontend-dev",
 }
 for path, owner in OWNED.items():
     found = re.search(rf"path:\s*{re.escape(path)}\s*\n\s*owner:\s*{owner}\b", matrix_text)
@@ -301,6 +311,20 @@ with tempfile.TemporaryDirectory() as tmp:
                     "--tipo", "sprint-review")
     check("gate sprint-review sin learning del periodo FALLA", code == 1,
           out if code == 0 else "")
+# v2.29 — continuidad: el review del sprint N exige el del sprint N-1
+with tempfile.TemporaryDirectory() as tmp:
+    rdir = os.path.join(tmp, "reports")
+    os.makedirs(rdir)
+    import gate_checker as _gc
+    open(os.path.join(rdir, "sprint-review-11.md"), "w").write("x")
+    open(os.path.join(rdir, "sprint-review-12.md"), "w").write("x")
+    check("continuidad: review 12 con 11 presente pasa",
+          _gc.check_sprint_continuity(os.path.join(rdir, "sprint-review-12.md")) == [])
+    open(os.path.join(rdir, "sprint-review-14.md"), "w").write("x")
+    check("continuidad: review 14 sin 13 FALLA (caso CATI)",
+          _gc.check_sprint_continuity(os.path.join(rdir, "sprint-review-14.md")) != [])
+    check("continuidad: sprint 1 nunca exige previo",
+          _gc.check_sprint_continuity(os.path.join(rdir, "sprint-review-01.md")) == [])
 # dueños de la telemetría en la matriz (antes eran tierra de nadie)
 for path in ("spec/METRICS.md", "spec/metrics/", "spec/reports/"):
     check(f"matriz: {path} -> orchestrator",
@@ -587,6 +611,14 @@ ini = open(os.path.join(PORTAL, "paginas", "inicio.html"), encoding="utf-8").rea
 check("portal: inicio denso — pipeline compacto + acumulado en una pantalla",
       "graph-wrap" in ini and "FASES=" in ini and "Acumulado del proyecto" in ini
       and "data-page-id=" in ini)
+# v2.31 — contribución por skill por sprint en la página de métricas
+met = open(os.path.join(PORTAL, "paginas", "metricas.html"), encoding="utf-8").read()
+check("portal v2.31: métricas incluye gráfica de contribución por skill por sprint",
+      "Contribución por skill por sprint" in met and "<svg" in met)
+check("portal v2.31: la gráfica apila las skills del fixture (barras por sprint)",
+      "backend-dev" in met and "business-analyst" in met and "S1" in met and "S2" in met)
+check("portal v2.31: alerta de skills silenciosas (roles esperados sin activación)",
+      "sin activación registrada" in met)
 arq = open(os.path.join(PORTAL, "paginas", "arquitectura.html"), encoding="utf-8").read()
 check("portal: arquitectura vincula diagramas y ADR↔radar (data-tech)",
       "dcard" in arq and "#/id/diagrams-arquitectura" in arq
@@ -626,6 +658,27 @@ check("portal: ADRs y tech-radar clasifican en Arquitectura; threat-model en Dev
       portal_lib.infer_categoria("paginas/docs/adr__ADR-001-x.html") == "arquitectura"
       and portal_lib.infer_categoria("paginas/docs/threat-model.html") == "devsecops"
       and portal_lib.infer_categoria("paginas/docs/tech-radar.html") == "arquitectura")
+# v2.29 — correcciones de clasificación detectadas en CATI
+check("portal v2.29: ADR con 'despliegue' en el título sigue siendo Arquitectura",
+      portal_lib.infer_categoria("paginas/docs/adr__ADR-010-lecciones-despliegue-dev.html") == "arquitectura")
+check("portal v2.29: checklist de validación post-deploy → DevSecOps",
+      portal_lib.infer_categoria("docs/checklist-validacion-dev.md") == "devsecops")
+check("portal v2.29: gap analysis → Negocio; epics.md → Negocio",
+      portal_lib.infer_categoria("docs/poc-gap-analysis.md") == "negocio"
+      and portal_lib.infer_categoria("epics.md") == "negocio")
+check("portal v2.29: pipeline-state → Auditoría (derivado de recibos + cadena de hash)",
+      portal_lib.infer_categoria("pipeline-state.md") == "auditoria")
+check("portal v2.29: cost-estimation y cost-assumptions → Plataforma (cloud-pricing)",
+      portal_lib.infer_categoria("cost-estimation.md") == "plataforma"
+      and portal_lib.infer_categoria("cost-assumptions.yaml") == "plataforma")
+check("portal v2.29: dev-log de skills dev → Desarrollo",
+      portal_lib.infer_categoria("dev-log-backend.md") == "desarrollo"
+      and portal_lib.infer_categoria("dev-log-frontend.md") == "desarrollo")
+# v2.30 — historias técnicas en 2 niveles
+check("portal v2.30: technical-design (alto nivel) → Arquitectura; detalle dev → Desarrollo",
+      portal_lib.infer_categoria("technical-design.md") == "arquitectura"
+      and portal_lib.infer_categoria("technical-design-backend.md") == "desarrollo"
+      and portal_lib.infer_categoria("technical-design-frontend.md") == "desarrollo")
 pag_audit = os.path.join(PORTAL, "paginas", "gobernanza-auditoria.html")
 check("portal: página Auditoría existe (derivada de spec/audit/events.jsonl)",
       os.path.isfile(pag_audit))

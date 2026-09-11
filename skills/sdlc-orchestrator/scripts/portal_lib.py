@@ -31,7 +31,7 @@ CLI:
 import argparse, html, json, os, re, sys
 from datetime import datetime
 
-PORTAL_VERSION = "1.3.0"
+PORTAL_VERSION = "1.4.0"
 
 # Taxonomía por ROL QUE GOBIERNA el artefacto (quién lo crea, lo aprueba y
 # responde por su vigencia), no por tipo de documento. Sin categoría genérica
@@ -56,10 +56,12 @@ _CAT_ORDEN = {c[0]: i for i, c in enumerate(CATEGORIAS)}
 TOKENS_CSS = (
     ":root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;"
     "--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;"
-    "--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);color-scheme:dark}"
+    "--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);"
+    "--gline:#334155;--gnode:#1e293b;color-scheme:dark}"
     ":root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;"
     "--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;"
-    "--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);color-scheme:light}"
+    "--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);"
+    "--gline:#94a3b8;--gnode:#f1f5f9;color-scheme:light}"
 )
 
 # CSS base de las páginas de contenido (docs, métricas...). Todo con vars:
@@ -83,6 +85,14 @@ PAGE_CSS = (
     "hr{border:none;border-top:1px solid var(--panel-bd);margin:1.6em 0}"
     "img{max-width:100%}li{margin:.2em 0}"
     ".pnote{color:var(--muted);font-size:.78rem;margin-bottom:1rem}"
+    # scrollbars integradas con el tema: riel invisible, thumb sutil del panel
+    "html{scrollbar-width:thin;scrollbar-color:var(--panel-bd) transparent}"
+    "::-webkit-scrollbar{width:9px;height:9px}"
+    "::-webkit-scrollbar-track{background:transparent}"
+    "::-webkit-scrollbar-thumb{background:var(--panel-bd);border-radius:5px;"
+    "border:2px solid transparent;background-clip:padding-box}"
+    "::-webkit-scrollbar-thumb:hover{background:var(--muted);border:2px solid transparent;"
+    "background-clip:padding-box}"
 )
 
 # JS compartido por TODAS las páginas del portal: aplica el tema guardado,
@@ -99,6 +109,20 @@ PAGE_JS = r"""
   if(pid&&window.parent!==window){
     try{window.parent.postMessage({portal:'abierto',id:pid},'*');}catch(e){}
   }
+  /* Ctrl+K dentro del iframe: la tecla nunca llega al shell (el navegador se
+     la queda) — la página la consume y la reenvía por postMessage. */
+  document.addEventListener('keydown',function(e){
+    if(window.parent===window)return;
+    var tag=(e.target&&e.target.tagName||'').toLowerCase();
+    var typing=tag==='input'||tag==='textarea'||tag==='select'||(e.target&&e.target.isContentEditable);
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }else if(e.key==='/'&&!typing){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }
+  },true);
 })();
 """
 
@@ -139,30 +163,39 @@ def _plano(t):
 _REGLES = [
     # Reglas por rol gobernante. Orden: primero lo más específico para que
     # keywords genéricas ("report", "pipeline") no capturen artefactos ajenos.
+    # v2.29: pipeline-state es evidencia derivada de recibos + cadena de
+    # auditoría (owner: orchestrator, junto a spec/audit/) → auditoria.
     ("auditoria", ("audit", "auditoria", "auditoría", "receipt", "recibo",
                    "changelog", "memory", "memoria", "session", "learning",
-                   "handoff", "wiki", "traceability", "trazabilidad")),
+                   "handoff", "wiki", "traceability", "trazabilidad",
+                   "pipeline-state")),
     ("devsecops", ("threat", "security", "seguridad", "pipeline-cicd",
-                   "sast", "dast", "secret")),
+                   "sast", "dast", "secret", "checklist")),
     ("agilidad", ("metric", "metricas", "métricas", "sprint", "reporte-gerencial",
                   "executive-report", "reports")),
     ("uiux", ("ux-", "ux_", "design-system", "design_system", "tokens",
               "screen-inventory", "prototipo", "wireframe")),
-    ("plataforma", ("cloud", "deploy", "despliegue", "release", "slo",
-                    "incident", "postmortem", "runbook", "oncall", "costs")),
-    ("qa", ("test", "qa", "e2e", "cobertura", "coverage", "pact", "k6")),
-    ("desarrollo", ("guia", "guide", "onboarding", "readme", "dev-docs",
-                    "msw", "mocks")),
+    # v2.29: arquitectura antes que plataforma — un ADR cuyo título menciona
+    # "despliegue" (p. ej. ADR-010) es decisión de arquitectura, no operación.
+    # v2.30: el diseño detallado de los devs es Desarrollo, no Arquitectura
+    # (regla específica antes que la genérica "technical-design").
+    ("desarrollo", ("technical-design-back", "technical-design-front", "dev-log")),
     ("arquitectura", ("adr", "architect", "arquitect", "diagram", "c4-",
                       "decision", "api-contract", "openapi", "data-model",
                       "data_model", "tech-radar", "tech_radar", "principles",
                       "principios", "exception-log", "tech-debt", "tech_debt",
-                      "technical-stories", "governance", "gobernanza")),
+                      "technical-stories", "technical-design", "governance",
+                      "gobernanza")),
+    ("plataforma", ("cloud", "deploy", "despliegue", "release", "slo",
+                    "incident", "postmortem", "runbook", "oncall", "costs",
+                    "cost-estimation", "cost-assumptions")),
+    ("qa", ("test", "qa", "e2e", "cobertura", "coverage", "pact", "k6")),
+    ("desarrollo", ("guia", "guide", "onboarding", "readme", "dev-docs",
+                    "msw", "mocks")),
     ("negocio", ("vision", "backlog", "user-stories", "user_stories", "glossary",
-                 "glosario", "epica", "personas", "stakeholder",
-                 "business-rules", "business_rules", "cost-estimation",
-                 "cost-assumptions", "impact-report")),
-    ("procesos", ("pipeline-state", "authority", "risk-tier", "risk_tier",
+                 "glosario", "epic", "personas", "stakeholder",
+                 "business-rules", "business_rules", "gap", "impact-report")),
+    ("procesos", ("authority", "risk-tier", "risk_tier",
                   "process-definition", "roles", "index")),
 ]
 
@@ -409,35 +442,44 @@ _SHELL = r"""<!DOCTYPE html>
 --edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;
 --ok:#16a34a;--warn:#d97706;--bad:#dc2626;--shadow:rgba(15,23,42,.12);color-scheme:light}
 *{box-sizing:border-box}
+html{font-size:15px}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,'Segoe UI',sans-serif;
 display:flex;flex-direction:column;overflow:hidden}
 #topbar{display:flex;align-items:center;gap:.45rem;padding:.45rem .8rem;background:var(--panel-bg);
 border-bottom:1px solid var(--panel-bd);flex:none}
 #topbar button{background:var(--card-bg);border:1px solid var(--panel-bd);color:var(--fg);
-border-radius:8px;padding:.28rem .55rem;cursor:pointer;font-size:12.5px;font-weight:650;white-space:nowrap}
+border-radius:8px;padding:.28rem .55rem;cursor:pointer;font-size:.84rem;font-weight:650;white-space:nowrap}
 #topbar button:hover{border-color:var(--accent)}
-#brand{font-weight:800;font-size:14px;white-space:nowrap;display:flex;align-items:baseline;gap:.5rem}
-#brand .ver{color:var(--muted);font-weight:500;font-size:11px}
-#searchbox{position:relative;flex:1;max-width:520px;margin:0 auto}
-#q{width:100%;background:var(--card-bg);border:1px solid var(--panel-bd);color:var(--fg);
-border-radius:8px;padding:.35rem .7rem;font-size:13px}
+#brand{font-weight:800;font-size:.95rem;white-space:nowrap;display:flex;align-items:baseline;gap:.5rem}
+#brand .ver{color:var(--muted);font-weight:500;font-size:.73rem}
+#searchbox{position:relative;flex:1;max-width:520px;margin:0 auto;display:flex;gap:.35rem;align-items:center}
+#searchbox button{flex:none}
+#q{flex:1;width:100%;background:var(--card-bg);border:1px solid var(--panel-bd);color:var(--fg);
+border-radius:8px;padding:.35rem .7rem;font-size:.87rem}
 #q:focus{outline:none;border-color:var(--accent)}
 #qres{position:absolute;top:110%;left:0;right:0;background:var(--panel-bg);border:1px solid var(--panel-bd);
-border-radius:10px;box-shadow:0 12px 40px var(--shadow);display:none;max-height:62vh;overflow-y:auto;z-index:60}
+border-radius:10px;box-shadow:0 12px 40px var(--shadow);display:none;max-height:62vh;overflow-y:auto;z-index:60;
+scrollbar-width:thin;scrollbar-color:var(--panel-bd) transparent}
+#qres::-webkit-scrollbar{width:8px}
+#qres::-webkit-scrollbar-thumb{background:var(--panel-bd);border-radius:4px}
+.qhead{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
+padding:.45rem .8rem .2rem}
+.qempty{padding:.7rem .8rem;color:var(--sub);font-size:.84rem;font-style:italic}
 #helpwrap{position:relative}
 #helpbox{position:absolute;top:110%;right:0;width:340px;background:var(--panel-bg);border:1px solid var(--panel-bd);
-border-radius:10px;box-shadow:0 12px 40px var(--shadow);display:none;z-index:60;padding:.9rem 1.1rem;font-size:12.5px}
-#helpbox h3{margin:0 0 .5rem;font-size:13px;color:var(--txt)}
+border-radius:10px;box-shadow:0 12px 40px var(--shadow);display:none;z-index:60;padding:.9rem 1.1rem;font-size:.84rem}
+#helpbox h3{margin:0 0 .5rem;font-size:.87rem;color:var(--txt)}
 #helpbox ul{margin:0;padding-left:1.1rem;color:var(--sub);line-height:1.55}
 #helpbox li{margin:.3rem 0}
 #helpbox b{color:var(--fg)}
 #crumbs{display:flex;align-items:center;gap:.45rem;padding:.28rem .8rem;background:var(--panel-bg);
-border-bottom:1px solid var(--panel-bd);font-size:11.5px;color:var(--muted);flex:none;white-space:nowrap;
+border-bottom:1px solid var(--panel-bd);font-size:.77rem;color:var(--muted);flex:none;white-space:nowrap;
 overflow:hidden;text-overflow:ellipsis}
-#crumbs button{background:none;border:1px solid var(--panel-bd);color:var(--fg);border-radius:6px;
-padding:.05rem .45rem;cursor:pointer;font-size:12px;line-height:1.3}
+#crumbs button{background:var(--card-bg);border:1px solid var(--panel-bd);color:var(--fg);border-radius:6px;
+padding:.05rem .45rem;cursor:pointer;font-size:.8rem;line-height:1.3}
 #crumbs button:hover{border-color:var(--accent)}
+#crumbs .hsep{width:1px;height:14px;background:var(--panel-bd);margin:0 .15rem;flex:none}
 #crumbs a{color:var(--sub);text-decoration:none}
 #crumbs a:hover{color:var(--txt);text-decoration:underline}
 #crumbs .sep{color:var(--sub);font-weight:700;margin:0 .1rem}
@@ -445,31 +487,51 @@ padding:.05rem .45rem;cursor:pointer;font-size:12px;line-height:1.3}
 .qr{padding:.5rem .8rem;border-bottom:1px solid var(--panel-bd);cursor:pointer}
 .qr:last-child{border-bottom:none}
 .qr:hover,.qr.sel{background:var(--card-bg)}
-.qr b{font-size:13px;color:var(--txt)}
-.qc{font-size:10.5px;color:var(--accent);margin-left:.5rem;text-transform:uppercase;letter-spacing:.05em}
-.qx{font-size:11.5px;color:var(--sub);margin-top:.15rem;line-height:1.35}
+.qr b{font-size:.87rem;color:var(--txt)}
+.qc{font-size:.7rem;color:var(--accent);margin-left:.5rem;text-transform:uppercase;letter-spacing:.05em}
+.qx{font-size:.77rem;color:var(--sub);margin-top:.15rem;line-height:1.35}
 mark{background:rgba(245,158,11,.35);color:inherit;border-radius:2px;padding:0 1px}
-#layout{flex:1;display:flex;min-height:0}
+#layout{flex:1;display:flex;min-height:0;position:relative}
 #side{width:272px;flex:none;background:var(--panel-bg);border-right:1px solid var(--panel-bd);
-overflow-y:auto;padding:.6rem .55rem;transition:margin-left .18s}
-body.side-off #side{margin-left:-272px}
+overflow-y:auto;padding:.6rem .55rem;transition:width .18s,margin-left .18s;
+scrollbar-width:thin;scrollbar-color:transparent transparent}
+#side:hover{scrollbar-color:var(--panel-bd) transparent}
+#side::-webkit-scrollbar{width:8px}
+#side::-webkit-scrollbar-track{background:transparent}
+#side::-webkit-scrollbar-thumb{background:transparent;border-radius:4px}
+#side:hover::-webkit-scrollbar-thumb{background:var(--panel-bd)}
+/* riel de iconos: colapsado NO desaparece — queda un rail de 54px con los
+   iconos de categoría; al pasar el cursor se despliega como flyout (overlay,
+   sin empujar el contenido) */
+body.side-off #side{position:absolute;z-index:40;top:0;bottom:0;left:0;width:54px;
+padding:.6rem .3rem;overflow:hidden}
+body.side-off #main{margin-left:54px}
+body.side-off #side:hover{width:272px;overflow-y:auto;box-shadow:8px 0 30px var(--shadow)}
+body.side-off #side:not(:hover) #nav summary{font-size:0;gap:0;justify-content:center;padding:.5rem 0}
+body.side-off #side:not(:hover) #nav summary>span:first-child{font-size:1.05rem}
+body.side-off #side:not(:hover) #nav summary::before,
+body.side-off #side:not(:hover) #nav summary .cnt,
+body.side-off #side:not(:hover) #nav .grp,
+body.side-off #side:not(:hover) #nav a.ni,
+body.side-off #side:not(:hover) #nav details.menu-grupo{display:none}
 #nav details.cat{margin-bottom:.25rem}
 #nav summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:.45rem;
-padding:.42rem .5rem;border-radius:8px;font-size:12.5px;font-weight:700;color:var(--txt);user-select:none}
+padding:.42rem .5rem;border-radius:8px;font-size:.9rem;font-weight:700;color:var(--txt);user-select:none}
 #nav summary:hover{background:var(--card-bg)}
 #nav summary::-webkit-details-marker{display:none}
-#nav summary::before{content:"▸";color:var(--accent);transition:.15s;font-size:10px}
+#nav summary::before{content:"▸";color:var(--accent);transition:.15s;font-size:.67rem}
 #nav details[open]>summary::before{transform:rotate(90deg)}
-#nav summary .cnt{margin-left:auto;font-size:10px;color:var(--muted);background:var(--card-bg);
+#nav summary .cnt{margin-left:auto;font-size:.67rem;color:var(--muted);background:var(--card-bg);
 border:1px solid var(--panel-bd);border-radius:8px;padding:0 6px}
-#nav .grp{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:.55rem .5rem .15rem}
+#nav .grp{font-size:.73rem;text-transform:uppercase;letter-spacing:.07em;color:var(--sub);margin:.55rem .5rem .15rem}
 #nav details.menu-grupo{margin:0 0 0 .6rem}
-#nav details.menu-grupo>summary{font-size:11px;font-weight:600;color:var(--sub);padding:.28rem .5rem}
-#nav details.menu-grupo>summary::before{font-size:9px;color:var(--muted)}
-#nav details.menu-grupo .grp-t{text-transform:uppercase;letter-spacing:.07em;font-size:10px;color:var(--muted)}
+#nav details.menu-grupo>summary{font-size:.8rem;font-weight:600;color:var(--sub);padding:.28rem .5rem}
+#nav details.menu-grupo>summary::before{font-size:.6rem;color:var(--muted)}
+#nav details.menu-grupo .grp-t{text-transform:uppercase;letter-spacing:.07em;font-size:.67rem;color:var(--sub)}
 #nav details.menu-grupo a.ni{padding-left:2.2rem}
-#nav a.ni{display:block;padding:.3rem .5rem .3rem 1.6rem;border-radius:7px;color:var(--sub);
-text-decoration:none;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#nav a.ni{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+padding:.3rem .5rem .3rem 1.6rem;border-radius:7px;color:var(--sub);
+text-decoration:none;font-size:.9rem;line-height:1.25}
 #nav a.ni:hover{background:var(--card-bg);color:var(--txt)}
 #nav a.ni.act{background:rgba(59,130,246,.18);color:var(--txt);font-weight:650}
 #main{flex:1;min-width:0;position:relative;background:var(--bg)}
@@ -480,21 +542,22 @@ text-decoration:none;font-size:12.5px;white-space:nowrap;overflow:hidden;text-ov
 #welcome code{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:5px;padding:.1em .4em;font-size:.88em}
 @media(max-width:860px){
 #side{position:absolute;z-index:50;height:100%;box-shadow:8px 0 30px var(--shadow)}
-body.side-off #side{margin-left:-280px}
+body.side-off #side{display:none}
+body.side-off #main{margin-left:0}
 #brand .ver{display:none}}
 </style>
 </head>
 <body>
 <header id="topbar">
-  <button id="btn-side" title="Contraer/expandir el menú lateral">☰</button>
-  <div id="brand">◈ <span>__PROYECTO__</span><span class="ver">portal v__PVERSION__ · arnés v__HVERSION__</span></div>
-  <div id="searchbox"><input id="q" type="search" placeholder="Buscar en todo el portal… (Ctrl+K)" autocomplete="off" spellcheck="false"><div id="qres"></div></div>
+  <button id="btn-side" title="Contraer el menú a un riel de iconos / expandirlo">☰</button>
+  <div id="brand" title="portal v__PVERSION__ · arnés v__HVERSION__">◈ <span>__PROYECTO__</span></div>
+  <div id="searchbox"><button id="btn-search" title="Buscar en todo el portal (Ctrl+K o /)">🔍</button><input id="q" type="search" placeholder="Buscar en todo el portal… (Ctrl+K o /)" autocomplete="off" spellcheck="false"><div id="qres"></div></div>
   <span id="topxtra"></span>
   <div id="helpwrap"><button id="btn-help" title="Ayuda — cómo navegar el portal">?</button>
     <div id="helpbox"><h3>Cómo navegar este portal</h3><ul>
-      <li><b>Menú lateral</b>: todo el contenido agrupado por el rol que gobierna cada artefacto — negocio, arquitectura, desarrollo, QA, agilidad (métricas), procesos, UI/UX, DevSecOps, plataforma y auditoría. El botón ☰ lo contrae.</li>
-      <li><b>Ctrl+K</b>: búsqueda global en títulos y contenido de todas las páginas.</li>
-      <li><b>A− / A / A+</b> y <b>☀/☾</b>: zoom de fuente y tema claro/oscuro, compartidos con los diagramas interactivos.</li>
+      <li><b>Menú lateral</b>: todo el contenido agrupado por el rol que gobierna cada artefacto — negocio, arquitectura, desarrollo, QA, agilidad (métricas), procesos, UI/UX, DevSecOps, plataforma y auditoría. El botón ☰ lo contrae a un <b>riel de iconos</b>; pasa el cursor sobre el riel para desplegarlo.</li>
+      <li><b>Ctrl+K</b> o <b>/</b>: búsqueda global en títulos y contenido de todas las páginas (funciona también con el foco dentro del contenido). El botón 🔍 hace lo mismo.</li>
+      <li><b>A− / A / A+</b> y <b>☀/☾</b>: tamaño de fuente (afecta también al menú) y tema claro/oscuro, compartidos con los diagramas interactivos.</li>
       <li>Las páginas se abren dentro del portal; los enlaces internos actualizan el menú solos.</li>
       <li>La evidencia son los recibos; este portal es solo visualización (artefacto derivado).</li>
     </ul></div>
@@ -504,7 +567,7 @@ body.side-off #side{margin-left:-280px}
   <button id="btn-zmas" title="Aumentar tamaño de fuente">A+</button>
   <button id="btn-tema" title="Tema claro/oscuro">☀️</button>
 </header>
-<div id="crumbs"><button id="btn-back" title="Atrás (historial del portal)">‹</button><button id="btn-fwd" title="Adelante">›</button><span id="crumb-path"></span></div>
+<div id="crumbs"><button id="btn-back" title="Atrás (historial del portal)">‹</button><button id="btn-fwd" title="Adelante (historial del portal)">›</button><span class="hsep"></span><span id="crumb-path"></span></div>
 <div id="layout">
   <aside id="side"><nav id="nav"></nav></aside>
   <div id="main">
@@ -538,10 +601,12 @@ document.getElementById('btn-tema').onclick=function(){aplTema(temaEf()==='claro
 frame.addEventListener('load',function(){
   try{if(frame.contentWindow)frame.contentWindow.postMessage({portal:'tema',tema:temaEf()},'*');}catch(e){}});
 
-/* zoom compartido (dir-zoom) */
+/* zoom compartido (dir-zoom): escala TODO el chrome (root rem) y además el
+   iframe con scale() para que los SVG de los diagramas aprovechen el espacio */
 var z=parseFloat(localStorage.getItem('dir-zoom')||'1');
 function aplZoom(){z=Math.min(1.8,Math.max(0.6,z));
   try{localStorage.setItem('dir-zoom',String(z));}catch(e){}
+  root.style.fontSize=(15*z)+'px';
   frame.style.transform=z===1?'none':'scale('+z+')';
   frame.style.width=(100/z)+'%';frame.style.height=(100/z)+'%';}
 document.getElementById('btn-zmas').onclick=function(){z=+(z+0.1).toFixed(2);aplZoom();};
@@ -559,8 +624,8 @@ function buildNav(){
   M.categorias.forEach(function(c){
     var items=M.items.filter(function(it){return it.categoria===c.id&&!it.oculto;});
     if(!items.length)return;
-    h+='<details class="cat" open><summary><span>'+c.icono+'</span>'+esc(c.label)
-      +'<span class="cnt">'+items.length+'</span></summary>';
+    h+='<details class="cat" open><summary title="'+esc(c.label)+'"><span>'+c.icono+'</span><span class="lbl">'+esc(c.label)
+      +'</span><span class="cnt">'+items.length+'</span></summary>';
     /* sub-grupos del registry: con >6 items en la categoría se pliegan
        (p. ej. 14 sprint reviews -> grupo "reports" colapsado) */
     var plegable=items.length>6, g=null, openGrp=false;
@@ -614,7 +679,7 @@ function paint(id){
   mark(id);
   var it=byId[id],home=null;
   M.items.forEach(function(x){if(!home&&x.categoria==='inicio')home=x;});
-  if(!it){crumbPath.innerHTML='<b>'+esc(M.proyecto||'portal')+'</b>';return;}
+  if(!it){crumbPath.innerHTML='<b>Inicio</b>';return;}
   var h='';
   if(home&&it.id!==home.id){
     h+='<a href="#/id/'+home.id+'" data-id="'+home.id+'">'+esc(home.titulo)+'</a><span class="sep">›</span>';
@@ -665,7 +730,9 @@ nav.addEventListener('click',function(e){
 window.addEventListener('message',function(e){var d=e.data||{};
   if(d.portal==='abierto'&&d.id&&byId[d.id]){
     if(curId()!==d.id)location.hash='#/id/'+d.id;
-    paint(d.id);}});
+    paint(d.id);}
+  /* Ctrl+K o / reenviados desde la página dentro del iframe */
+  if(d.portal==='hotkey-search'){q.focus();q.select();}});
 
 /* búsqueda global (Ctrl+K) */
 var q=document.getElementById('q'),qres=document.getElementById('qres'),sel=-1,res=[];
@@ -686,8 +753,15 @@ function buscar(s){
   return out.slice(0,12).map(function(r){return r[2];});
 }
 function pinta(){
-  if(!res.length){qres.style.display='none';qres.innerHTML='';return;}
-  qres.innerHTML=res.map(function(e,i){var it=byId[e.id]||{};
+  var qt=q.value.trim();
+  if(!res.length){
+    if(qt.length>=2){
+      qres.innerHTML='<div class="qempty">Sin resultados para «'+esc(qt)+'»</div>';
+      qres.style.display='block';
+    }else{qres.style.display='none';qres.innerHTML='';}
+    return;}
+  qres.innerHTML='<div class="qhead">'+res.length+' resultado'+(res.length!==1?'s':'')+'</div>'
+    +res.map(function(e,i){var it=byId[e.id]||{};
     return '<div class="qr'+(i===sel?' sel':'')+'" data-id="'+e.id+'"><b>'+resalta(e.t,q.value)+'</b>'
       +'<span class="qc">'+esc(it.categoria||'')+'</span>'
       +'<div class="qx">'+resalta((e.x||'').slice(0,150),q.value)+'…</div></div>';}).join('');
@@ -702,8 +776,13 @@ q.addEventListener('keydown',function(e){
   else if(e.key==='Enter'){e.preventDefault();var r=res[sel>=0?sel:0];if(r){ir(r.id);cerrarRes();}}
   else if(e.key==='Escape'){cerrarRes();q.blur();}});
 qres.addEventListener('click',function(e){var r=e.target.closest('.qr');if(r){ir(r.dataset.id);cerrarRes();}});
+document.getElementById('btn-search').onclick=function(){q.focus();q.select();};
 document.addEventListener('keydown',function(e){
-  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();q.focus();q.select();}});
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();q.focus();q.select();return;}
+  if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
+    var t=document.activeElement,tag=t&&t.tagName?t.tagName.toLowerCase():'';
+    if(tag!=='input'&&tag!=='textarea'&&tag!=='select'&&!(t&&t.isContentEditable)){
+      e.preventDefault();q.focus();}}});
 document.addEventListener('click',function(e){if(!e.target.closest('#searchbox'))cerrarRes();});
 
 buildNav();aplTema(temaEf());aplZoom();aplSide();route();

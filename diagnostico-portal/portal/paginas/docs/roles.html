@@ -1,0 +1,41 @@
+<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Catálogo de Roles — Catálogo TI (Organización de prueba)</title><style>:root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);--gline:#334155;--gnode:#1e293b;color-scheme:dark}:root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);--gline:#94a3b8;--gnode:#f1f5f9;color-scheme:light}body{background:var(--bg);color:var(--fg);font-family:system-ui,'Segoe UI',sans-serif;margin:0;padding:1.5rem 1.8rem 3rem;line-height:1.55;font-size:15px}h1{font-size:1.35rem;color:var(--txt);margin:.2rem 0 .8rem}h2{font-size:1.08rem;color:var(--txt);margin:1.4rem 0 .6rem}h3{font-size:.92rem;color:var(--sub);margin:1.1rem 0 .4rem}h4{font-size:.85rem;color:var(--sub);margin:1rem 0 .3rem}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:5px;padding:.12em .4em;font-size:.88em;font-family:ui-monospace,'Cascadia Code',Consolas,monospace}pre{background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:10px;padding:1rem;overflow-x:auto}pre code{background:none;border:none;padding:0}table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.88em;display:block;overflow-x:auto}th,td{border-bottom:1px solid var(--panel-bd);padding:.45em .7em;text-align:left;vertical-align:top}th{color:var(--sub);font-size:.78em;text-transform:uppercase;letter-spacing:.04em}blockquote{border-left:3px solid var(--panel-bd);margin:1em 0;padding:.2em 1em;color:var(--sub)}hr{border:none;border-top:1px solid var(--panel-bd);margin:1.6em 0}img{max-width:100%}li{margin:.2em 0}.pnote{color:var(--muted);font-size:.78rem;margin-bottom:1rem}html{scrollbar-width:thin;scrollbar-color:var(--panel-bd) transparent}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--panel-bd);border-radius:5px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:var(--muted);border:2px solid transparent;background-clip:padding-box}</style></head><body data-page-id="docs-roles"><div class="pnote">Render derivado de spec/ (mdview) — no editar a mano; la fuente es el .md</div><h1>Catálogo de Roles — Catálogo TI (Organización de prueba)</h1>
+<p>Versión: 1.0 | Fecha: 2026-08-23 | Owner: business-analyst (authority-matrix.yaml) Fuente: BR-007 (RBAC base, 4 roles) + BR-018 (permisos granulares por catálogo). Este catálogo formaliza los roles que las historias de usuario citan como ROL-xx. Los roles se materializan como App Roles de Entra ID; los permisos granulares por catálogo viven en <code>asignaciones_catalogo</code> (BR-018).</p>
+<h2>Convención</h2>
+<p>Cada rol define: <b>Contexto</b> (quién lo ejerce), <b>Acciones que habilita</b> y <b>Reglas que lo restringen</b>. La lectura es global para todo usuario autenticado (BR-018); las acciones de escritura siempre se revalidan server-side (SEC-004).</p>
+<h2>Roles</h2>
+<h3>ROL-01 — Lector</h3>
+<ul><li><b>Contexto:</b> cualquier empleado autenticado con Entra ID (incluye invitados B2B). Rol base mínimo; es el rol por defecto de consulta.</li><li><b>Acciones que habilita:</b> consultar todos los catálogos, fichas 360°, trazabilidad E2E, impacto, reuso, mapa de relaciones, dashboard, búsqueda global, revisiones y roadmap EOL; exportar resultados.</li><li><b>Reglas que lo restringen:</b> no crea, edita, elimina ni aprueba (BR-007); no administra reglas DQ ni permisos; las exportaciones masivas de campos Confidencial/Restringido pueden restringirse (BR-015).</li></ul>
+<h3>ROL-02 — Editor</h3>
+<ul><li><b>Contexto:</b> analista de gobierno TI o dueño delegado de un catálogo (grant <code>edit</code> sobre catálogos específicos, BR-018).</li><li><b>Acciones que habilita:</b> todo lo de ROL-01 + crear y editar registros de los catálogos autorizados, importar Excel, duplicar registros, administrar valores de listas enum (HU-029) y configurar columnas de vista.</li><li><b>Reglas que lo restringen:</b> no elimina ni aprueba (maker-checker BR-011: sus cambios críticos quedan pendientes de aprobación); no puede otorgarse permisos a sí mismo (BR-018); no administra reglas DQ ni usuarios.</li></ul>
+<h3>ROL-03 — Aprobador</h3>
+<ul><li><b>Contexto:</b> responsable de gobierno del catálogo (arquitectura de datos / dueños de proceso TI).</li><li><b>Acciones que habilita:</b> todo lo de ROL-02 + aprobar o rechazar cambios pendientes con comentario, aplicar diffs aprobados, consultar el audit log completo.</li><li><b>Reglas que lo restringen:</b> no puede aprobar sus propios cambios (BR-011); no elimina físicamente; no administra permisos salvo grant <code>manage-grants</code> delegado sobre sus catálogos (BR-018).</li></ul>
+<h3>ROL-04 — Administrador</h3>
+<ul><li><b>Contexto:</b> administrador funcional de la plataforma (gobierno TI corporativo). App Role <code>Administrador</code> en Entra ID.</li><li><b>Acciones que habilita:</b> todo lo anterior + eliminación lógica/física, administración de reglas DQ (crear, editar, desactivar), administración de permisos por catálogo incluido <code>catalogo='*'</code> (manage-grants global), gestión de llaves rotas y renombres de PK con propagación (BR-016).</li><li><b>Reglas que lo restringen:</b> toda acción auditable queda registrada (BR-010); los permisos que otorga no exceden los suyos (nadie otorga lo que no posee, BR-018); cambios críticos propios también pasan por maker-checker cuando aplica (BR-011).</li></ul>
+<h2>Trazabilidad</h2>
+<ul><li><b>Reglas de negocio:</b> BR-007 (4 roles base), BR-018 (RBAC granular), BR-010 (auditoría), BR-011 (maker-checker), BR-015 (clasificación de datos), SEC-004 (autorización server-side).</li><li><b>Historias:</b> toda HU de <code>user-stories.md</code> cita al menos un ROL-xx de este catálogo (exigencia del arnés v2.7 — <code>gate_checker.py --tipo user-stories</code>).</li><li><b>Pantallas:</b> el inventario <code>spec/ux/screen-inventory.md</code> referencia estos roles por pantalla (PANT-xx → ROL-xx).</li></ul><script>
+(function(){
+  var root=document.documentElement;
+  function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
+  function apl(t){root.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');}
+  apl(saved());
+  window.addEventListener('message',function(e){var d=e.data||{};if(d.portal==='tema'){apl(d.tema);}});
+  var pid=document.body&&document.body.getAttribute('data-page-id');
+  if(pid&&window.parent!==window){
+    try{window.parent.postMessage({portal:'abierto',id:pid},'*');}catch(e){}
+  }
+  /* Ctrl+K dentro del iframe: la tecla nunca llega al shell (el navegador se
+     la queda) — la página la consume y la reenvía por postMessage. */
+  document.addEventListener('keydown',function(e){
+    if(window.parent===window)return;
+    var tag=(e.target&&e.target.tagName||'').toLowerCase();
+    var typing=tag==='input'||tag==='textarea'||tag==='select'||(e.target&&e.target.isContentEditable);
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }else if(e.key==='/'&&!typing){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }
+  },true);
+})();
+</script></body></html>

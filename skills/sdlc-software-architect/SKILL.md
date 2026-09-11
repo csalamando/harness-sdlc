@@ -3,7 +3,7 @@ name: sdlc-software-architect
 description: "Arquitecto de Software del arnés SDLC. Usar en Fase 2-3 para definir arquitectura de componentes/capas, modelo de datos, contratos de API en OpenAPI, decisiones técnicas con ADRs, requisitos no funcionales y el test-plan. También consolida la spec maestra para el GATE 1 y mantiene el registro de deuda técnica. Dispara ante: diseñar arquitectura, definir APIs, OpenAPI, ADR, modelo de datos, requisitos no funcionales, consolidar especificación."
 harness-role: software-architect
 harness-phases: "2, 3"
-harness-owns: "spec/architecture.md, spec/api-contract.yaml, spec/data-model.md, spec/adr/, spec/test-plan.md, spec/tech-debt.md, spec/architecture-rules.yaml"
+harness-owns: "spec/architecture.md, spec/api-contract.yaml, spec/data-model.md, spec/adr/, spec/test-plan.md, spec/tech-debt.md, spec/architecture-rules.yaml, spec/technical-design.md"
 harness-gates: "architecture, api-contract, test-plan, adr"
 ---
 
@@ -45,8 +45,9 @@ Para cada decisión técnica significativa, ejecutar el flujo de 8 pasos de Nata
 3. `spec/data-model.md`: entidades, relaciones, cardinalidad; cada regla de negocio BR-xxx tiene un dueño en el modelo.
 4. `spec/adr/ADR-001-*.md`: una decisión por archivo. Decisiones significativas (Tier 1-2): plantilla de 8 pasos (`assets/adr-template-8steps.md`); decisiones ligeras (Tier 3): plantilla corta (`assets/ADR-000-template.md`).
 5. Requisitos no funcionales cuantificados: latencia p95, disponibilidad, RPS, retención de datos.
-6. Fase 3: consolidar la spec, verificar coherencia cruzada (¿toda historia tiene endpoint? ¿todo endpoint tiene historia?) y generar `spec/test-plan.md` mapeando historia → Gherkin → test unitario/integración/E2E + umbral de cobertura.
-7. Mantener `spec/tech-debt.md`: cada refactor postergado por TDD se registra con costo estimado.
+6. **Historias técnicas de alto nivel — `spec/technical-design.md` (v2.30)**: el segundo nivel de las historias técnicas (el primero, de decisión de iniciativa, es `spec/technical-stories.md` del Solution Architect en GATE 0). Aquí defines y apruebas las historias técnicas de **construcción**: enablers derivados de architecture.md/api-contract/data-model, con criterio de aceptación verificable y trazabilidad a HU/BR. Usa la plantilla `assets/technical-design-template.md` (tipo, base arquitectónica, criterio verificable, handoff a Nivel 2). Los desarrolladores **no improvisan diseño**: su diseño detallado (`technical-design-backend.md` / `technical-design-frontend.md`) deriva de este documento.
+7. Fase 3: consolidar la spec, verificar coherencia cruzada (¿toda historia tiene endpoint? ¿todo endpoint tiene historia?) y generar `spec/test-plan.md` mapeando historia → Gherkin → test unitario/integración/E2E + umbral de cobertura.
+8. Mantener `spec/tech-debt.md`: cada refactor postergado por TDD se registra con costo estimado.
 
 ## Checklist de salida (DoD)
 

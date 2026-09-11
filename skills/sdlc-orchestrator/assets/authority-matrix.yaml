@@ -71,6 +71,21 @@ artifacts:
   - path: spec/exception-log.md
     owner: enterprise-architect   # ADRs de excepción al radar
 
+  # Fase 4 — Construcción (v2.29: traza de entregables de los skills dev)
+  - path: spec/dev-log-backend.md
+    owner: backend-dev      # por HU: tests Red primero, commits, cobertura, contrato verificado
+  - path: spec/dev-log-frontend.md
+    owner: frontend-dev     # por HU: mocks MSW del contrato, tests de componente, pantallas
+
+  # Historias técnicas en 2 niveles (v2.30)
+  # Nivel 0 (decisión de iniciativa): spec/technical-stories.md → solution-architect (GATE 0, arriba)
+  - path: spec/technical-design.md
+    owner: software-architect   # Nivel 1 ALTO NIVEL (Fase 2-3): historias técnicas de construcción derivadas de architecture.md/api-contract/data-model; las genera y aprueba el arquitecto
+  - path: spec/technical-design-backend.md
+    owner: backend-dev          # Nivel 2 DETALLE (Fase 4): diseño detallado por HU antes de codificar; alimenta dev-log-backend
+  - path: spec/technical-design-frontend.md
+    owner: frontend-dev         # Nivel 2 DETALLE (Fase 4): diseño detallado por HU/pantalla; alimenta dev-log-frontend
+
   # Fase 5-7 — Entrega y operación
   - path: spec/qa-report.md
     owner: qa-automation
@@ -80,6 +95,12 @@ artifacts:
     owner: sre
   - path: spec/impact-report.md
     owner: product-analyst
+  - path: spec/runbook-deploy-rollback.md
+    owner: devops-engineer    # v2.29: los runbooks/checklists de despliegue tienen dueño
+  - path: spec/checklist-validacion-dev.md
+    owner: devops-engineer    # v2.29
+  - path: spec/docs/
+    owner: technical-writer   # v2.29: guías de usuario/desarrollador doc-as-code
 
   # Diagramas (v2.6) — mecanismo de aceptación de cambios
   - path: spec/diagrams/despliegue.ir.json

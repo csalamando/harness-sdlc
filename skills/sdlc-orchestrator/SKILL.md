@@ -4,7 +4,7 @@ description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pi
 harness-role: orchestrator
 harness-phases: "transversal"
 harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/, spec/audit/, spec/pipeline-state.md"
-harness-version: "2.28.0"
+harness-version: "2.31.0"
 ---
 
 
@@ -18,7 +18,9 @@ Coordina el pipeline SDLC basado en SDD (spec-driven) y TDD. No produce artefact
 FASE -1 Setup (DevOps + detect_stack)
 → FASE 0 Visión + Discovery de la iniciativa: PO + Solution Architect (propuesta + pricing) [GATE 0: aprobación de la iniciativa]
 → FASE 1 BA (historias, reglas, roles, PDD) → FASE 2 UX + Architect + Security + Data
+  (el Architect emite technical-design.md: historias técnicas de ALTO NIVEL, v2.30)
 → FASE 3 Spec consolidada [GATE 1 humano] → FASE 4 Dev Back ∥ Dev Front (TDD)
+  (cada dev escribe su technical-design-{backend,frontend}.md de DETALLE por HU antes de codificar, v2.30)
 → FASE 5 QA + Security DAST [GATE 2/2.5] → FASE 6 DevOps + Cloud [GATE 3] → PROD
 → FASE 7 SRE opera + Product Analyst mide → realimenta backlog del PO
 → FASE 8 Archivo: merge de delta-specs + sprint review + cierre del ciclo

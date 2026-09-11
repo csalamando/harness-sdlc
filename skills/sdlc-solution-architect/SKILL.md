@@ -35,6 +35,8 @@ El Software Architect diseña para **construir**; el Solution Architect diseña 
 
 ### 2. Historias técnicas (`spec/technical-stories.md`)
 
+**Nivel 0 — decisión de iniciativa** (v2.30). El arnés tiene tres niveles de historias técnicas: las tuyas (GATE 0, ¿vale la pena construir y con qué forma?), las de **alto nivel de construcción** (`spec/technical-design.md`, owner: Software Architect, Fase 2-3) y el **diseño detallado** (`spec/technical-design-backend.md` / `spec/technical-design-frontend.md`, owners: devs, Fase 4). Escribe las tuyas con trazabilidad clara para que los niveles siguientes puedan derivar de ellas.
+
 Escribir directamente las historias técnicas usando `assets/technical-story-template.md`. Cada una lleva:
 
 - **Tipo**: `enabler` (capacidad que desbloquea historias de negocio), `debt` (pago de deuda técnica), `spike` (investigación con timebox y pregunta a responder), `nfr` (requisito no funcional verificable).

@@ -1,0 +1,128 @@
+<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Arquitectura — Catálogo TI</title><style>:root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);--gline:#334155;--gnode:#1e293b;color-scheme:dark}:root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);--gline:#94a3b8;--gnode:#f1f5f9;color-scheme:light}body{background:var(--bg);color:var(--fg);font-family:system-ui,'Segoe UI',sans-serif;margin:0;padding:1.5rem 1.8rem 3rem;line-height:1.55;font-size:15px}h1{font-size:1.35rem;color:var(--txt);margin:.2rem 0 .8rem}h2{font-size:1.08rem;color:var(--txt);margin:1.4rem 0 .6rem}h3{font-size:.92rem;color:var(--sub);margin:1.1rem 0 .4rem}h4{font-size:.85rem;color:var(--sub);margin:1rem 0 .3rem}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}code{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:5px;padding:.12em .4em;font-size:.88em;font-family:ui-monospace,'Cascadia Code',Consolas,monospace}pre{background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:10px;padding:1rem;overflow-x:auto}pre code{background:none;border:none;padding:0}table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.88em;display:block;overflow-x:auto}th,td{border-bottom:1px solid var(--panel-bd);padding:.45em .7em;text-align:left;vertical-align:top}th{color:var(--sub);font-size:.78em;text-transform:uppercase;letter-spacing:.04em}blockquote{border-left:3px solid var(--panel-bd);margin:1em 0;padding:.2em 1em;color:var(--sub)}hr{border:none;border-top:1px solid var(--panel-bd);margin:1.6em 0}img{max-width:100%}li{margin:.2em 0}.pnote{color:var(--muted);font-size:.78rem;margin-bottom:1rem}html{scrollbar-width:thin;scrollbar-color:var(--panel-bd) transparent}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--panel-bd);border-radius:5px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:var(--muted);border:2px solid transparent;background-clip:padding-box}</style></head><body data-page-id="docs-architecture"><div class="pnote">Render derivado de spec/ (mdview) — no editar a mano; la fuente es el .md</div><h1>Arquitectura — Catálogo TI</h1>
+<p>Versión: 0.2 | Fecha: 2026-08-08 | Estado: <b>APROBADA — nube destino: Azure (ADR-005); motor: PostgreSQL Flexible Server (ADR-004, excepción aprobada)</b> — baseline: AZURE.txt v1.0</p>
+<h2>1. Estilo arquitectónico</h2>
+<p>SPA estática + API REST serverless + base relacional con separación lectura/escritura. Tres rutas de datos: transaccional (writer), reportería/MCP (reader), operación (observabilidad). Ingesta EA → Catálogo unidireccional e idempotente (GUID EA + watermark).</p>
+<p>Diagramas vivos (IR, fuente con recibo): <code>diagrams/arquitectura-runtime.ir.json</code> (runtime Azure + authn/authz), <code>diagrams/dataflow-ingesta.ir.json</code> (ingesta EA y consumo gobernado), <code>diagrams/secuencia-rbac.ir.json</code> (autorización efectiva), <code>diagrams/secuencia-autenticacion.ir.json</code> (flujo de autenticación), <code>diagrams/flujo-aprobacion-catalogo.ir.json</code> (maker-checker), <code>diagrams/opcion-b-aws.ir.json</code> (alternativa descartada, ADR-005) — todos bajo <code>spec/</code>.</p>
+<h2>2. C4 — Contexto</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart LR
+  U[Usuario interno&lt;br/&gt;Lector/Editor/Aprobador/Admin] --&gt; SPA[Catálogo TI SPA Angular]
+  EA[Enterprise Architect&lt;br/&gt;SQL Server en Azure] --&gt;|delta watermark, GUID| ING[Pipeline de ingesta]
+  SPA --&gt; API[API Catálogo TI]
+  REP[Reportería / Dashboards] --&gt;|read-only| API
+  MCP[Servicio MCP] --&gt;|vistas autorizadas read-only| API
+  ID[Microsoft Entra ID] --&gt;|token + App Roles| SPA
+  API --&gt;|validación PoP/SHR| ID
+  ING --&gt; API</code></pre>
+<h2>3. C4 — Contenedores (Azure, según ADR-005; servicios gestionados equivalentes documentados en AZURE.txt §1.2)</h2>
+<div class="meta">mermaid (ver fuente)</div><pre><code>flowchart TD
+  subgraph Front
+    SPA[SPA Angular v17+ standalone&lt;br/&gt;MSAL + interceptor JWT&lt;br/&gt;Azure Static Web Apps]
+  end
+  subgraph Edge
+    CDN[WAF corporativo compartido&lt;br/&gt;/* → Static Web Apps · /api/* → APIM]
+  end
+  subgraph Compute
+    GW[API Management Premium corporativo&lt;br/&gt;validación OAuth 2.0 Entra ID]
+    FN1[Functions: CRUD catálogos]
+    FN2[Functions gobierno: aprobaciones, DQ, trazabilidad, impacto]
+    FN3[Functions import/export + ingesta EA]
+    ORCH[Durable Functions]
+  end
+  subgraph Data
+    PROXY[PgBouncer integrado]
+    WRITER[(PostgreSQL Flexible Server primary&lt;br/&gt;GP D2ds v5)]
+    READER[(Read replica GP D2ds v5)]
+  end
+  SPA --&gt; CDN --&gt; GW --&gt; FN1 &amp; FN2 &amp; FN3
+  FN1 &amp; FN2 --&gt; PROXY --&gt; WRITER
+  FN3 --&gt; ORCH --&gt; PROXY
+  REP[Reportería] --&gt; PROXYRO[PgBouncer reader] --&gt; READER
+  MCP --&gt; PROXYRO
+  WRITER --&gt; READER</code></pre>
+<h2>3.1 Topología de Function Apps: responsabilidades, estado actual y split vía APIM</h2>
+<h3>¿Por qué 3 Function Apps y no 1?</h3>
+<p>No son redundantes: el split busca <b>aislamiento de cargas y escalado independiente</b> en Flex Consumption. Una ingesta masiva de EA o una consulta de impacto de grafos no debe competir por cómputo (ni por presupuesto de escalado) con el CRUD interactivo de los usuarios. Cada app tiene su propio plan, sus propios límites de escalado y su propia observabilidad.</p>
+<table><tr><th>App</th><th>C4</th><th>Responsabilidad</th><th>Endpoints que le corresponden (métodos)</th><th>Perfil de carga</th></tr><tr><td><code>func-catalogo-ti-{env}-crud</code></td><td>FN1</td><td>CRUD transaccional de catálogos + diccionarios</td><td><code>GET /catalogs</code> · <code>GET/POST /catalogs/{catalog}/records</code> · <code>GET/PUT/DELETE /catalogs/{catalog}/records/{pk}</code> · <code>POST …/records/{pk}/rename</code> · <code>GET/POST /dictionaries</code> · <code>GET/POST/DELETE …/fields/{campo}/values[/{valor}]</code> (+ reactivar) · <code>GET /enum-values</code></td><td>Ráfagas cortas interactivas (SPA)</td></tr><tr><td><code>func-catalogo-ti-{env}-gobierno</code></td><td>FN2</td><td>Gobierno y consultas pesadas: maker-checker, DQ, trazabilidad, impacto, auditoría, conocimiento</td><td><code>GET/POST /approvals[/{id}]</code> · <code>GET/POST/PUT/DELETE /dq/rules[/{codigo}]</code> · <code>GET /dq/evaluate</code> · <code>GET /quality/broken-keys</code> · <code>GET /quality/pendings</code> · <code>GET /traceability/{catalog}/{pk}</code> · <code>GET /impact/{catalog}/{pk}</code> · <code>GET /reuse/sti</code> · <code>GET /relmap/graph</code> · <code>GET /audit-log[/export]</code> · <code>GET /reviews</code> · <code>POST /reviews/{catalog}/{pk}/done</code> · <code>GET /knowledge/*</code> · <code>GET /eol/roadmap</code> · <code>GET /eol/summary</code> · <code>GET /dashboard/summary</code> · <code>GET /my-catalog</code> · <code>GET /search</code> · <code>GET/POST /notifications[/read]</code> · <code>GET/POST/DELETE /access/grants[/{id}]</code> · <code>GET /access/effective</code></td><td>Consultas de grafos/agregación, latencia tolerable, escala por separado</td></tr><tr><td><code>func-catalogo-ti-{env}-bulk-ingesta</code></td><td>FN3</td><td>Import/export masivo + ingesta EA (unidireccional, idempotente, GUID EA + watermark)</td><td><code>POST /bulk/import/{catalog}</code> · <code>GET /bulk/templates/{catalog}</code> · <code>GET /bulk/export/{catalog}</code> · <code>GET /bulk/export/e2e</code></td><td>Lotes largos; candidata natural a orquestación Durable (contenedor <code>durable-state</code> ya provisionado; decisión vigente: bulk síncrono basta por ahora)</td></tr></table>
+<h3>Estado actual (agosto 2026) — split inactivo por diseño, no por accidente</h3>
+<ul><li>El CD despliega <b>el mismo paquete a las 3 apps</b> (<code>cd.yml</code>): todas registran las 41 funciones (<code>main: dist/src/functions/*.js</code>). Mantener un solo artefacto simplifica el pipeline mientras no hay routing.</li><li>La SPA apunta directo a <code>crud</code> (<code>frontend/src/environments/environment.prod.ts</code>); <code>gobierno</code> y <code>bulk-ingesta</code> están desplegadas pero <b>sin tráfico</b> — réplicas latentes listas para el split.</li><li>APIM corporativo <b>no integrado aún</b>: pendiente onboarding con el custodio (<code>security.tf</code>, variables <code>corporate_apim_name</code>/<code>corporate_apim_rg</code> vacías).</li><li>⚠️ Consecuencia operativa: una llamada a un endpoint de "gobierno" contra la app <code>crud</code> <b>funciona</b> hoy. Tras activar APIM, el path manda y llamar al host equivocado quedará bloqueado por red (acceso público restringido en staging/prd).</li></ul>
+<h3>Diseño futuro con APIM Premium corporativo (ADR-2026-103 / ADR-005)</h3>
+<p><b>1. Estructura en APIM</b> — un solo API lógico <code>catalogo-ti-api</code> (por ambiente), con las operaciones agrupadas por path y <b>3 backends</b> (<code>cati-crud-{env}</code>, <code>cati-gobierno-{env}</code>, <code>cati-bulk-{env}</code>) apuntando al host name de cada Function App. Las Function Apps quedan con acceso público deshabilitado (solo VNet/APIM vía private endpoint).</p>
+<p><b>2. Named values</b> (Key Vault-backed donde haya secreto):</p>
+<table><tr><th>Named value</th><th>Contenido</th><th>Uso</th></tr><tr><td><code>cati-entra-tenant-id</code></td><td><code>7cf18fd6-da53-487d-b783-5aec18b48a1b</code></td><td>Issuer + authority del JWT</td></tr><tr><td><code>cati-api-client-id</code></td><td><code>221dc101-7e40-439c-a3d4-b3355bef1af2</code> (<code>catalogo-ti-api-{env}</code>)</td><td><code>aud</code> esperado del token</td></tr><tr><td><code>cati-backend-crud-url</code></td><td><code>https://func-catalogo-ti-{env}-crud.azurewebsites.net</code></td><td>Backend FN1</td></tr><tr><td><code>cati-backend-gobierno-url</code></td><td><code>https://func-catalogo-ti-{env}-gobierno.azurewebsites.net</code></td><td>Backend FN2</td></tr><tr><td><code>cati-backend-bulk-url</code></td><td><code>https://func-catalogo-ti-{env}-bulk-ingesta.azurewebsites.net</code></td><td>Backend FN3</td></tr></table>
+<p><b>3. Política global (API-level) — validación JWT + routing por path.</b> El backend nunca confía en el edge: la validación de rol por App Role se mantiene en las funciones (defensa en profundidad, BR-007); APIM valida firma/emisor/audiencia/expiración y enruta:</p>
+<pre><code>&lt;policies&gt;
+  &lt;inbound&gt;
+    &lt;base /&gt;
+    &lt;!-- SEC-002: JWT Entra ID v2 — firma, emisor, audiencia y expiración --&gt;
+    &lt;validate-jwt header-name=&quot;Authorization&quot; failed-validation-httpcode=&quot;401&quot;
+                  failed-validation-error-message=&quot;Token ausente, expirado o inválido&quot;
+                  require-expiration-time=&quot;true&quot; require-signed-tokens=&quot;true&quot;&gt;
+      &lt;openid-config url=&quot;https://login.microsoftonline.com/{{cati-entra-tenant-id}}/v2.0/.well-known/openid-configuration&quot; /&gt;
+      &lt;issuers&gt;
+        &lt;issuer&gt;https://login.microsoftonline.com/{{cati-entra-tenant-id}}/v2.0&lt;/issuer&gt;
+      &lt;/issuers&gt;
+      &lt;audiences&gt;
+        &lt;audience&gt;{{cati-api-client-id}}&lt;/audience&gt;
+      &lt;/audiences&gt;
+      &lt;required-claims&gt;
+        &lt;claim name=&quot;scp&quot; match=&quot;any&quot; separator=&quot; &quot;&gt;
+          &lt;value&gt;access_as_user&lt;/value&gt;
+        &lt;/claim&gt;
+      &lt;/required-claims&gt;
+    &lt;/validate-jwt&gt;
+    &lt;!-- Routing por path hacia la Function App responsable --&gt;
+    &lt;choose&gt;
+      &lt;when condition=&quot;@(context.Request.Url.Path.StartsWith(&amp;quot;/api/bulk/&amp;quot;))&quot;&gt;
+        &lt;set-backend-service base-url=&quot;{{cati-backend-bulk-url}}&quot; /&gt;
+      &lt;/when&gt;
+      &lt;when condition=&quot;@(context.Request.Url.Path.StartsWith(&amp;quot;/api/catalogs&amp;quot;) || context.Request.Url.Path.StartsWith(&amp;quot;/api/dictionaries&amp;quot;))&quot;&gt;
+        &lt;set-backend-service base-url=&quot;{{cati-backend-crud-url}}&quot; /&gt;
+      &lt;/when&gt;
+      &lt;otherwise&gt;
+        &lt;set-backend-service base-url=&quot;{{cati-backend-gobierno-url}}&quot; /&gt;
+      &lt;/otherwise&gt;
+    &lt;/choose&gt;
+    &lt;!-- Cuota justa por usuario (PoC: generoso; ajustar tras telemetría) --&gt;
+    &lt;rate-limit-by-key calls=&quot;600&quot; renewal-period=&quot;60&quot;
+        counter-key=&quot;@(context.Request.Headers.GetValueOrDefault(&amp;quot;Authorization&amp;quot;,&amp;quot;anon&amp;quot;))&quot; /&gt;
+  &lt;/inbound&gt;
+  &lt;backend&gt;&lt;base /&gt;&lt;/backend&gt;
+  &lt;outbound&gt;&lt;base /&gt;&lt;/outbound&gt;
+  &lt;on-error&gt;&lt;base /&gt;&lt;/on-error&gt;
+&lt;/policies&gt;</code></pre>
+<p>Notas de diseño:</p>
+<ul><li><b>Defensa en profundidad</b>: aunque APIM valide el JWT, las funciones siguen validando firma/roles localmente (ADR-005, SEC-002) — requisito mientras dev expone las apps directamente, y salvaguarda si el edge cambia.</li><li><b>PoP/SHR</b> (SEC-002): la política <code>validate-jwt</code> evoluciona a token proof-of-possession cuando el custodio lo habilite; hoy queda como bearer + scope.</li><li><b>CORS</b> no se configura en APIM: la SPA llega same-origin a través del WAF corporativo (<code>/<i></code> → SWA, <code>/api/</i></code> → APIM); CORS solo aplica si se habilita un origen cruzado nuevo.</li><li><b><code>environment.prod.ts</code></b> cambia <code>apiBase</code> a la URL de APIM; las 3 apps dejan de recibir tráfico directo y su acceso público se restringe (ya previsto en <code>compute.tf</code> para staging/prd).</li><li><b>Ingesta EA</b> seguirá llegando a <code>bulk-ingesta</code> por VNet (no por APIM) cuando se automatice.</li></ul>
+<h2>4. Componentes backend (capas)</h2>
+<table><tr><th>Capa</th><th>Componente</th><th>Responsabilidad</th><th>HU</th></tr><tr><td>API</td><td><code>catalogs-controller</code></td><td>CRUD genérico por catálogo con validación FK y diccionario de datos</td><td>HU-001/002</td></tr><tr><td>Dominio</td><td><code>traceability-service</code></td><td>Grafo de relaciones; cadena E2E, impacto inverso, reuso</td><td>HU-004/005</td></tr><tr><td>Dominio</td><td><code>governance-service</code></td><td>Maker-checker (diff, aprobar/rechazar/delegar), soft/hard delete con limpieza FK, historial+hash</td><td>HU-006/007</td></tr><tr><td>Dominio</td><td><code>dq-engine</code></td><td>Evaluación de reglas DQ, llaves rotas, pendientes</td><td>HU-008/009</td></tr><tr><td>Dominio</td><td><code>audit-service</code></td><td>Bitácora consolidada con retención 5.000 en caliente + archivo</td><td>HU-010</td></tr><tr><td>Integración</td><td><code>bulk-io-service</code></td><td>Plantillas, importación Excel validada, exportación E2E/backup</td><td>HU-011/012</td></tr><tr><td>Integración</td><td><code>ea-ingest</code></td><td>Delta por watermark, conciliación por GUID, key_mappings fallback (Sprint 2)</td><td>EP-07</td></tr><tr><td>Datos</td><td>Repositorios tipados por entidad</td><td>Acceso con pool; writer vs reader por tipo de consulta</td><td>Todas</td></tr></table>
+<h2>5. Decisiones clave (ADR en spec/adr/)</h2>
+<table><tr><th>ADR</th><th>Decisión</th><th>Estado</th></tr><tr><td>ADR-001</td><td>Identidad: Entra ID + App Roles + PoP/SHR</td><td>Aceptada (heredada PoC)</td></tr><tr><td>ADR-002</td><td>Front Angular v17+ obligatorio</td><td>Aceptada (heredada PoC ADR-008)</td></tr><tr><td>ADR-003</td><td>API REST genérica por catálogo (no un endpoint por entidad)</td><td>Propuesta</td></tr><tr><td>ADR-004</td><td>Base relacional PostgreSQL con FK reales + tablas puente</td><td><b>Aceptada (excepción aprobada 2026-08-08)</b></td></tr><tr><td>ADR-005</td><td>Nube destino: Azure PaaS/serverless (AZURE.txt v1.0)</td><td><b>Aceptada 2026-08-08</b></td></tr><tr><td>ADR-006</td><td>Separación writer/reader con PgBouncer integrado</td><td>Aceptada (Azure)</td></tr><tr><td>ADR-007</td><td>Ingesta EA por watermark, idempotente por GUID</td><td>Aceptada (heredada PoC)</td></tr><tr><td>ADR-008</td><td>Soft-delete por defecto; hard-delete excepcional con doble confirmación</td><td>Aceptada (BR-012)</td></tr></table>
+<h2>6. NFRs cuantificados</h2>
+<table><tr><th>Atributo</th><th>Objetivo</th><th>Medición</th></tr><tr><td>Latencia API</td><td>p95 &lt; 2 s en operación normal; p95 &lt; 5 s en trazabilidad/impacto transitivos</td><td>CloudWatch/Application Insights sobre percentil por endpoint</td></tr><tr><td>Disponibilidad</td><td>≥ 99.5 % mensual en horario hábil bancario</td><td>SLI de disponibilidad por entorno PRD</td></tr><tr><td>Volumen</td><td>813.200 req/mes estimadas (API), 1.626.400 invocaciones de función; pico 20 RPS</td><td>Volumetría AWS.txt §4</td></tr><tr><td>Escala BD</td><td>1-4 ACU por instancia (writer y reader)</td><td>Alarma ACUUtilization &gt; 80 % sostenido</td></tr><tr><td>Réplica</td><td>AuroraReplicaLag &lt; 30 s (objetivo MCP/reportes)</td><td>Alarma dedicada</td></tr><tr><td>Retención</td><td>Audit log: 5.000 eventos en caliente + archivo 7 años (regulatorio bancario)</td><td>BR-012 + política de archivo</td></tr><tr><td>Seguridad</td><td>TLS 1.2+ en tránsito, KMS en reposo, WAF, privilegio mínimo, secrets fuera del código</td><td>Security requirements (Fase 2 Security)</td></tr><tr><td>Costo</td><td>≤ USD 445/mes PRD (incl. reserva FinOps 25 %)</td><td>Presupuesto + alarmas de consumo</td></tr><tr><td>RTO/RPO</td><td><b>POR DEFINIR (riesgo O-1)</b> — propuesta inicial: RTO 4 h, RPO 15 min con backups automatizados</td><td>Pendiente validación negocio</td></tr></table>
+<h2>7. Patrones</h2>
+<ul><li><b>Idempotencia</b> en ingesta y en mutaciones reintentables (GUID EA + claves de idempotencia).</li><li><b>CQRS ligero</b>: escrituras al writer; reportería, dashboards, trazabilidad pesada y MCP al reader.</li><li><b>Outbox/audit transversal</b>: toda mutación emite evento audit (BR-010).</li><li><b>Contrato primero</b>: el front se genera contra <code>api-contract.yaml</code>; mocks MSW para desarrollo paralelo.</li></ul><script>
+(function(){
+  var root=document.documentElement;
+  function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
+  function apl(t){root.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');}
+  apl(saved());
+  window.addEventListener('message',function(e){var d=e.data||{};if(d.portal==='tema'){apl(d.tema);}});
+  var pid=document.body&&document.body.getAttribute('data-page-id');
+  if(pid&&window.parent!==window){
+    try{window.parent.postMessage({portal:'abierto',id:pid},'*');}catch(e){}
+  }
+  /* Ctrl+K dentro del iframe: la tecla nunca llega al shell (el navegador se
+     la queda) — la página la consume y la reenvía por postMessage. */
+  document.addEventListener('keydown',function(e){
+    if(window.parent===window)return;
+    var tag=(e.target&&e.target.tagName||'').toLowerCase();
+    var typing=tag==='input'||tag==='textarea'||tag==='select'||(e.target&&e.target.isContentEditable);
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }else if(e.key==='/'&&!typing){
+      e.preventDefault();
+      try{window.parent.postMessage({portal:'hotkey-search'},'*');}catch(e2){}
+    }
+  },true);
+})();
+</script></body></html>
