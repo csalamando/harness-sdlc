@@ -1475,8 +1475,12 @@ def emit_portal(model, spec_dir):
                 pass
         pid = portal_lib.register(spec_dir, origen="harness_graph", kind="diagrama",
                                   ruta="../diagrams/" + name, titulo=titulo,
-                                  grupo="diagramas")
-        diags.append((pid, titulo, tipo or "general"))
+                                  categoria=("auditoria" if name == "grafo-codigo.html"
+                                             else None),
+                                  grupo=("codigo" if name == "grafo-codigo.html"
+                                         else "diagramas"))
+        diags.append((pid, titulo,
+                      "codigo" if name == "grafo-codigo.html" else (tipo or "general")))
 
     # Cards agrupadas por tipo de diagrama: header = tipo + cantidad, cuerpo =
     # enlaces a los n diagramas del tipo, footer = línea de color del tipo.
@@ -1485,7 +1489,7 @@ def emit_portal(model, spec_dir):
         "component": "#6366f1", "deployment": "#8b5cf6", "dataflow": "#06b6d4",
         "workflow": "#22c55e", "lifecycle": "#84cc16", "sequence": "#f59e0b",
         "er": "#ec4899", "capability-map": "#a855f7", "stakeholder": "#14b8a6",
-        "threat-model": "#ef4444", "general": "#94a3b8",
+        "threat-model": "#ef4444", "codigo": "#10b981", "general": "#94a3b8",
     }
     if diags:
         grupos = {}
@@ -1562,11 +1566,11 @@ def emit_portal(model, spec_dir):
          + blocks["pipeline"] + "</div>"
          + "<h2>Acumulado del proyecto</h2>" + blocks["acumulado"]
          + '<h2>🛡 Gobernanza</h2><div class="panel">' + blocks["gobernanza"] + "</div>",
-         "inicio", "inicio", "home resumen pipeline fase progreso kpis gobernanza auditoría"),
+         "inicio", "inicio", "", "home resumen pipeline fase progreso kpis gobernanza auditoría"),
         # Auditoría: quién aprobó qué, cuándo, con qué versión del arnés (v2.23)
         ("gobernanza-auditoria.html", "Auditoría — trazabilidad de decisiones",
          audit_body,
-         "metrica", "gobernanza",
+         "metrica", "auditoria", "",
          "auditoría eventos revocaciones recibos aprobador cadena hash harness trazabilidad"),
         # Métricas: tendencias + tiempos en dos columnas (densidad sin scroll)
         ("metricas.html", "Métricas del proyecto",
@@ -1574,7 +1578,7 @@ def emit_portal(model, spec_dir):
          + '<div class="dense2"><div class="panel"><h2>Tendencias por sprint</h2>' + blocks["tendencias"]
          + '</div><div class="panel"><h2>Tiempos de fase y de ciclo</h2>' + blocks["tiempos"]
          + "</div></div>",
-         "metrica", "metricas",
+         "metrica", "agilidad", "",
          "lead time retrabajo gates primer intento gráficas duración ciclos sprints cierre apertura"),
         # Arquitectura: diagramas vivos + ADRs ↔ Tech Radar vinculados
         ("arquitectura.html", "Arquitectura — diagramas y decisiones",
@@ -1582,23 +1586,23 @@ def emit_portal(model, spec_dir):
          + "<h2>Diagramas del proyecto</h2>" + diag_cards
          + '<div class="dense2eq"><div class="panel"><h2>ADRs — decisiones gobernadas</h2>' + blocks["adrs"]
          + '</div><div class="panel"><h2>Tech Radar (paved roads)</h2>' + blocks["radar"] + "</div></div>",
-         "metrica", "arquitectura",
+         "metrica", "arquitectura", "",
          "adr risk tier tech radar adopt trial assess hold diagramas c4 decisiones"),
-        # Memoria: aprendizajes + sesiones lado a lado
+        # Memoria: aprendizajes + sesiones lado a lado (subgrupo de Auditoría)
         ("memoria.html", "Memoria del proyecto",
          "<h1>🧠 Memoria del proyecto</h1>" + sub
          + '<div class="dense2eq"><div class="panel"><h2>📚 Aprendizajes recientes</h2>' + blocks["aprendizajes"]
          + '</div><div class="panel"><h2>🕓 Últimas sesiones (handoffs)</h2>' + blocks["sesiones"] + "</div></div>",
-         "doc", "memoria", "memorias learning lecciones handoff sesión contexto mem.py"),
+         "doc", "auditoria", "memoria", "memorias learning lecciones handoff sesión contexto mem.py"),
     ]
     n = 0
-    for fname, titulo, body, kind, cat, tags in paginas:
+    for fname, titulo, body, kind, cat, grupo, tags in paginas:
         pid = portal_lib.slug("paginas/" + fname)
         out = portal_lib.page_wrap(titulo, body, page_id=pid, extra_css=DASH_CSS, note=_NOTA_DERIVADO)
         open(os.path.join(pag, fname), "w", encoding="utf-8", newline="\n").write(out)
         portal_lib.register(spec_dir, origen="harness_graph", kind=kind,
                             ruta="paginas/" + fname, titulo=titulo, categoria=cat,
-                            tags=tags.split(), texto=body)
+                            grupo=grupo, tags=tags.split(), texto=body)
         n += 1
 
     # Glosario: página oculta — se abre desde el topbar (📖) o el buscador
@@ -1665,9 +1669,9 @@ def main_proyecto(a):
     try:
         import portal_lib, mdview
         # Grafo de código (v2.27): si el proyecto tiene índice code_intel,
-        # sus dos vistas (grafo-codigo + grafo-modulos, tema compartido con
-        # el portal) se regeneran ANTES del sweep de diagramas — quedan
-        # garantizadas en la página Arquitectura en esta misma pasada.
+        # su vista interactiva (grafo-codigo, tema compartido con el portal)
+        # se regenera ANTES del sweep de diagramas — queda registrada en
+        # Auditoría y Trazabilidad (subgrupo "codigo") en esta misma pasada.
         cg_msg = ""
         try:
             import code_graph

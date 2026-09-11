@@ -31,18 +31,23 @@ CLI:
 import argparse, html, json, os, re, sys
 from datetime import datetime
 
-PORTAL_VERSION = "1.2.0"
+PORTAL_VERSION = "1.3.0"
 
+# Taxonomía por ROL QUE GOBIERNA el artefacto (quién lo crea, lo aprueba y
+# responde por su vigencia), no por tipo de documento. Sin categoría genérica
+# "Documentos": el fallback es "procesos" y check() lo señala.
 CATEGORIAS = [
     ("inicio", "Inicio", "🏠"),
-    ("metricas", "Métricas", "📊"),
-    ("gobernanza", "Gobernanza", "🛡️"),
-    ("arquitectura", "Arquitectura", "🏛️"),
     ("negocio", "Negocio", "💼"),
-    ("calidad", "Calidad", "🧪"),
-    ("operacion", "Operación", "🚀"),
-    ("docs", "Documentos", "📚"),
-    ("memoria", "Memoria", "🧠"),
+    ("arquitectura", "Arquitectura", "🏛️"),
+    ("desarrollo", "Desarrollo", "💻"),
+    ("qa", "QA", "🧪"),
+    ("agilidad", "Agilidad (Métricas)", "📊"),
+    ("procesos", "Procesos", "🔄"),
+    ("uiux", "UI/UX", "🎨"),
+    ("devsecops", "DevSecOps", "🔐"),
+    ("plataforma", "Plataforma", "☁️"),
+    ("auditoria", "Auditoría y Trazabilidad", "🧾"),
 ]
 _CAT_ORDEN = {c[0]: i for i, c in enumerate(CATEGORIAS)}
 
@@ -132,18 +137,33 @@ def _plano(t):
 
 
 _REGLES = [
-    # Gobernanza primero: ADRs/recibos/seguridad no son "docs" ni "arquitectura"
-    ("gobernanza", ("adr", "receipt", "recibo", "authority", "audit", "threat",
-                    "security", "tech-radar", "tech_radar", "governance",
-                    "gobernanza", "principles", "principios")),
-    ("arquitectura", ("architect", "arquitect",
-                      "diagram", "c4-", "decision")),
+    # Reglas por rol gobernante. Orden: primero lo más específico para que
+    # keywords genéricas ("report", "pipeline") no capturen artefactos ajenos.
+    ("auditoria", ("audit", "auditoria", "auditoría", "receipt", "recibo",
+                   "changelog", "memory", "memoria", "session", "learning",
+                   "handoff", "wiki", "traceability", "trazabilidad")),
+    ("devsecops", ("threat", "security", "seguridad", "pipeline-cicd",
+                   "sast", "dast", "secret")),
+    ("agilidad", ("metric", "metricas", "métricas", "sprint", "reporte-gerencial",
+                  "executive-report", "reports")),
+    ("uiux", ("ux-", "ux_", "design-system", "design_system", "tokens",
+              "screen-inventory", "prototipo", "wireframe")),
+    ("plataforma", ("cloud", "deploy", "despliegue", "release", "slo",
+                    "incident", "postmortem", "runbook", "oncall", "costs")),
+    ("qa", ("test", "qa", "e2e", "cobertura", "coverage", "pact", "k6")),
+    ("desarrollo", ("guia", "guide", "onboarding", "readme", "dev-docs",
+                    "msw", "mocks")),
+    ("arquitectura", ("adr", "architect", "arquitect", "diagram", "c4-",
+                      "decision", "api-contract", "openapi", "data-model",
+                      "data_model", "tech-radar", "tech_radar", "principles",
+                      "principios", "exception-log", "tech-debt", "tech_debt",
+                      "technical-stories", "governance", "gobernanza")),
     ("negocio", ("vision", "backlog", "user-stories", "user_stories", "glossary",
-                 "glosario", "epica", "personas", "stakeholder")),
-    ("calidad", ("test", "qa", "e2e", "cobertura", "coverage")),
-    ("operacion", ("reports", "report", "release", "pipeline", "deploy", "sprint",
-                   "incident", "postmortem", "runbook", "slo", "oncall")),
-    ("memoria", ("memory", "session", "learning", "handoff")),
+                 "glosario", "epica", "personas", "stakeholder",
+                 "business-rules", "business_rules", "cost-estimation",
+                 "cost-assumptions", "impact-report")),
+    ("procesos", ("pipeline-state", "authority", "risk-tier", "risk_tier",
+                  "process-definition", "roles", "index")),
 ]
 
 
@@ -152,14 +172,16 @@ def infer_categoria(nombre, kind=""):
     if kind == "inicio":
         return "inicio"
     if kind == "metrica":
-        return "metricas"
+        return "agilidad"
     if kind == "diagrama":
         return "arquitectura"
     n = (nombre or "").lower()
     for cat, keys in _REGLES:
         if any(k in n for k in keys):
             return cat
-    return "docs"
+    # Sin categoría genérica "Documentos": lo no clasificado es proceso del
+    # arnés y check() lo advierte para que el skill gobernante lo reclame.
+    return "procesos"
 
 
 def portal_dir(spec_dir):
@@ -178,10 +200,31 @@ def _load_registry(spec_dir):
     p = _registry_path(spec_dir)
     if os.path.isfile(p):
         try:
-            return json.load(open(p, encoding="utf-8"))
+            reg = json.load(open(p, encoding="utf-8"))
         except Exception:
             pass
+        else:
+            _migrar_categorias(reg)
+            return reg
     return {"portal_version": PORTAL_VERSION, "items": []}
+
+
+_CAT_IDS = {c[0] for c in CATEGORIAS}
+
+
+def _migrar_categorias(reg):
+    """Re-clasifica items registrados con la taxonomía vieja (portal < 1.3).
+
+    Los items cuya categoría ya no existe se re-infireren por ruta/kind; la
+    vieja categoría "memoria" además se conserva como subgrupo plegable.
+    """
+    for it in reg.get("items", []):
+        cat = it.get("categoria", "")
+        if cat in _CAT_IDS:
+            continue
+        if cat == "memoria" and not it.get("grupo"):
+            it["grupo"] = "memoria"
+        it["categoria"] = infer_categoria(it.get("ruta", ""), it.get("kind", ""))
 
 
 def _save_registry(spec_dir, reg):
@@ -338,6 +381,13 @@ def check(spec_dir):
     shell_ok = (os.path.isfile(shell)
                 and f"portal-version: {PORTAL_VERSION}"
                 in open(shell, encoding="utf-8").read())
+    # Advertencia: items caídos en el fallback "procesos" — su rol gobernante
+    # debería reclamarlos con categoria= explícita o una keyword en _REGLES.
+    huespedes = [i["id"] for i in m["items"]
+                 if i.get("categoria") == "procesos" and not i.get("oculto")]
+    if huespedes:
+        print("portal: items en categoría fallback 'procesos' (revisar gobierno): "
+              + ", ".join(huespedes), file=sys.stderr)
     return bool(actual) and actual == esperado and shell_ok
 
 
@@ -442,7 +492,7 @@ body.side-off #side{margin-left:-280px}
   <span id="topxtra"></span>
   <div id="helpwrap"><button id="btn-help" title="Ayuda — cómo navegar el portal">?</button>
     <div id="helpbox"><h3>Cómo navegar este portal</h3><ul>
-      <li><b>Menú lateral</b>: todo el contenido por categorías — métricas, arquitectura, negocio, calidad, operación, documentos y memoria. El botón ☰ lo contrae.</li>
+      <li><b>Menú lateral</b>: todo el contenido agrupado por el rol que gobierna cada artefacto — negocio, arquitectura, desarrollo, QA, agilidad (métricas), procesos, UI/UX, DevSecOps, plataforma y auditoría. El botón ☰ lo contrae.</li>
       <li><b>Ctrl+K</b>: búsqueda global en títulos y contenido de todas las páginas.</li>
       <li><b>A− / A / A+</b> y <b>☀/☾</b>: zoom de fuente y tema claro/oscuro, compartidos con los diagramas interactivos.</li>
       <li>Las páginas se abren dentro del portal; los enlaces internos actualizan el menú solos.</li>

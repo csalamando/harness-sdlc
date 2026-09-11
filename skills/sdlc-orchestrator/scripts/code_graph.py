@@ -16,18 +16,19 @@ esta disponible (script suelto), se incrusta una copia de los tokens.
 
 Gobierno (donde/cuando/quien):
   DONDE   vive en sdlc-orchestrator/scripts/ junto a code_intel.py.
-          Emite a <proyecto>/spec/diagrams/grafo-codigo.html (interactivo)
-          y grafo-modulos.html (modulos, SVG estatico). El sweep de
-          harness_graph.emit_portal los registra en la pagina Arquitectura
-          del portal; main_proyecto los regenera ANTES del sweep, en la
-          misma pasada (garantia de inclusion, best-effort, nunca bloquea).
+          Emite <proyecto>/spec/diagrams/grafo-codigo.html (interactivo).
+          El sweep de harness_graph.emit_portal lo registra en la categoria
+          Auditoria y Trazabilidad del portal (subgrupo "codigo");
+          main_proyecto lo regenera ANTES del sweep, en la misma pasada
+          (garantia de inclusion, best-effort, nunca bloquea).
+          (La vista grafo-modulos.html se retiro del arnes: emit_views la
+          borra si un proyecto aun la tiene.)
   CUANDO  tras cada reindex (`code_intel.py index`, regla: al abrir sesion)
-          y en cada `harness_graph.py --proyecto`. `check` falla si las
-          vistas quedaron atras del indice (anti-drift, fingerprint SHA-256
+          y en cada `harness_graph.py --proyecto`. `check` falla si la
+          vista quedo atras del indice (anti-drift, fingerprint SHA-256
           embebido en el HTML, como los demas derivados del arnes).
   QUIEN   lo ejecuta el rol de desarrollo / orquestador al reindexar.
-          Consumen: Arquitecto (vista modulos -> spec/architecture/) y
-          cualquier dev (vista interactiva: hubs, acoplamiento, aislados).
+          Lo consume cualquier dev (hubs, acoplamiento, aislados).
 
 Matiz del esquema: las aristas del indice son a NIVEL ARCHIVO
 (archivo -> nombre llamado/importado). Por eso el grafo interactivo usa
@@ -352,93 +353,6 @@ document.getElementById('stats').textContent =
 """
 
 
-# ------------------------------------------------------------------ SVG de modulos
-
-def render_modules(keep, edges_file, fp):
-    import math
-    mods = {}
-    for f, syms in keep.items():
-        m = module_of(f)
-        mods.setdefault(m, {"files": 0, "syms": 0})
-        mods[m]["files"] += 1
-        mods[m]["syms"] += len(syms)
-    medges = {}
-    for (a, b), e in edges_file.items():
-        ma, mb = module_of(a), module_of(b)
-        if ma == mb:
-            continue
-        k = (ma, mb)
-        medges[k] = medges.get(k, 0) + e["call"] + e["import"]
-    names = sorted(mods)
-    n = len(names)
-    W = H = 1000
-    cx, cy, R = W/2, H/2, 360
-    pos = {}
-    for i, m in enumerate(names):
-        a = 2*math.pi*i/n - math.pi/2
-        pos[m] = (cx + R*math.cos(a), cy + R*math.sin(a))
-    maxw = max(medges.values(), default=1)
-    maxs = max((v["syms"] for v in mods.values()), default=1)
-
-    svg = [f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" '
-           f'style="max-width:100%;height:auto;background:var(--panel-bg);'
-           f'border:1px solid var(--panel-bd);border-radius:12px">']
-    svg.append('<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" '
-               'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
-               '<path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/></marker></defs>')
-    for (a, b), w in sorted(medges.items(), key=lambda x: x[1]):
-        x1, y1 = pos[a]
-        x2, y2 = pos[b]
-        sw = 1 + 8*w/maxw
-        op = 0.25 + 0.6*w/maxw
-        mx, my = (x1+x2)/2, (y1+y2)/2
-        qx, qy = mx + (cx-mx)*0.25, my + (cy-my)*0.25
-        svg.append(f'<path d="M{x1:.0f},{y1:.0f} Q{qx:.0f},{qy:.0f} {x2:.0f},{y2:.0f}" '
-                   f'fill="none" stroke="var(--edge)" stroke-width="{sw:.1f}" '
-                   f'opacity="{op:.2f}" marker-end="url(#arr)">'
-                   f'<title>{html.escape(a)} → {html.escape(b)}: {w} llamadas/imports</title></path>')
-    for i, m in enumerate(names):
-        x, y = pos[m]
-        r = 26 + 50*math.sqrt(mods[m]["syms"]/maxs)
-        col = PALETTE[i % len(PALETTE)]
-        svg.append(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{r:.0f}" fill="{col}" opacity="0.85"/>')
-        svg.append(f'<text x="{x:.0f}" y="{y-2:.0f}" text-anchor="middle" fill="#0b1220" '
-                   f'font-weight="700" font-size="13">{mods[m]["files"]} archivos</text>')
-        svg.append(f'<text x="{x:.0f}" y="{y+14:.0f}" text-anchor="middle" fill="#0b1220" '
-                   f'font-size="12">{mods[m]["syms"]} símbolos</text>')
-        ly = y + r + 18 if y < cy else y - r - 10
-        svg.append(f'<text x="{x:.0f}" y="{ly:.0f}" text-anchor="middle" '
-                   f'fill="var(--txt)" font-size="14" font-weight="600">{html.escape(m)}</text>')
-    svg.append('</svg>')
-    rows = "".join(
-        f'<tr><td>{html.escape(a)}</td><td>→</td><td>{html.escape(b)}</td>'
-        f'<td style="text-align:right"><b>{w}</b></td></tr>'
-        for (a, b), w in sorted(medges.items(), key=lambda x: -x[1]))
-    body = (f'<h1>🏛 Grafo de módulos</h1>'
-            f'<div class="sub">Acoplamiento real medido: grosor = llamadas+imports que cruzan '
-            f'módulos · derivado de .codeintel/index.db (fingerprint {fp}) — '
-            f'no editar a mano; regenerar: <code>code_graph.py emit</code></div>'
-            + "".join(svg)
-            + f'<h2>Aristas entre módulos ({len(medges)})</h2>'
-              f'<table><tr><th>Origen</th><th></th><th>Destino</th><th>Aristas</th></tr>{rows}</table>')
-    css = ("body{background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;"
-           "margin:0;padding:1.5rem 1.8rem 3rem;line-height:1.55;font-size:15px;"
-           "max-width:1100px;margin-left:auto;margin-right:auto}"
-           "h1{font-size:1.35rem;color:var(--txt);margin:.2rem 0 .8rem}"
-           "h2{font-size:1.08rem;color:var(--txt);margin:1.4rem 0 .6rem}"
-           ".sub{color:var(--muted);font-size:.8rem;margin-bottom:1rem}"
-           "code{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:5px;padding:.12em .4em}"
-           "table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.85em}"
-           "th,td{border-bottom:1px solid var(--panel-bd);padding:.45em .7em;text-align:left}"
-           "th{color:var(--sub);font-size:.78em;text-transform:uppercase;letter-spacing:.04em}")
-    return ("<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>"
-            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-            "<title>Grafo de módulos (derivado)</title>"
-            f"<!-- codeintel-fingerprint: {fp} -->"
-            f"<style>{TOKENS_CSS}{css}</style></head><body>"
-            + body + f"<script>{THEME_JS}</script></body></html>")
-
-
 # ------------------------------------------------------------------ comandos
 
 def resolve_db(a):
@@ -454,7 +368,9 @@ def out_dir(a):
 def emit_views(root, out=None, include_tests=False):
     """API para otros scripts del arnes (harness_graph la llama best-effort).
 
-    Devuelve (ruta_interactivo, ruta_modulos) o None si no hay indice.
+    Devuelve (ruta_interactivo, n_archivos, n_aristas, unresolved, fp) o
+    None si no hay indice. Limpia el retirado grafo-modulos.html (v2.27
+    lo emitía; se eliminó del arnés por decisión de gobierno).
     """
     db = os.path.join(root, DB_DIR, DB_NAME)
     if not os.path.isfile(db):
@@ -464,12 +380,12 @@ def emit_views(root, out=None, include_tests=False):
     od = out or os.path.join(root, "spec", "diagrams")
     os.makedirs(od, exist_ok=True)
     p1 = os.path.join(od, "grafo-codigo.html")
-    p2 = os.path.join(od, "grafo-modulos.html")
+    viejo = os.path.join(od, "grafo-modulos.html")
+    if os.path.isfile(viejo):
+        os.remove(viejo)
     open(p1, "w", encoding="utf-8", newline="\n").write(
         render_interactive(keep, edges_file, hubs, fp))
-    open(p2, "w", encoding="utf-8", newline="\n").write(
-        render_modules(keep, edges_file, fp))
-    return p1, p2, len(keep), len(edges_file), unresolved, fp
+    return p1, len(keep), len(edges_file), unresolved, fp
 
 
 def cmd_emit(a):
@@ -485,22 +401,18 @@ def cmd_emit(a):
         od = out_dir(a)
         os.makedirs(od, exist_ok=True)
         p1 = os.path.join(od, "grafo-codigo.html")
-        p2 = os.path.join(od, "grafo-modulos.html")
         open(p1, "w", encoding="utf-8", newline="\n").write(
             render_interactive(keep, edges_file, hubs, fp))
-        open(p2, "w", encoding="utf-8", newline="\n").write(
-            render_modules(keep, edges_file, fp))
-        r = (p1, p2, len(keep), len(edges_file), unresolved, fp)
+        r = (p1, len(keep), len(edges_file), unresolved, fp)
     if not r:
         print(f"SIN ÍNDICE: {resolve_db(a)} no existe — correr primero: "
               f"code_intel.py index (capacidad opcional, nada que hacer).")
         return 0
-    p1, p2, nf, ne, unresolved, fp = r
+    p1, nf, ne, unresolved, fp = r
     print(f"Grafo emitido (fingerprint {fp}):")
     print(f"  {p1}  — {nf} archivos, {ne} aristas "
           f"(interactivo; {unresolved} llamadas no resueltas a símbolos indexados)")
-    print(f"  {p2}  — módulos (estático)")
-    print("  El portal los recoge en la página Arquitectura al regenerar: "
+    print("  El portal lo recoge en Auditoría y Trazabilidad al regenerar: "
           "harness_graph.py --proyecto .")
     return 0
 

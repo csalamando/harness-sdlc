@@ -576,7 +576,7 @@ check("portal: shell con sidebar, buscador Ctrl+K, ayuda, migas y tema compartid
                                "crumbs", "portal-last-")))
 man = open(os.path.join(PORTAL, "manifest.js"), encoding="utf-8").read()
 check("portal: manifest con páginas densas, docs, diagrama y topbar",
-      all(t in man for t in ('"inicio"', '"metricas"', '"arquitectura"', '"memoria"',
+      all(t in man for t in ('"inicio"', '"agilidad"', '"arquitectura"', '"auditoria"',
                              "docs-vision", "diagrams-arquitectura", '"topbar"', "Glosario")))
 check("portal: glosario oculto del menú lateral (solo topbar/buscador)",
       '"oculto": true' in man)
@@ -620,12 +620,12 @@ check("portal: manifest restaurado, check OK de nuevo", code == 0, out)
 
 # ── 9g. Portal con auditoría y gobernanza (v2.23) ────────────────────────────
 print("\n[9g] Portal v2.23: gobernanza, auditoría visible, menú orgánico")
-check("portal: categoría Gobernanza existe y ordena tras Métricas",
-      '"gobernanza"' in man and man.index('"gobernanza"') < man.index('"arquitectura"'))
-check("portal: ADRs y threat-model clasifican en Gobernanza (no en docs/operación)",
-      portal_lib.infer_categoria("paginas/docs/adr__ADR-001-x.html") == "gobernanza"
-      and portal_lib.infer_categoria("paginas/docs/threat-model.html") == "gobernanza"
-      and portal_lib.infer_categoria("paginas/docs/tech-radar.html") == "gobernanza")
+check("portal: categoría Auditoría y Trazabilidad existe y cierra el menú",
+      '"auditoria"' in man and man.index('"auditoria"') > man.index('"plataforma"'))
+check("portal: ADRs y tech-radar clasifican en Arquitectura; threat-model en DevSecOps",
+      portal_lib.infer_categoria("paginas/docs/adr__ADR-001-x.html") == "arquitectura"
+      and portal_lib.infer_categoria("paginas/docs/threat-model.html") == "devsecops"
+      and portal_lib.infer_categoria("paginas/docs/tech-radar.html") == "arquitectura")
 pag_audit = os.path.join(PORTAL, "paginas", "gobernanza-auditoria.html")
 check("portal: página Auditoría existe (derivada de spec/audit/events.jsonl)",
       os.path.isfile(pag_audit))
@@ -684,9 +684,9 @@ with tempfile.TemporaryDirectory() as tmp_mdv:
     check("mdview: cada doc lleva grupo = su directorio (reports, adr)",
           items["paginas/docs/reports__sprint-review-00.html"].get("grupo") == "reports"
           and items["paginas/docs/adr__ADR-001-db.html"].get("grupo") == "adr")
-    check("mdview: ADR clasifica en gobernanza, sprint reviews en operación",
-          items["paginas/docs/adr__ADR-001-db.html"]["categoria"] == "gobernanza"
-          and items["paginas/docs/reports__sprint-review-00.html"]["categoria"] == "operacion")
+    check("mdview: ADR clasifica en arquitectura, sprint reviews en agilidad",
+          items["paginas/docs/adr__ADR-001-db.html"]["categoria"] == "arquitectura"
+          and items["paginas/docs/reports__sprint-review-00.html"]["categoria"] == "agilidad")
 
 
 # ── 9e. pipeline_diagram: lenguaje visual comun (v2.19); drawio retirado (v2.20) ──
@@ -1400,14 +1400,13 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out = run("code_graph.py", "emit", "--root", tmp)
     g1 = os.path.join(tmp, "spec", "diagrams", "grafo-codigo.html")
     g2 = os.path.join(tmp, "spec", "diagrams", "grafo-modulos.html")
-    check("code_graph emit genera ambas vistas en spec/diagrams/",
-          code == 0 and os.path.isfile(g1) and os.path.isfile(g2), out)
+    check("code_graph emit genera la vista interactiva en spec/diagrams/",
+          code == 0 and os.path.isfile(g1), out)
+    check("code_graph emit ya NO genera grafo-modulos (retirado del arnés)",
+          not os.path.isfile(g2))
     h1 = open(g1, encoding="utf-8").read() if os.path.isfile(g1) else ""
-    h2 = open(g2, encoding="utf-8").read() if os.path.isfile(g2) else ""
     check("vista interactiva usa tokens del portal y tema compartido (dir-tema)",
           "data-theme=claro" in h1 and "dir-tema" in h1 and "portal==='tema'" in h1)
-    check("vista de módulos usa tokens del portal y tema compartido (dir-tema)",
-          "data-theme=claro" in h2 and "dir-tema" in h2 and "portal==='tema'" in h2)
     check("tests y ruido de frameworks excluidos del grafo",
           "x.test.ts" not in h1 and "describe" not in h1 and "helper" not in h1)
     check("llamadas no resueltas se reportan honestamente (1 en el fixture)",
