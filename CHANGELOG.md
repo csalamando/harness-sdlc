@@ -7,6 +7,24 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.28.0] - 2026-09-11
+
+**"Cada artefacto vive donde manda su gobernante."** El menú lateral del portal deja de clasificar por *tipo de documento* y pasa a clasificar **por el rol que gobierna cada artefacto** (quién lo crea, lo aprueba y responde por su vigencia). Desaparece el cajón de sastre "Documentos".
+
+### Changed
+- **Portal v1.3 — menú lateral por rol gobernante**: nueva taxonomía de 11 categorías — 🏠 Inicio, 💼 **Negocio** (PO/BA/Product Analyst/Pricing: visión, backlog, HU, reglas, glosario, cost-estimation, impact-report), 🏛️ **Arquitectura** (Software/Solution/Enterprise Architect, Decision Engine, Data Engineer: **ADRs**, contrato OpenAPI, data-model, tech radar, principios, exception-log, tech-debt, diagramas), 💻 **Desarrollo** (guías, READMEs, referencia de API derivada), 🧪 **QA** (**test-plan**, qa-report, E2E, carga), 📊 **Agilidad (Métricas)** (métricas, sprint reviews, reporte gerencial), 🔄 **Procesos** (pipeline-state, authority-matrix, risk-tier), 🎨 **UI/UX** (flows, design-system, tokens, prototipo), 🔐 **DevSecOps** (threat-model, security-requirements, pipeline-cicd), ☁️ **Plataforma** (release, SLO, incidentes, postmortems, cloud-costs) y 🧾 **Auditoría y Trazabilidad** (cadena de custodia, recibos de gates, CHANGELOG, memoria como subgrupo, grafo de código).
+- **Sin categoría genérica "Documentos"**: el fallback pasa a ser `procesos` y `portal_lib.py --check` **advierte** los items caídos ahí para que su rol gobernante los reclame (`categoria=` explícita o keyword en `_REGLES`).
+- **Reclasificaciones clave**: ADRs y tech-radar salen de Gobernanza → **Arquitectura**; threat-model y security → **DevSecOps**; test-plan → **QA**; sprint reviews → **Agilidad (Métricas)**; Memoria deja de ser categoría propia → subgrupo plegable de **Auditoría y Trazabilidad**.
+- **Grafo de código → Auditoría y Trazabilidad** (subgrupo `codigo`, card con color propio en el sweep de diagramas): es evidencia derivada del índice, no una decisión de arquitectura.
+- **Migración automática**: los `registry.json` existentes con la taxonomía vieja (`gobernanza`/`operacion`/`calidad`/`metricas`/`memoria`/`docs`) se re-clasifican al cargar — ningún proyecto queda con items huérfanos.
+
+### Removed
+- **`grafo-modulos.html` retirado del arnés** (vista SVG estática de acoplamiento entre módulos, v2.27): no aportaba valor frente al grafo interactivo. `code_graph.py emit_views()` la **borra** si un proyecto aún la tiene; `render_modules()` eliminada.
+
+### Verificación
+- Self-test completo en verde (**291 checks**, aserciones actualizadas a la nueva taxonomía: ADR→arquitectura, threat-model→devsecops, sprint-review→agilidad, ausencia de grafo-modulos).
+- Portal del fixture demo regenerado: menú verificado por categoría, `portal_lib.py --check` y `harness_graph.py --proyecto --check` sin drift.
+
 ## [2.27.1] - 2026-09-10
 
 ### Changed
