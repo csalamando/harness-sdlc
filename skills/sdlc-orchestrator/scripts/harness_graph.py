@@ -1463,24 +1463,48 @@ def emit_portal(model, spec_dir):
     for p in sorted(_g.glob(os.path.join(spec_dir, "diagrams", "*.html"))):
         name = os.path.basename(p)
         titulo = os.path.splitext(name)[0]
+        tipo = ""
         ir = p[:-len(".html")] + ".ir.json"
         if os.path.isfile(ir):
             try:
                 import json as _j
-                titulo = _j.load(open(ir, encoding="utf-8")).get("titulo", titulo) or titulo
+                ir_doc = _j.load(open(ir, encoding="utf-8"))
+                titulo = ir_doc.get("titulo", titulo) or titulo
+                tipo = ir_doc.get("tipo") or ""
             except Exception:
                 pass
         pid = portal_lib.register(spec_dir, origen="harness_graph", kind="diagrama",
                                   ruta="../diagrams/" + name, titulo=titulo,
                                   grupo="diagramas")
-        diags.append((pid, titulo))
+        diags.append((pid, titulo, tipo or "general"))
 
+    # Cards agrupadas por tipo de diagrama: header = tipo + cantidad, cuerpo =
+    # enlaces a los n diagramas del tipo, footer = línea de color del tipo.
+    _DIAG_COLOR = {
+        "architecture": "#3b82f6", "context": "#0ea5e9", "container": "#2563eb",
+        "component": "#6366f1", "deployment": "#8b5cf6", "dataflow": "#06b6d4",
+        "workflow": "#22c55e", "lifecycle": "#84cc16", "sequence": "#f59e0b",
+        "er": "#ec4899", "capability-map": "#a855f7", "stakeholder": "#14b8a6",
+        "threat-model": "#ef4444", "general": "#94a3b8",
+    }
     if diags:
-        diag_cards = ('<div class="diag-cards">'
-                      + "".join(f'<a class="dcard" href="../index.html#/id/{esc(pid)}" target="_top">'
-                                f'<b>🗺 {esc(t)}</b><span>diagrama interactivo · tema y zoom compartidos</span></a>'
-                                for pid, t in diags)
-                      + "</div>")
+        grupos = {}
+        for pid, t, tipo in diags:
+            grupos.setdefault(tipo, []).append((pid, t))
+        cards = []
+        for tipo in sorted(grupos, key=lambda k: (-len(grupos[k]), k)):
+            items = grupos[tipo]
+            color = _DIAG_COLOR.get(tipo, _DIAG_COLOR["general"])
+            links = "".join(
+                f'<a href="../index.html#/id/{esc(pid)}" target="_top">{esc(t)}</a>'
+                for pid, t in items)
+            cards.append(
+                f'<div class="dcard" style="--dcard-c:{color}">'
+                f'<div class="dcard-head"><b>{esc(tipo)}</b>'
+                f'<span class="n">{len(items)} diagrama{"s" if len(items) != 1 else ""}</span></div>'
+                f'<div class="dcard-links">{links}</div>'
+                f'<div class="dcard-foot"></div></div>')
+        diag_cards = '<div class="diag-cards">' + "".join(cards) + "</div>"
     else:
         diag_cards = ('<div class="empty">Sin diagramas en <code>spec/diagrams/</code> — '
                       'los diagramas vivos IR aparecerán aquí (skill sdlc-diagrams).</div>')

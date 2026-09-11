@@ -7,6 +7,11 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.27.1] - 2026-09-10
+
+### Changed
+- **Portal · página Arquitectura — cards de diagramas agrupadas por tipo**: cada card representa un tipo de diagrama IR (`architecture`, `sequence`, `workflow`, `dataflow`, …) en lugar de un diagrama individual. Header = tipo + cantidad de diagramas; cuerpo = lista de enlaces clicables a los n diagramas del tipo (misma navegación de antes); footer = línea de color que identifica el tipo (paleta fija por tipo, gris para `general` cuando el IR no declara `tipo`). Las cards se ordenan por cantidad descendente. Sin IR `tipo` el diagrama cae en `general` — retrocompatible.
+
 ## [2.27.0] - 2026-09-10
 
 **"El índice ya era un grafo; ahora se ve."** `code_graph.py` convierte el índice code_intel (SQLite: símbolos + aristas de llamada) en dos vistas derivadas que el portal recoge automáticamente en la página Arquitectura.
