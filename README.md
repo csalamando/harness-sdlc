@@ -87,6 +87,8 @@ Y cada sprint cierra con un **sprint review versionado** (gate bloqueante en CI 
 
 ![Sprint review](demos/sprint-review-report.png)
 
+**Sistema de diseño (v2.32.0).** Todo el HTML que genera el arnés — portal, inicio/dashboard, diagramas IR, grafos de pipeline y de código — deriva de **tokens canónicos únicos** en `docs/design-system/tokens.json`: paleta dual-tema, tipografía system-ui, espaciado, motion y paletas dataviz gobernadas. Contraste WCAG AA verificado por script (19 pares auditados), anillo `:focus-visible`, `prefers-reduced-motion`, ARIA y los **cuatro estados** loading/empty/error/success como contrato. Cero colores hardcodeados: el self-test `[9i]` bloquea cualquier drift de estilo, y `?tema=claro|oscuro` fuerza el tema en cualquier URL.
+
 ---
 
 ## 🔄 El proceso: fases, gates y artefactos
