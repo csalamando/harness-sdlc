@@ -1,0 +1,44 @@
+{
+  "kind": "flow",
+  "tema": "claro",
+  "titulo": "Arnés SDLC — memoria persistente en 3 scopes con gobierno",
+  "fuente": "docs/diagrams/arnes-memoria.ir.json",
+  "bandas": "hulls",
+  "grupos": {
+    "Scope PROJECT · viaja en el repo": "#34d399",
+    "Scope USER · tu experiencia entre proyectos": "#38bdf8",
+    "Scope ORG · la organización gana": "#f59e0b"
+  },
+  "nodos": [
+    {"id": "busq", "titulo": "Búsqueda federada", "sub": "mem.py search · context · FTS5", "tipo": "transform", "rank": 0, "detalle": "Consulta los tres scopes y etiqueta el origen; lo específico vence a lo general. El índice SQLite/FTS5 es 100% derivable (reindex)."},
+    {"id": "proj", "titulo": "Memoria del proyecto", "sub": "spec/memory/entries/ · en Git", "tipo": "db", "grupo": "Scope PROJECT · viaja en el repo", "rank": 1, "detalle": "Decisiones, bugs y contexto con estructura What/Why/Where/Learned. Historial, diff y code review gratis."},
+    {"id": "user", "titulo": "Aprendizajes personales", "sub": "~/.sdlcmem/user", "tipo": "service", "grupo": "Scope USER · tu experiencia entre proyectos", "rank": 2, "detalle": "Lo que cada persona aprende entre proyectos: patrones, errores frecuentes, contexto reusable."},
+    {"id": "pat_org", "titulo": "Patrones promovidos", "sub": "probados en varios proyectos", "tipo": "service", "grupo": "Scope ORG · la organización gana", "rank": 3, "detalle": "Patrones que demostraron valor y suben de nivel con promote (derived_from). La capa org es un repo Git corporativo: push/pull periódico + reindex."},
+    {"id": "pol", "titulo": "Políticas org", "sub": "policy mandatory | recommended", "tipo": "security", "grupo": "Scope ORG · la organización gana", "rank": 3, "detalle": "Lineamientos corporativos (~/.sdlcmem/org). Las mandatory exigen attestation compliant o desviación aprobada y vigente antes de GATE 1. El scope org rechaza secretos."},
+    {"id": "g1", "titulo": "GATE 1", "sub": "policy check + conflictos", "tipo": "decision", "rank": 4, "detalle": "Bloquea si una policy mandatory no está attestada, si una desviación venció, o si hay memorias que se contradicen (conflicts_with) sin resolución humana."},
+    {"id": "ok", "titulo": "Spec desbloqueada", "sub": "compliant o waived", "tipo": "terminal", "rank": 5, "detalle": "Toda política cumplida o con desviación aprobada por humano designado, con expiración."}
+  ],
+  "aristas": [
+    {"desde": "busq", "hasta": "proj", "label": "consulta project"},
+    {"desde": "busq", "hasta": "user", "label": "consulta user"},
+    {"desde": "busq", "hasta": "pol", "label": "consulta org"},
+    {"desde": "proj", "hasta": "user", "label": "promote: patrón probado"},
+    {"desde": "user", "hasta": "pat_org", "label": "promote: sube a la org"},
+    {"desde": "pol", "hasta": "g1", "label": "attest o desviación"},
+    {"desde": "proj", "hasta": "g1", "label": "conflictos resueltos"},
+    {"desde": "g1", "hasta": "ok", "label": "COMPLIANT | WAIVED"}
+  ],
+  "insights": [
+    {"titulo": "Precedencia", "color": "#f59e0b", "bullets": [
+      "ORG > USER > PROJECT: lo general de la organización siempre gana",
+      "Una policy org mandatory no la negocia ningún proyecto: se cumple o se desvía con aprobación humana"]},
+    {"titulo": "Gobierno real, no decorativo", "color": "#f472b6", "bullets": [
+      "policy check bloquea GATE 1 como una contradicción en la spec",
+      "Las desviaciones siguen request -> approve|reject, con aprobador designado y expiración: al vencer, vuelven a bloquear",
+      "Dos memorias que se contradicen (conflicts_with) bloquean hasta resolución humana"]},
+    {"titulo": "Git-nativa y derivable", "color": "#34d399", "bullets": [
+      "Las memorias son Markdown versionado: historial, diff y review sin infraestructura extra",
+      "El índice FTS5 se reconstruye con reindex; nunca es fuente de verdad",
+      "promote copia con derived_from: el original queda intacto y trazable"]}
+  ]
+}

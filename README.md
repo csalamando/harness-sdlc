@@ -58,15 +58,23 @@ Eso es todo — el orquestador elige la ruta mínima, activa los roles y exige l
 
 ---
 
-## 🖥 Demo: el portal del proyecto
+## 🖥 Demo: el portal del proyecto (sobre el proyecto real CATI)
 
-Un comando — `harness_graph.py --proyecto .` — genera `spec/portal/`: un portal web navegable, buscable (Ctrl+K) y con tema claro/oscuro, derivado **100% de recibos + spec** (cero narración manual). El menú lateral clasifica cada artefacto **por el rol que lo gobierna** (11 categorías: Negocio, Arquitectura, Desarrollo, QA, Agilidad, Procesos, UI/UX, DevSecOps, Plataforma, Auditoría) — no por tipo de documento. Así se ve en un proyecto real:
+Un comando — `harness_graph.py --proyecto .` — genera `spec/portal/`: un portal web navegable, buscable (Ctrl+K) y con tema claro/oscuro, derivado **100% de recibos + spec** (cero narración manual). El menú lateral clasifica cada artefacto **por el rol que lo gobierna** (11 categorías: Negocio, Arquitectura, Desarrollo, QA, Agilidad, Procesos, UI/UX, DevSecOps, Plataforma, Auditoría) — no por tipo de documento. Así se ve en un proyecto real (**CATI**: catálogo TI corporativo, 35 HU, 13 ADRs, 4 sprints ejecutados):
 
-| Inicio (pipeline + acumulado) | Métricas (tendencias + contribución por skill) | Arquitectura (ADRs ↔ Tech Radar) |
+| Inicio — pipeline, gates y progreso por HU | Métricas — tendencias y tiempos por gate | Arquitectura — ADRs ↔ Tech Radar |
 |---|---|---|
-| ![Inicio del portal](demos/portal2-inicio.png) | ![Métricas del portal](demos/portal2-metricas.png) | ![Arquitectura del portal](demos/portal2-arquitectura.png) |
+| ![Inicio del portal de CATI](demos/cati-portal-inicio.png) | ![Métricas del portal de CATI](demos/cati-portal-metricas.png) | ![Arquitectura del portal de CATI](demos/cati-portal-arquitectura.png) |
+
+| Memoria — aprendizajes y handoffs | Auditoría — cadena de hash tamper-evident | Diagramas vivos — despliegue derivado de Terraform |
+|---|---|---|
+| ![Memoria del proyecto CATI](demos/cati-portal-memoria.png) | ![Auditoría del proyecto CATI](demos/cati-portal-gobernanza.png) | ![Diagrama IR de despliegue Azure de CATI](demos/cati-diagrama-despliegue.png) |
 
 La página de Métricas incluye la gráfica **"Contribución por skill por sprint"** (barras apiladas derivadas de cada sprint review) con **alerta de skills silenciosas**: si un rol trabajó sin registrar su aporte, el portal lo evidencia — lo invisible no se puede medir.
+
+Y el pipeline CI/CD no se dibuja a mano: `pipeline_diagram.py` lo **deriva de los workflows** de `.github/workflows/` y `check` detecta drift en CI — así se ven los 4 workflows de CATI (CI, CD, docs, gobernanza de spec):
+
+![Pipeline CI/CD de CATI derivado de los workflows](demos/cati-diagrama-pipeline.png)
 
 Diagramas vivos interactivos (IR): tema claro/oscuro, zoom, badges de ubicación de despliegue (☁ nube / ⌂ on-premise / ◈ otro), insights y foco compartible por URL:
 
@@ -82,6 +90,10 @@ Y cada sprint cierra con un **sprint review versionado** (gate bloqueante en CI 
 ---
 
 ## 🔄 El proceso: fases, gates y artefactos
+
+[![Pipeline de fases y gates del arnés — diagrama IR](docs/diagrams/arnes-fases-gates.png)](docs/diagrams/arnes-fases-gates.html)
+
+_👆 Diagrama vivo generado con `diagram_ir.py` desde [su IR versionado](docs/diagrams/arnes-fases-gates.ir.json): abre la [versión interactiva](docs/diagrams/arnes-fases-gates.html) para hacer foco en cada fase, ver el detalle de cada gate y compartir estado por URL. Vista resumida en Mermaid:_
 
 ```mermaid
 flowchart LR
@@ -235,6 +247,10 @@ python3 receipt.py status --strict   # veredicto ejecutable para CI: exit 1 si a
 
 Los agentes olvidan todo al cerrar la sesión. Aquí, lo aprendido vive en **Markdown versionado** con tres scopes y precedencia — la organización siempre gana:
 
+[![Memoria del arnés en 3 scopes con gobierno — diagrama IR](docs/diagrams/arnes-memoria.png)](docs/diagrams/arnes-memoria.html)
+
+_👆 [Versión interactiva](docs/diagrams/arnes-memoria.html) del flujo de memoria ([IR versionado](docs/diagrams/arnes-memoria.ir.json)). Vista resumida en Mermaid:_
+
 ```mermaid
 flowchart TB
     subgraph ORG["🏢 scope ORG — lineamientos de la organización (gana siempre)"]
@@ -257,6 +273,21 @@ flowchart TB
 - **Gobierno real:** políticas org `mandatory` bloquean GATE 1 si no están attestadas o con **desviación aprobada con expiración** por un humano.
 - **Conflictos detectados:** dos memorias que se contradicen bloquean GATE 1 hasta resolución humana.
 - **MCP incluido:** las 16 operaciones expuestas como servidor MCP stdio para agentes.
+
+---
+
+## 🏢 Tu organización dentro del arnés: políticas, lineamientos y patrones
+
+El arnés no arranca vacío: la organización inyecta **su** conocimiento una vez y cada proyecto lo hereda — y los gates lo hacen cumplir. Cuatro canales, cada uno con dueño y enforcement:
+
+| Canal | Qué publica la organización | Dónde se hace cumplir |
+|---|---|---|
+| **Políticas org** (memoria scope `org`) | Lineamientos `mandatory` / `recommended` (seguridad, cumplimiento, estándares) | `policy check` **bloquea GATE 1**: attestation `compliant` o desviación aprobada por humano **con expiración** |
+| **Tech Radar + Principios** | Tecnologías ADOPT/TRIAL/ASSESS/HOLD, principios arquitectónicos verificables, Decision Packages pre-aprobados (paved roads) | `gate_checker.py --check tech-radar` en GATE 1 — una tecnología en HOLD bloquea salvo ADR de excepción |
+| **Matriz de autoridad + glosario** | Quién firma qué, quién ejerce cada rol, vocabulario canónico | `authority_check.py` en cada recibo: un recibo del rol equivocado no existe para el gate |
+| **Reglas de arquitectura** | La arquitectura aprobada como política binaria sobre el código | `arch_lint.py` en CI: el código que diverge de lo firmado detiene el pipeline |
+
+Y el conocimiento **fluye de vuelta**: los aprendizajes del proyecto se promueven (`mem.py promote`) de proyecto → usuario → organización, y los sprint reviews de Fase 8 cosechan aprendizajes como gate bloqueante. Guía completa de adopción: [docs/conocimiento-organizacional.md](docs/conocimiento-organizacional.md).
 
 ---
 
@@ -322,7 +353,7 @@ Agradecimiento especial a los autores de las fuentes anteriores: este arnés no 
 
 ## 📚 Documentación
 
-[Guía de uso por agente/IDE](docs/guia-de-uso-arnes-sdlc.md) · [Gobernanza a nivel GitHub](docs/gobernanza-github.md) · [Grafo interactivo del pipeline](docs/graph.html) · [ADRs del arnés](docs/decisions/) · [CHANGELOG](CHANGELOG.md) · [CONTRIBUTING](CONTRIBUTING.md)
+[Guía de uso por agente/IDE](docs/guia-de-uso-arnes-sdlc.md) · [Conocimiento organizacional: políticas, lineamientos y patrones](docs/conocimiento-organizacional.md) · [Gobernanza a nivel GitHub](docs/gobernanza-github.md) · [Grafo interactivo del pipeline](docs/graph.html) · [Diagrama IR: fases y gates](docs/diagrams/arnes-fases-gates.html) · [Diagrama IR: memoria en 3 scopes](docs/diagrams/arnes-memoria.html) · [ADRs del arnés](docs/decisions/) · [CHANGELOG](CHANGELOG.md) · [CONTRIBUTING](CONTRIBUTING.md)
 
 ## Versionado
 

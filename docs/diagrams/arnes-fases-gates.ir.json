@@ -1,0 +1,203 @@
+{
+  "kind": "flow",
+  "tipo": "workflow",
+  "tema": "claro",
+  "titulo": "Arnés SDLC — pipeline de fases y gates",
+  "fuente": "docs/diagrams/arnes-fases-gates.ir.json",
+  "nodos": [
+    {
+      "id": "setup",
+      "titulo": "FASE -1 · Setup",
+      "sub": "DevOps · detect_stack",
+      "tipo": "start",
+      "rank": 0,
+      "detalle": "Scaffold determinista (init_project.py), CI/CD base y detección de stack. Sin test runner, TDD queda en pausa explícita."
+    },
+    {
+      "id": "f0",
+      "titulo": "FASE 0 · Discovery",
+      "sub": "PO + Solution Architect + Pricing",
+      "tipo": "transform",
+      "rank": 1,
+      "detalle": "Visión, épicas, propuesta de arquitectura con >=2 opciones y estimación CAPEX/OPEX/TCO."
+    },
+    {
+      "id": "g0",
+      "titulo": "GATE 0 · humano",
+      "sub": "iniciativa aprobada",
+      "tipo": "decision",
+      "rank": 2,
+      "detalle": "Caso de negocio con opciones, scorecard y TCO vigente. Si se rechaza, no hay pipeline. Emite recibo con --approved-by."
+    },
+    {
+      "id": "f13",
+      "titulo": "FASES 1-3 · Spec",
+      "sub": "BA + UX + Arch + Sec + Data",
+      "tipo": "transform",
+      "rank": 3,
+      "detalle": "Historias con Gherkin, roles gobernados, prototipo, OpenAPI, modelo de datos, threat model, ADRs de 8 pasos y spec consolidada con trazabilidad."
+    },
+    {
+      "id": "g1",
+      "titulo": "GATE 1 · humano",
+      "sub": "spec + ADRs + prototipo",
+      "tipo": "decision",
+      "rank": 4,
+      "detalle": "Exige policy check en verde, sin conflictos de memoria, ADRs Tier 1-2 firmados y prototipo aprobado si hay UI. Si se rechaza: cero código."
+    },
+    {
+      "id": "f4",
+      "titulo": "FASE 4 · Build TDD",
+      "sub": "Dev Back || Dev Front + Writer",
+      "tipo": "transform",
+      "rank": 5,
+      "detalle": "TDD estricto: commits test(red) antes de feat(green), verificables en git log. Mocks MSW derivados del OpenAPI."
+    },
+    {
+      "id": "g2",
+      "titulo": "GATE 2 · QA",
+      "sub": "automático · HU E2E",
+      "tipo": "decision",
+      "rank": 0,
+      "detalle": "Los criterios Gherkin se ejecutan como E2E. Un bug crítico vuelve al dev con el test que lo reproduce."
+    },
+    {
+      "id": "g25",
+      "titulo": "GATE 2.5 · Security",
+      "sub": "automático · cero vulns",
+      "tipo": "decision",
+      "rank": 1,
+      "detalle": "SAST/SCA/DAST en pipeline: una vulnerabilidad crítica o alta abierta bloquea el deploy."
+    },
+    {
+      "id": "f6",
+      "titulo": "FASE 6 · DevOps + Cloud",
+      "sub": "staging + observabilidad",
+      "tipo": "transform",
+      "rank": 2,
+      "detalle": "Infraestructura como código, observabilidad completa, estimación fina de costos y diagramas de despliegue derivados con recibo."
+    },
+    {
+      "id": "g3",
+      "titulo": "GATE 3 · humano",
+      "sub": "staging + rollback probado",
+      "tipo": "decision",
+      "rank": 3,
+      "detalle": "Aprobación humana con evidencia: staging validado, rollback ensayado y diagramas regenerados sin drift."
+    },
+    {
+      "id": "prod",
+      "titulo": "PRODUCCIÓN",
+      "sub": "deploy con recibo",
+      "tipo": "terminal",
+      "rank": 4,
+      "detalle": "El deploy queda certificado por recibo SHA-256 y registrado en la auditoría append-only."
+    },
+    {
+      "id": "f78",
+      "titulo": "FASES 7-8 · Operar y archivar",
+      "sub": "SRE + Product Analyst + sprint review",
+      "tipo": "job",
+      "rank": 5,
+      "detalle": "SLOs, postmortems sin culpables, impact-report de negocio y sprint review versionado (el review del sprint N exige el del N-1)."
+    }
+  ],
+  "aristas": [
+    {
+      "desde": "setup",
+      "hasta": "f0",
+      "label": "repo + spec/ listos"
+    },
+    {
+      "desde": "f0",
+      "hasta": "g0",
+      "label": "propuesta + TCO"
+    },
+    {
+      "desde": "g0",
+      "hasta": "f13",
+      "label": "aprobada"
+    },
+    {
+      "desde": "f13",
+      "hasta": "g1",
+      "label": "spec maestra"
+    },
+    {
+      "desde": "g1",
+      "hasta": "f4",
+      "label": "aprobada + recibo"
+    },
+    {
+      "desde": "f4",
+      "hasta": "g2",
+      "label": "pasa a verificación"
+    },
+    {
+      "desde": "g2",
+      "hasta": "g25",
+      "label": "E2E verde"
+    },
+    {
+      "desde": "g2",
+      "hasta": "f4",
+      "label": "bug crítico: vuelve con su test",
+      "back": true
+    },
+    {
+      "desde": "g25",
+      "hasta": "f6",
+      "label": "sin vulns abiertas"
+    },
+    {
+      "desde": "f6",
+      "hasta": "g3",
+      "label": "evidencia de staging"
+    },
+    {
+      "desde": "g3",
+      "hasta": "prod",
+      "label": "aprobado"
+    },
+    {
+      "desde": "prod",
+      "hasta": "f78",
+      "label": "opera y mide"
+    },
+    {
+      "desde": "f78",
+      "hasta": "f0",
+      "label": "impact-report realimenta el backlog",
+      "back": true
+    }
+  ],
+  "insights": [
+    {
+      "titulo": "Gates humanos (0, 1, 3)",
+      "color": "#f59e0b",
+      "bullets": [
+        "Exigen --approved-by: el agente nunca se auto-aprueba",
+        "Todo gate que pasa emite recibo SHA-256 vinculado al contenido exacto",
+        "Un byte de diferencia en el artefacto invalida la aprobación solo"
+      ]
+    },
+    {
+      "titulo": "Gates automáticos (2, 2.5)",
+      "color": "#34d399",
+      "bullets": [
+        "GATE 2: todas las historias verificadas E2E desde el Gherkin del BA",
+        "GATE 2.5: cero vulnerabilidades críticas o altas abiertas",
+        "Aplican siempre, sin importar la ruta (directo, hotfix, full-pipeline)"
+      ]
+    },
+    {
+      "titulo": "Retrocesos gobernados",
+      "color": "#f472b6",
+      "bullets": [
+        "Un bug crítico vuelve al dev CON el test que lo reproduce, no con un relato",
+        "El sprint N no cierra sin el review del N-1: la cadena de evidencia no admite huecos",
+        "Lo aprendido en operación realimenta el backlog de discovery"
+      ]
+    }
+  ]
+}

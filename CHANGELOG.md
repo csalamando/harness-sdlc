@@ -7,6 +7,18 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.31.1] - 2026-09-12
+
+**Documentación con evidencia real.** El README se renueva con capturas del proyecto real CATI y diagramas vivos del propio arnés, y se documenta cómo una organización inyecta su conocimiento (políticas, lineamientos y patrones) en los gates.
+
+### Added
+- **Capturas del proyecto real CATI en el README** (`demos/cati-*.png`, 7 imágenes): portal del proyecto (inicio con pipeline y gates, métricas con tendencias y tiempos por gate, arquitectura con ADRs ↔ Tech Radar, memoria con aprendizajes y handoffs, auditoría con cadena de hash íntegra), diagrama IR de despliegue Azure derivado de Terraform y pipeline CI/CD derivado de los 4 workflows de `.github/workflows/`.
+- **Diagramas IR del propio arnés** (`docs/diagrams/`): `arnes-fases-gates` (pipeline FASE -1 → 7-8 con gates humanos/automáticos, back-edges de bug crítico y realimentación del backlog) y `arnes-memoria` (scopes ORG/USER/PROJECT con hulls, búsqueda federada, promoción de patrones y bloqueo de GATE 1 por políticas). Cada uno existe como IR versionado (fuente diff-able), HTML interactivo y PNG referenciado en el README; `diagram_ir.py check` sin drift.
+- **Guía de conocimiento organizacional** (`docs/conocimiento-organizacional.md`): los 4 canales para inyectar conocimiento de la organización (políticas org con attestation/desviaciones, Tech Radar + Principios + Decision Packages, matriz de autoridad + glosario, reglas `arch_lint`), comandos exactos, reglas de gobierno y receta de adopción en 6 pasos. Nueva sección "Tu organización dentro del arnés" en el README con enlace a la guía.
+
+### Changed
+- README: sección Demo reescrita alrededor de CATI (reemplaza las capturas `portal2-*` como escaparate principal), diagramas IR embebidos con enlace a sus versiones interactivas en las secciones de proceso y memoria, y enlaces nuevos en Documentación.
+
 ## [2.31.0] - 2026-09-11
 
 **"Lo invisible no se puede medir."** La página de Métricas del portal gana la vista que faltaba para detectar skills que trabajan sin dejar traza: contribución de cada skill por sprint.
