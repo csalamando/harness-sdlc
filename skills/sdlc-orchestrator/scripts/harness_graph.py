@@ -89,11 +89,13 @@ def build_data(skills):
 
 def render_html(nodes, transversal, total_skills):
     import json
+    import design_tokens
     data = json.dumps({"nodes": nodes, "loops": LOOPS,
                        "transversal": [{"id": s["name"], "name": ROLE_NAMES.get(s["name"], s["role"]),
                                         "gates": s["gates"]} for s in transversal]},
                       ensure_ascii=False)
     return (TEMPLATE.replace("/*__DATA__*/null", data)
+            .replace("__TOKENS__", design_tokens.tokens_css("all"))
             .replace("__TOTAL__", str(total_skills))
             .replace("__VERSION__", harness_version() or "?"))
 
@@ -103,34 +105,45 @@ TEMPLATE = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Arnés SDLC — Grafo del pipeline (generado)</title>
 <style>
-  :root { color-scheme: dark; }
-  body { background:#0b1220; color:#e2e8f0; font-family:system-ui,sans-serif; margin:0; padding:2rem; }
-  h1 { font-size:1.3rem; } .sub { color:#94a3b8; font-size:.85rem; margin-bottom:1.5rem; }
-  .canvas { position:relative; height:540px; background:#0f172a; border:1px solid #1e293b; border-radius:12px; overflow:hidden; }
+__TOKENS__
+  * { box-sizing:border-box; }
+  :focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:4px; }
+  @media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition:none!important; animation:none!important; } }
+  body { background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif; margin:0; padding:2rem; }
+  h1 { font-size:1.3rem; } .sub { color:var(--sub); font-size:.85rem; margin-bottom:1.5rem; }
+  .canvas { position:relative; height:540px; background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:12px; overflow:hidden; }
   svg.edges { position:absolute; inset:0; width:100%; height:100%; }
+  .edge-line { stroke:var(--gline); }
+  .edge-loop { stroke:var(--warn); }
+  #a path { fill:var(--gline); }
+  #loop-arrow path { fill:var(--warn); }
   .node { position:absolute; transform:translate(-50%,-50%); cursor:pointer; text-align:center; width:150px; }
-  .node .dot { width:56px; height:56px; border-radius:50%; margin:0 auto; background:#1e293b; border:2px solid #3b82f6;
+  .node .dot { width:56px; height:56px; border-radius:50%; margin:0 auto; background:var(--gnode); border:2px solid var(--accent);
                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.15rem; transition:.15s; }
-  .node:hover .dot, .node.active .dot { border-color:#f59e0b; transform:scale(1.15); }
-  .node .lbl { font-size:.85rem; margin-top:.45rem; color:#cbd5e1; font-weight:600; }
-  .node .cnt { font-size:.7rem; color:#64748b; }
+  .node:hover .dot, .node.active .dot { border-color:var(--warn); transform:scale(1.15); }
+  .node .lbl { font-size:.85rem; margin-top:.45rem; color:var(--fg); font-weight:600; }
+  .node .cnt { font-size:.7rem; color:var(--muted-aa); }
   .node .gate { position:absolute; top:-18px; left:50%; transform:translateX(-50%); font-size:.62rem;
-                background:#7c2d12; color:#fdba74; border:1px solid #ea580c; border-radius:4px; padding:1px 6px; white-space:nowrap; }
-  .loop-tag { font-size:.78rem; fill:#fbbf24; font-weight:600; }
-  #panel { margin-top:1.5rem; background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:1.2rem; display:none; }
-  #panel h2 { margin:.2rem 0; font-size:1.1rem; } #panel .desc { color:#94a3b8; font-size:.85rem; max-width:60ch; }
+                background:color-mix(in srgb, var(--bad) 22%, var(--bg)); color:var(--bad); border:1px solid var(--bad); border-radius:4px; padding:1px 6px; white-space:nowrap; }
+  .loop-tag { font-size:.78rem; fill:var(--warn-text); font-weight:600; }
+  #panel { margin-top:1.5rem; background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:12px; padding:1.2rem; display:none; }
+  #panel h2 { margin:.2rem 0; font-size:1.1rem; } #panel .desc { color:var(--sub); font-size:.85rem; max-width:60ch; }
   .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:.7rem; margin-top:1rem; }
-  .card { background:#111c33; border:1px solid #1e293b; border-radius:8px; padding:.7rem; font-size:.75rem; }
-  .card b { font-size:.85rem; } .card code { color:#818cf8; font-size:.65rem; }
+  .card { background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:8px; padding:.7rem; font-size:.75rem; }
+  .card b { font-size:.85rem; } .card code { color:var(--accent); font-size:.65rem; }
   .badge { display:inline-block; font-size:.6rem; border-radius:4px; padding:1px 5px; margin:1px; }
-  .in { background:#0f172a; color:#94a3b8; border:1px solid #334155; }
-  .out { background:#052e1b; color:#6ee7b7; border:1px solid #065f46; }
-  .gate-b { background:#451a03; color:#fdba74; border:1px solid #9a3412; }
-  .cond { color:#fbbf24; font-size:.62rem; }
-  .trans { margin-top:1.5rem; font-size:.8rem; color:#94a3b8; }
-  .trans b { color:#cbd5e1; }
-  footer { margin-top:2rem; font-size:.7rem; color:#475569; }
+  .in { background:var(--panel-bg); color:var(--sub); border:1px solid var(--gline); }
+  .out { background:color-mix(in srgb, var(--ok) 14%, var(--bg)); color:var(--ok); border:1px solid var(--ok); }
+  .gate-b { background:color-mix(in srgb, var(--warn) 14%, var(--bg)); color:var(--warn-text); border:1px solid var(--warn); }
+  .cond { color:var(--warn-text); font-size:.62rem; }
+  .trans { margin-top:1.5rem; font-size:.8rem; color:var(--sub); }
+  .trans b { color:var(--fg); }
+  footer { margin-top:2rem; font-size:.7rem; color:var(--muted-aa); }
+  #btn-tema { position:fixed; top:1rem; right:1.5rem; background:var(--card-bg); border:1px solid var(--panel-bd);
+              color:var(--fg); border-radius:8px; padding:.3rem .6rem; cursor:pointer; font-size:.85rem; }
+  #btn-tema:hover { border-color:var(--accent); }
 </style></head><body>
+<button id="btn-tema" aria-label="Cambiar tema claro u oscuro">🌞</button>
 <h1>🧭 Arnés SDLC — Grafo del pipeline</h1>
 <div class="sub">__TOTAL__ skills · generado desde el manifiesto (harness-manifest.yaml) — clic en una fase para ver sus skills y flujos</div>
 <div class="canvas" id="canvas"><svg class="edges" id="edges"></svg></div>
@@ -146,9 +159,9 @@ function edges() {
   let s = '';
   const X = id => DATA.nodes.find(n=>n.id===id).x/100*W;
   for (let i=0;i<DATA.nodes.length-1;i++)
-    s += `<line x1="${X(DATA.nodes[i].id)}" y1="${y}" x2="${X(DATA.nodes[i+1].id)}" y2="${y}" stroke="#334155" stroke-width="2" marker-end="url(#a)"/>`;
+    s += `<line class="edge-line" x1="${X(DATA.nodes[i].id)}" y1="${y}" x2="${X(DATA.nodes[i+1].id)}" y2="${y}" stroke-width="2" marker-end="url(#a)"/>`;
   for (const [f,t,lbl] of DATA.loops) {
-    if (f===t) { const x=X(f); s += `<path d="M ${x-24} ${y-28} C ${x-60} ${y-110}, ${x+60} ${y-110}, ${x+24} ${y-28}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3" marker-end="url(#loop-arrow)"/>
+    if (f===t) { const x=X(f); s += `<path class="edge-loop" d="M ${x-24} ${y-28} C ${x-60} ${y-110}, ${x+60} ${y-110}, ${x+24} ${y-28}" fill="none" stroke-dasharray="4 3" marker-end="url(#loop-arrow)"/>
       <text class="loop-tag" x="${x}" y="${y-100}" text-anchor="middle">${lbl}</text>`; continue; }
     const x1=X(f), x2=X(t), span=Math.abs(f-t);
     const r=34;                                      // radio del nodo: el arco termina en su borde, no tapado
@@ -156,12 +169,12 @@ function edges() {
     const lift = 80 + 45*span;                       // arcos largos van más afuera: no se pisan
     const my = f>t ? y+lift : y-lift;
     const apex = (y+my)/2;                           // punto medio real de la curva Bézier
-    s += `<path d="M ${x1} ${y} Q ${(x1+x2)/2} ${my}, ${ex} ${y}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3" marker-end="url(#loop-arrow)"/>
+    s += `<path class="edge-loop" d="M ${x1} ${y} Q ${(x1+x2)/2} ${my}, ${ex} ${y}" fill="none" stroke-dasharray="4 3" marker-end="url(#loop-arrow)"/>
           <text class="loop-tag" x="${(x1+x2)/2}" y="${apex + (f>t?18:-8)}" text-anchor="middle">↺ ${lbl}</text>`;
   }
   svg.innerHTML = `<defs>
-    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#334155"/></marker>
-    <marker id="loop-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#f59e0b"/></marker>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
+    <marker id="loop-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z"/></marker>
   </defs>` + s;
 }
 function nodes() {
@@ -171,7 +184,7 @@ function nodes() {
     d.className = 'node'; d.style.left = n.x+'%'; d.style.top = '50%';
     d.innerHTML = `${n.gate?`<span class="gate">⛔ ${n.gate}</span>`:''}
       <div class="dot">${n.id}</div>
-      <div class="lbl">${n.title}${n.loop?` <span style="color:#f59e0b">↺${n.loop}</span>`:''}</div>
+      <div class="lbl">${n.title}${n.loop?` <span style="color:var(--warn)">↺${n.loop}</span>`:''}</div>
       <div class="cnt">${n.skills.length} skills</div>`;
     d.onclick = () => show(n, d);
     canvas.appendChild(d);
@@ -191,6 +204,18 @@ function show(n, el) {
 document.getElementById('trans').innerHTML =
   '⚙️ <b>Transversales (todas las fases):</b> ' + DATA.transversal.map(s=>s.name).join(' · ');
 edges(); nodes(); addEventListener('resize', edges);
+/* tema claro/oscuro compartido con el portal y los diagramas (misma clave dir-tema) */
+(function(){
+  var b=document.getElementById('btn-tema');
+  function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
+  function apply(t){document.documentElement.setAttribute('data-theme',t);
+    b.textContent=t==='claro'?'\u263E':'\u2600';}
+  var q=new URLSearchParams(location.search).get('tema');
+  if(q) apply(q);
+  else apply(saved()||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro'));
+  b.onclick=function(){var t=document.documentElement.getAttribute('data-theme')==='claro'?'oscuro':'claro';
+    try{localStorage.setItem('dir-tema',t);}catch(e){} apply(t);};
+})();
 </script></body></html>
 """
 
@@ -722,7 +747,7 @@ DASH_CSS = """
   .panel h2 { font-size:1rem; margin:0 0 1rem; color:var(--fg); }
   .legend { display:flex; gap:1.2rem; font-size:.75rem; color:var(--sub); margin-top:.6rem; flex-wrap:wrap; }
   .legend span::before { content:"\\25CF"; margin-right:.35rem; }
-  .lg-ok::before { color:var(--ok); } .lg-warn::before { color:var(--warn); } .lg-none::before { color:var(--muted); }
+  .lg-ok::before { color:var(--ok); } .lg-warn::before { color:var(--warn); } .lg-none::before { color:var(--muted-aa); }
   .lg-cur::before { color:var(--accent); }
   .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.8rem; }
   .kpi { background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:10px; padding:.9rem; }
@@ -735,12 +760,12 @@ DASH_CSS = """
   .bar.bad { background:var(--warn); }
   .learn { font-size:.82rem; color:var(--fg); margin:.4rem 0; }
   .warn-line { font-size:.75rem; color:var(--warn); margin-top:.6rem; }
-  .empty { color:var(--muted); font-size:.82rem; font-style:italic; }
-  footer { font-size:.7rem; color:var(--muted); margin-top:1rem; }
+  .empty { color:var(--muted-aa); font-size:.82rem; font-style:italic; }
+  footer { font-size:.7rem; color:var(--muted-aa); margin-top:1rem; }
   .badge { display:inline-block; font-size:.72rem; border-radius:4px; padding:2px 7px; margin:2px; white-space:nowrap; }
   .st-ok { background:rgba(34,197,94,.14); color:var(--ok); border:1px solid rgba(34,197,94,.4); }
   .st-prop { background:rgba(59,130,246,.15); color:var(--accent); border:1px solid rgba(59,130,246,.45); }
-  .st-sup { background:rgba(100,116,139,.15); color:var(--muted); border:1px solid rgba(100,116,139,.4); }
+  .st-sup { background:rgba(100,116,139,.15); color:var(--muted-aa); border:1px solid rgba(100,116,139,.4); }
   .st-otro { background:var(--card-bg); color:var(--sub); border:1px solid var(--panel-bd); }
   .tier { background:rgba(249,115,22,.15); color:var(--tier); border:1px solid rgba(249,115,22,.45); }
   .art { background:var(--panel-bg); color:var(--sub); border:1px solid var(--panel-bd); }
@@ -753,7 +778,7 @@ DASH_CSS = """
   .mbox { background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:14px; max-width:920px; width:100%;
           max-height:82vh; overflow-y:auto; padding:1.6rem 1.8rem; position:relative;
           box-shadow:0 20px 60px rgba(0,0,0,.6); }
-  .mclose { position:absolute; top:.7rem; right:.9rem; background:none; border:none; color:var(--muted);
+  .mclose { position:absolute; top:.7rem; right:.9rem; background:none; border:none; color:var(--muted-aa);
             font-size:1.6rem; cursor:pointer; line-height:1; }
   .mclose:hover { color:var(--fg); }
   .mbox h2 { font-size:1.15rem; margin:0 0 .3rem; color:var(--txt); }
@@ -765,9 +790,9 @@ DASH_CSS = """
   .sgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:.7rem; }
   .scard { background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:10px; padding:.7rem .8rem; }
   .sname { font-weight:700; font-size:.95rem; color:var(--txt); }
-  .sid { font-size:.75rem; color:var(--muted); margin:.1rem 0 .45rem; }
+  .sid { font-size:.75rem; color:var(--muted-aa); margin:.1rem 0 .45rem; }
   .sio { font-size:.78rem; margin-top:.35rem; }
-  .iol { color:var(--muted); font-weight:700; margin-right:.3rem; }
+  .iol { color:var(--muted-aa); font-weight:700; margin-right:.3rem; }
   .io-in { background:rgba(59,130,246,.15); color:var(--accent); border:1px solid rgba(59,130,246,.45); }
   .io-out { background:rgba(34,197,94,.14); color:var(--ok); border:1px solid rgba(34,197,94,.4); }
   .alink { text-decoration:none; cursor:pointer; font-size:.72rem; padding:3px 8px; }
@@ -786,7 +811,7 @@ DASH_CSS = """
                 font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--sub);
                 border-bottom:1px solid var(--panel-bd); padding-bottom:.4rem; margin-bottom:.5rem; }
   .dcard-head b { color:var(--dcard-c, var(--accent)); font-weight:700; }
-  .dcard-head .n { font-variant-numeric:tabular-nums; color:var(--muted); }
+  .dcard-head .n { font-variant-numeric:tabular-nums; color:var(--muted-aa); }
   .dcard-links { display:flex; flex-direction:column; gap:.3rem; flex:1; }
   .dcard-links a { font-size:.82rem; color:var(--txt); text-decoration:none; line-height:1.3;
                    padding:.15rem 0; }
@@ -800,10 +825,12 @@ DASH_CSS = """
   [data-tech] { cursor:pointer; }
   [data-tech].hl circle { stroke:var(--accent); stroke-width:2.5; }
   [data-tech].hl text { fill:var(--accent); font-weight:700; }
-  .radar-note { font-size:.72rem; color:var(--muted); margin-top:.3rem; }
+  .radar-note { font-size:.72rem; color:var(--muted-aa); margin-top:.3rem; }
 """
 
-_STATUS_COLOR = {"ok": "#22c55e", "warn": "#f59e0b", "none": "#475569"}
+# Colores de estado como variables del design system (no hex): los textos de
+# estado usan --muted-aa (AA) en lugar de --muted (decorativo).
+_STATUS_COLOR = {"ok": "var(--ok)", "warn": "var(--warn)", "none": "var(--muted-aa)"}
 _STATUS_TXT = {"ok": "recibo vigente", "warn": "recibo invalidado", "none": "sin recibo"}
 
 
@@ -821,7 +848,7 @@ def _dash_graph_svg(model):
              '<marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">'
              '<path d="M0,0 L8,4 L0,8 z" style="fill:var(--gline)"/></marker>'
              '<marker id="la" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">'
-             '<path d="M0,0 L9,4.5 L0,9 z" fill="#f59e0b"/></marker></defs>']
+             '<path d="M0,0 L9,4.5 L0,9 z" style="fill:var(--warn)"/></marker></defs>']
     for i in range(len(MACRO) - 1):
         parts.append(f'<line x1="{X(MACRO[i]):.0f}" y1="{Y}" x2="{X(MACRO[i+1]):.0f}" y2="{Y}" '
                      f'style="stroke:var(--gline)" stroke-width="2" marker-end="url(#a)"/>')
@@ -831,7 +858,7 @@ def _dash_graph_svg(model):
             (model["gate_status"].get(str(g)) or {}).get("estado") == "ok" for g in (1, 3, 5, 6)):
         cur_x = X(MACRO[5]) + 30
     parts.append(f'<line x1="{X(MACRO[0]):.0f}" y1="{Y}" x2="{cur_x:.0f}" y2="{Y}" '
-                 f'stroke="#3b82f6" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/>')
+                 f'style="stroke:var(--accent)" stroke-opacity=".45" stroke-width="6" stroke-linecap="round"/>')
     active = model["loops_activos"]
     counts = model.get("loops_count", {})
     for (f, t, lbl) in LOOPS:
@@ -847,7 +874,7 @@ def _dash_graph_svg(model):
         if f == t:
             x = X(MACRO[f - 1])
             parts.append(f'<path d="M {x-24:.0f} {Y-28} C {x-60:.0f} {Y-110}, {x+60:.0f} {Y-110}, {x+24:.0f} {Y-28}" '
-                         f'fill="none" stroke="#f59e0b" stroke-opacity="{op}" stroke-dasharray="4 3" marker-end="url(#la)">{tip}</path>')
+                         f'fill="none" style="stroke:var(--warn)" stroke-opacity="{op}" stroke-dasharray="4 3" marker-end="url(#la)">{tip}</path>')
             if show_txt:
                 parts.append(f'<text x="{x:.0f}" y="{Y-122}" text-anchor="middle" font-size="13" font-weight="600" '
                              f'style="fill:var(--warn)" fill-opacity="{op}">{tag}</text>')
@@ -859,7 +886,7 @@ def _dash_graph_svg(model):
         apex = (Y + my) / 2
         ex = x2 + (34 if f > t else -34)
         w = '2.5' if on else '1.5'
-        parts.append(f'<path d="M {x1:.0f} {Y} Q {(x1+x2)/2:.0f} {my}, {ex:.0f} {Y}" fill="none" stroke="#f59e0b" '
+        parts.append(f'<path d="M {x1:.0f} {Y} Q {(x1+x2)/2:.0f} {my}, {ex:.0f} {Y}" fill="none" style="stroke:var(--warn)" '
                      f'stroke-opacity="{op}" stroke-width="{w}" stroke-dasharray="4 3" marker-end="url(#la)">{tip}</path>')
         if show_txt:
             parts.append(f'<text x="{(x1+x2)/2:.0f}" y="{apex + (20 if f>t else -10):.0f}" text-anchor="middle" '
@@ -867,8 +894,8 @@ def _dash_graph_svg(model):
     for m in MACRO:
         st = model["gate_status"].get(str(m["id"])) or model["gate_status"].get(m["id"])
         estado = st["estado"] if st else "none"
-        color = "#3b82f6" if m["id"] == model["fase_actual"] else _STATUS_COLOR[estado]
-        ring = ('<circle cx="{x:.0f}" cy="{y}" r="36" fill="none" stroke="#3b82f6" '
+        color = "var(--accent)" if m["id"] == model["fase_actual"] else _STATUS_COLOR[estado]
+        ring = ('<circle cx="{x:.0f}" cy="{y}" r="36" fill="none" style="stroke:var(--accent)" '
                 'stroke-opacity=".35" stroke-width="6"/>') if m["id"] == model["fase_actual"] else ""
         x = X(m)
         # anclas: las etiquetas de los nodos de los extremos no se salen del viewBox
@@ -879,7 +906,7 @@ def _dash_graph_svg(model):
             badge_color = _STATUS_COLOR[st["estado"]]
             mark = "✓" if st["estado"] == "ok" else ("⚠" if st["estado"] == "warn" else "·")
             gate_txt = (f'<text x="{tx:.0f}" y="{Y-56}" text-anchor="{anchor}" font-size="11.5" '
-                        f'font-weight="600" fill="{badge_color}">'
+                        f'font-weight="600" style="fill:{badge_color}">'
                         f'⛔ {st["gate"]} {mark}<title>{esc(st["gate"])} — {esc(_STATUS_TXT[st["estado"]])}'
                         f' ({st["vigentes"]} vigentes, {st["rehechos"]} rehechos)</title></text>')
         here = ' ← estás aquí' if m["id"] == model["fase_actual"] else ""
@@ -888,11 +915,11 @@ def _dash_graph_svg(model):
         # de nodos vecinos nunca comparten la misma línea horizontal.
         ty_t = Y + 56 + ((m["id"] - 1) % 2) * 40
         ty_a = ty_t + 20
-        arts_txt = (f'<text x="{tx:.0f}" y="{ty_a}" text-anchor="{anchor}" font-size="11" style="fill:var(--muted)">'
+        arts_txt = (f'<text x="{tx:.0f}" y="{ty_a}" text-anchor="{anchor}" font-size="11" style="fill:var(--muted-aa)">'
                     f'{len(arts)} artefacto{"s" if len(arts) != 1 else ""} ✓</text>') if arts else ""
         parts.append(f'<g data-fase="{m["id"]}" style="cursor:pointer">'
                      f'<title>Ver skills, entradas y salidas de la fase {m["id"]}</title>'
-                     f'{ring}<circle cx="{x:.0f}" cy="{Y}" r="28" style="fill:var(--gnode)" stroke="{color}" stroke-width="3"/>'
+                     f'{ring}<circle cx="{x:.0f}" cy="{Y}" r="28" style="fill:var(--gnode);stroke:{color}" stroke-width="3"/>'
                      f'<text x="{x:.0f}" y="{Y+6}" text-anchor="middle" font-size="17" font-weight="700" style="fill:var(--txt)">{m["id"]}</text>'
                      f'<text x="{tx:.0f}" y="{ty_t}" text-anchor="{anchor}" font-size="14.5" font-weight="600" style="fill:var(--fg)">{m["title"]}{here}</text>'
                      f'{gate_txt}{arts_txt}</g>')
@@ -900,9 +927,21 @@ def _dash_graph_svg(model):
             + "".join(parts) + "</svg>")
 
 
+def _dv(name):
+    """Paleta dataviz canónica desde tokens.json (fuente única)."""
+    import design_tokens
+    return list(design_tokens.doc()["dataviz"][name]["value"])
+
+
+def _dv_dict(name):
+    """Mapa tipo→color dataviz desde tokens.json."""
+    import design_tokens
+    return dict(design_tokens.doc()["dataviz"][name]["value"])
+
+
 def _svg_line_chart(series_list, xlabels, fmt, w=520, h=190):
     """Gráfica de líneas SVG (self-contained) — series_list: [(nombre, [valores]), ...]."""
-    colors = ["#3b82f6", "#f59e0b", "#22c55e", "#a78bfa"]
+    colors = _dv("palette-series")
     series_list = [(n, vs) for n, vs in series_list if any(v is not None for v in vs)]
     if not series_list:
         return '<div class="empty">Sin datos de este indicador en los sprint reviews.</div>'
@@ -916,9 +955,9 @@ def _svg_line_chart(series_list, xlabels, fmt, w=520, h=190):
     for frac in (0, 0.5, 1):
         y = Yp(vmax * frac)
         parts.append(f'<line x1="{pad_l}" y1="{y:.0f}" x2="{w-pad_r+10}" y2="{y:.0f}" style="stroke:var(--panel-bd)"/>'
-                     f'<text x="{pad_l-6}" y="{y+4:.0f}" text-anchor="end" font-size="10" style="fill:var(--muted)">{fmt(vmax*frac)}</text>')
+                     f'<text x="{pad_l-6}" y="{y+4:.0f}" text-anchor="end" font-size="10" style="fill:var(--muted-aa)">{fmt(vmax*frac)}</text>')
     for i, lab in enumerate(xlabels):
-        parts.append(f'<text x="{Xp(i):.0f}" y="{h-10}" text-anchor="middle" font-size="10" style="fill:var(--muted)">{lab}</text>')
+        parts.append(f'<text x="{Xp(i):.0f}" y="{h-10}" text-anchor="middle" font-size="10" style="fill:var(--muted-aa)">{lab}</text>')
     legend = ""
     for si, (name, vs) in enumerate(series_list):
         color = colors[si % len(colors)]
@@ -943,8 +982,7 @@ def _svg_stacked_bars(series_list, xlabels, fmt, w=520, h=210):
 
     Una barra por sprint; cada segmento es la contribución de una skill.
     """
-    colors = ["#3b82f6", "#f59e0b", "#22c55e", "#a78bfa", "#ef4444",
-              "#14b8a6", "#f472b6", "#eab308", "#64748b", "#0ea5e9"]
+    colors = _dv("palette-series")
     series_list = [(n, vs) for n, vs in series_list if any(v for v in vs)]
     if not series_list:
         return '<div class="empty">Sin datos de contribución por skill en los sprint reviews.</div>'
@@ -959,10 +997,10 @@ def _svg_stacked_bars(series_list, xlabels, fmt, w=520, h=210):
     for frac in (0, 0.5, 1):
         y = pad_t + (h - pad_b - pad_t) * (1 - frac)
         parts.append(f'<line x1="{pad_l}" y1="{y:.0f}" x2="{w-pad_r}" y2="{y:.0f}" style="stroke:var(--panel-bd)"/>'
-                     f'<text x="{pad_l-6}" y="{y+4:.0f}" text-anchor="end" font-size="10" style="fill:var(--muted)">{fmt(vmax*frac)}</text>')
+                     f'<text x="{pad_l-6}" y="{y+4:.0f}" text-anchor="end" font-size="10" style="fill:var(--muted-aa)">{fmt(vmax*frac)}</text>')
     for i in range(n):
         x = Xp(i) + ((w - pad_l - pad_r) / max(n, 1) - bw) / 2
-        parts.append(f'<text x="{x + bw/2:.0f}" y="{h-10}" text-anchor="middle" font-size="10" style="fill:var(--muted)">{xlabels[i]}</text>')
+        parts.append(f'<text x="{x + bw/2:.0f}" y="{h-10}" text-anchor="middle" font-size="10" style="fill:var(--muted-aa)">{xlabels[i]}</text>')
         y = h - pad_b
         for si, (name, vs) in enumerate(series_list):
             v = vs[i] or 0
@@ -982,7 +1020,7 @@ def _svg_stacked_bars(series_list, xlabels, fmt, w=520, h=210):
             f'<div style="font-size:.72rem;margin-top:.2rem">{legend}</div>')
 
 
-def _svg_barh(items, fmt, color="#3b82f6", row_h=30, label_w=110, w=520):
+def _svg_barh(items, fmt, color="var(--accent)", row_h=30, label_w=110, w=520):
     """Barras horizontales SVG — items: [(etiqueta, valor_minutos_o_unidades), ...].
 
     Los valores None se omiten. El valor formateado va al final de cada barra.
@@ -997,7 +1035,7 @@ def _svg_barh(items, fmt, color="#3b82f6", row_h=30, label_w=110, w=520):
         y = 4 + i * row_h
         bw = max(2, (w - label_w - 60) * v / vmax)
         parts.append(f'<text x="{label_w-8}" y="{y+row_h/2+4:.0f}" text-anchor="end" font-size="11" style="fill:var(--sub)">{lab}</text>'
-                     f'<rect x="{label_w}" y="{y+4}" width="{bw:.0f}" height="{row_h-10}" rx="4" fill="{color}" opacity=".85">'
+                     f'<rect x="{label_w}" y="{y+4}" width="{bw:.0f}" height="{row_h-10}" rx="4" style="fill:{color}" opacity=".85">'
                      f'<title>{lab}: {fmt(v)}</title></rect>'
                      f'<text x="{label_w+bw+7:.0f}" y="{y+row_h/2+4:.0f}" font-size="11" font-weight="600" style="fill:var(--txt)">{fmt(v)}</text>')
     return f'<svg viewBox="0 0 {w} {h}" style="width:100%;max-width:640px;height:auto;display:block">{"".join(parts)}</svg>'
@@ -1008,12 +1046,12 @@ def _delta_card(titulo, prev, cur, fmt, invertir=False):
     if cur is None:
         return ""
     if prev is None or prev == cur:
-        delta = '<span style="color:var(--muted)">= sin cambio</span>' if prev is not None else ""
+        delta = '<span style="color:var(--muted-aa)">= sin cambio</span>' if prev is not None else ""
     else:
         up = cur > prev
         peor = up if not invertir else not up
         arrow = "▲" if up else "▼"
-        color = "#fca5a5" if peor else "#6ee7b7"
+        color = "var(--bad)" if peor else "var(--ok)"
         delta = f'<span style="color:{color}">{arrow} {fmt(abs(cur - prev))} vs sprint anterior</span>'
     return (f'<div class="kpi"><div class="k">{titulo}</div><div class="v">{fmt(cur)}</div>'
             f'<div style="font-size:.72rem;margin-top:.3rem">{delta}</div></div>')
@@ -1026,7 +1064,7 @@ def _radar_chart_svg(techs):
     Arquitectura lo vincula con las filas de la tabla de ADRs (clic en uno
     resalta el otro).
     """
-    qcolor = {"ADOPT": "#22c55e", "TRIAL": "#3b82f6", "ASSESS": "#f59e0b", "HOLD": "#ef4444"}
+    qcolor = {"ADOPT": "var(--ok)", "TRIAL": "var(--accent)", "ASSESS": "var(--warn)", "HOLD": "var(--bad)"}
     maxn = max((len(v) for v in techs.values()), default=0)
     cell_w = 300
     cell_h = max(300, 70 + maxn * 26)          # crece si un cuadrante tiene muchas tecnologías
@@ -1036,13 +1074,13 @@ def _radar_chart_svg(techs):
              f'<line x1="{cell_w}" y1="10" x2="{cell_w}" y2="{H-10}" stroke="var(--panel-bd)" stroke-width="2"/>',
              f'<line x1="10" y1="{cell_h}" x2="{W-10}" y2="{cell_h}" stroke="var(--panel-bd)" stroke-width="2"/>']
     for q, (qx, qy) in qpos.items():
-        parts.append(f'<text x="{qx+18}" y="{qy+30}" font-size="13" font-weight="700" fill="{qcolor[q]}">{q}</text>')
+        parts.append(f'<text x="{qx+18}" y="{qy+30}" font-size="13" font-weight="700" style="fill:{qcolor[q]}">{q}</text>')
         for i, t in enumerate(techs.get(q, [])):
             bx, by = qx + 26, qy + 52 + i * 26
             label = t if len(t) <= 38 else t[:36] + "…"
             key = _norm_tech(t)
             # <title> = tooltip con el nombre completo al pasar el mouse
-            parts.append(f'<g data-tech="{key}"><title>{t}</title><circle cx="{bx}" cy="{by}" r="4.5" fill="{qcolor[q]}"/>'
+            parts.append(f'<g data-tech="{key}"><title>{t}</title><circle cx="{bx}" cy="{by}" r="4.5" style="fill:{qcolor[q]}"/>'
                          f'<text x="{bx+10}" y="{by+4}" font-size="11" fill="var(--fg)">{label}</text></g>')
     return (f'<svg viewBox="0 0 {W} {H}" style="width:100%;max-width:520px;height:auto;display:block;margin-inline:auto">'
             + "".join(parts) + "</svg>")
@@ -1188,8 +1226,8 @@ def _stepper_html(model):
         st = (model["gate_status"].get(str(m["id"])) or {}).get("estado")
         done = st == "ok" if st else m["id"] < cur
         is_cur = m["id"] == cur
-        dot_style = ("background:#22c55e;border-color:#22c55e;color:#052e1b" if done and not is_cur
-                     else "background:var(--gnode);border-color:#3b82f6;box-shadow:0 0 0 5px rgba(59,130,246,.25)" if is_cur
+        dot_style = ("background:var(--ok);border-color:var(--ok);color:var(--bg)" if done and not is_cur
+                     else "background:var(--gnode);border-color:var(--accent);box-shadow:0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent)" if is_cur
                      else "background:var(--gnode);border-color:var(--muted)")
         mark = "✓" if done and not is_cur else str(m["id"])
         steps += (f'<div data-fase="{m["id"]}" title="Ver skills, entradas y salidas de la fase" '
@@ -1209,11 +1247,11 @@ def _stepper_html(model):
   <div><span style="font-size:1.25rem;font-weight:700">Fase {cur}: {esc(cur_title)}</span>
        <span style="color:var(--sub);font-size:.8rem;margin-left:.6rem">estás aquí</span></div>
   <div style="font-size:.85rem;color:var(--sub)">PROGRESO (HU cerradas):
-       <span style="font-size:1.15rem;font-weight:700;color:#22c55e">{pct}%</span>
-       <span style="font-size:.75rem;color:var(--muted)"> · {esc(pct_label)}</span></div>
+       <span style="font-size:1.15rem;font-weight:700;color:var(--ok)">{pct}%</span>
+       <span style="font-size:.75rem;color:var(--muted-aa)"> · {esc(pct_label)}</span></div>
 </div>
 <div style="background:var(--panel-bd);border-radius:6px;height:8px;margin-bottom:.6rem">
-  <div style="background:linear-gradient(90deg,#3b82f6,#22c55e);height:8px;border-radius:6px;width:{pct}%"></div>
+  <div style="background:linear-gradient(90deg,var(--accent),var(--ok));height:8px;border-radius:6px;width:{pct}%"></div>
 </div>
 <div style="font-size:.72rem;color:var(--sub);margin-bottom:1rem">Ciclos ejecutados: {chips}</div>
 <div style="display:flex;gap:.2rem">{steps}</div>
@@ -1266,7 +1304,7 @@ def _dashboard_blocks(model):
             f'<div class="kpi"><div class="v">{audit["total"]}</div><div class="k">Eventos de auditoría</div></div>'
             f'<div class="kpi"><div class="v">{len(audit["aprobadores"])}</div><div class="k">Aprobadores humanos</div></div>'
             + "</div>"
-            + f'<div style="font-size:.75rem;color:var(--muted)">Cadena de hash: {cadena}'
+            + f'<div style="font-size:.75rem;color:var(--muted-aa)">Cadena de hash: {cadena}'
               f' · último evento {esc(audit["ultimo_ts"][:19])}'
               f' · harness {esc("/".join(audit["versiones"]) or "?")}</div>')
     else:
@@ -1289,7 +1327,7 @@ def _dashboard_blocks(model):
                           ("retrabajo (acum)", [t["rehechos"] for t in timeline]),
                           ("% 1er intento (acum)", [t["gates_1er"] for t in timeline])],
                          xl, lambda v: f"{v:.0f}")
-                     + '<div style="font-size:.7rem;color:var(--muted);margin-bottom:1rem">Los recibos no llevan etiqueta '
+                     + '<div style="font-size:.7rem;color:var(--muted-aa);margin-bottom:1rem">Los recibos no llevan etiqueta '
                        'de sprint: los puntos anteriores al primer sprint-review son la historia real por fecha, no por sprint.</div>')
 
     # Tendencias: lead time y retrabajo por sprint (serie de sprint-review-NN.md)
@@ -1393,7 +1431,7 @@ def _dashboard_blocks(model):
             tit = f'Fase {f["macro"]} · {MACRO_TITLE.get(f["macro"], "")}'
             if "cierre_dia" not in f:
                 rows += (f'<tr><td><b>{esc(f["gate"])}</b></td><td>{esc(tit)}</td>'
-                         f'<td colspan="4" style="color:var(--muted)">sin recibos aún</td></tr>')
+                         f'<td colspan="4" style="color:var(--muted-aa)">sin recibos aún</td></tr>')
                 continue
             rows += (f'<tr><td><b>{esc(f["gate"])}</b></td><td>{esc(tit)}</td>'
                      f'<td>{esc(f["apertura"])}</td><td>{esc(f["cierre"])}</td>'
@@ -1407,14 +1445,14 @@ def _dashboard_blocks(model):
         rows = ""
         for c in ciclos_t:
             if c.get("dias") is None:
-                rows += f'<tr><td><b>Sprint {c["sprint"]}</b></td><td colspan="3" style="color:var(--muted)">sin fecha de cierre</td></tr>'
+                rows += f'<tr><td><b>Sprint {c["sprint"]}</b></td><td colspan="3" style="color:var(--muted-aa)">sin fecha de cierre</td></tr>'
                 continue
             d = c["dias"]
             rows += (f'<tr><td><b>Sprint {c["sprint"]}</b></td><td>{esc(c.get("desde") or "inicio")} → {esc(c["cierre"])}</td>'
                      f'<td><b>{d} día{"s" if d != 1 else ""}</b></td></tr>')
         t_html += ('<h3 style="font-size:.78rem;color:var(--sub);margin:1.2rem 0 .3rem">Duración de cada ciclo (sprint)</h3>'
                    + _svg_barh([(f'S{c["sprint"]}', c.get("dias")) for c in ciclos_t],
-                               lambda v: f"{v:.0f} d", color="#22c55e")
+                               lambda v: f"{v:.0f} d", color="var(--ok)")
                    + "<table><tr><th>Ciclo</th><th>Periodo</th><th>Duración</th></tr>" + rows + "</table>")
     if not t_html:
         t_html = '<div class="empty">Sin datos de tiempo aún — aparecen con los primeros recibos y sprint reviews.</div>'
@@ -1476,7 +1514,7 @@ def _dashboard_blocks(model):
         adr_html = '<div class="empty">Sin ADRs en <code>spec/adr/</code> — las decisiones de 8 pasos aparecerán aquí.</div>'
     radar_html = ""
     if radar:
-        qcolor = {"ADOPT": "#22c55e", "TRIAL": "#3b82f6", "ASSESS": "#f59e0b", "HOLD": "#ef4444"}
+        qcolor = {"ADOPT": "var(--ok)", "TRIAL": "var(--accent)", "ASSESS": "var(--warn)", "HOLD": "var(--bad)"}
         radar_html = ('<div id="radar">'
                       + _radar_chart_svg(radar["techs"])
                       + '<div class="quad">'
@@ -1494,7 +1532,7 @@ def _dashboard_blocks(model):
                 + '<div class="legend"><span class="lg-ok">gate con recibo vigente</span>'
                   '<span class="lg-warn">recibo invalidado / retrabajo</span>'
                   '<span class="lg-none">sin recibo aún</span><span class="lg-cur">fase actual</span>'
-                  '<span style="color:var(--muted)">clic en una fase (grafo o stepper) para ver sus skills, '
+                  '<span style="color:var(--muted-aa)">clic en una fase (grafo o stepper) para ver sus skills, '
                   'entradas y salidas · loops tenues: pasa el cursor para ver su nombre</span></div>'
                 + MODAL_HTML + modal_data)
     return {
@@ -1569,13 +1607,7 @@ def emit_portal(model, spec_dir):
 
     # Cards agrupadas por tipo de diagrama: header = tipo + cantidad, cuerpo =
     # enlaces a los n diagramas del tipo, footer = línea de color del tipo.
-    _DIAG_COLOR = {
-        "architecture": "#3b82f6", "context": "#0ea5e9", "container": "#2563eb",
-        "component": "#6366f1", "deployment": "#8b5cf6", "dataflow": "#06b6d4",
-        "workflow": "#22c55e", "lifecycle": "#84cc16", "sequence": "#f59e0b",
-        "er": "#ec4899", "capability-map": "#a855f7", "stakeholder": "#14b8a6",
-        "threat-model": "#ef4444", "codigo": "#10b981", "general": "#94a3b8",
-    }
+    _DIAG_COLOR = _dv_dict("diagram-types")
     if diags:
         grupos = {}
         for pid, t, tipo in diags:
@@ -1610,7 +1642,7 @@ def emit_portal(model, spec_dir):
             f'<td>{esc(e.get("artefacto", "") or e.get("nota", "") or "")}</td>'
             f'<td>{esc(e.get("gate", ""))}</td><td>{esc(e.get("rol", ""))}</td>'
             f'<td><b>{esc(e.get("approved_by", ""))}</b></td>'
-            f'<td style="font-size:.7rem;color:var(--muted)">{esc(e.get("harness_version", ""))}</td></tr>'
+            f'<td style="font-size:.7rem;color:var(--muted-aa)">{esc(e.get("harness_version", ""))}</td></tr>'
             for e in audit["eventos_recientes"])
         rev_rows = "".join(
             f'<tr><td><code>{esc(e.get("artefacto", ""))}</code></td>'
@@ -1623,7 +1655,7 @@ def emit_portal(model, spec_dir):
                   else '<span style="color:var(--bad)">✗ rota — revisar con audit_verify.py</span>')
         audit_body = ("<h1>🛡 Auditoría</h1>" + sub
                       + f'<div class="panel"><h2>Salud de la cadena</h2>{blocks["gobernanza"]}'
-                        f'<p style="font-size:.78rem;color:var(--muted)">Verificación estructural: '
+                        f'<p style="font-size:.78rem;color:var(--muted-aa)">Verificación estructural: '
                         f'cadena de hash {cadena} · {audit["total"]} eventos · '
                         f'hash de cierre <code>{esc(audit["ultimo_hash"][:16])}…</code></p></div>'
                       + '<h2>Revocaciones e invalidaciones</h2>'
@@ -1664,7 +1696,7 @@ def emit_portal(model, spec_dir):
          + '</div><div class="panel"><h2>Tiempos de fase y de ciclo</h2>' + blocks["tiempos"]
          + "</div></div>"
          + '<div class="panel"><h2>Contribución por skill por sprint</h2>'
-         + '<div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">Activaciones registradas por cada skill en cada sprint '
+         + '<div style="font-size:.75rem;color:var(--muted-aa);margin-bottom:.4rem">Activaciones registradas por cada skill en cada sprint '
          + '(sección 3 del sprint review). Las skills que trabajan sin registrar no aparecen — lo invisible no se puede medir.</div>'
          + blocks["skills_sprint"] + "</div>",
          "metrica", "agilidad", "",
@@ -1743,12 +1775,15 @@ def main_proyecto(a):
 
     # spec/dashboard.html queda como redirect al portal (v2.20) pero conserva
     # el comentario dashboard-state: --check sigue comparando lo mismo.
+    import design_tokens
+    _c = design_tokens.doc()["color"]["oscuro"]
     import html as _html
     html = ("<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>"
             "<meta http-equiv='refresh' content='0; url=portal/index.html'>"
             f"<title>Portal — {_html.escape(model['proyecto'])}</title></head>"
-            "<body style='font-family:system-ui;background:#0b1220;color:#e2e8f0;padding:3rem'>"
-            "<p>El dashboard ahora es el <a href='portal/index.html' style='color:#58a6ff'>"
+            f"<body style='font-family:system-ui;background:{_c['bg']['value']};"
+            f"color:{_c['fg']['value']};padding:3rem'>"
+            f"<p>El dashboard ahora es el <a href='portal/index.html' style='color:{_c['accent']['value']}'>"
             "portal del proyecto</a> — redirigiendo…</p></body></html>\n"
             "<!-- dashboard-state: __STATE__ -->\n").replace("__STATE__", state_json)
     open(out, "w", encoding="utf-8", newline="\n").write(html)

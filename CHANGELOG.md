@@ -7,6 +7,29 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.32.0] - 2026-09-12
+
+**Sistema de diseño del arnés.** Toda la UI HTML que genera el arnés (portal, inicio/dashboard, diagramas IR, grafo de código) pasa a derivar de tokens canónicos únicos en `docs/design-system/tokens.json`, con contraste WCAG AA verificado por script y contrato de accesibilidad. Adiós a los ~285 colores hardcodeados y a las 4 copias del bloque `:root` copiadas a mano.
+
+### Added
+- **`docs/design-system/tokens.json` (v1.0.0)** — fuente única de verdad (formato Style Dictionary simplificado): color por tema (oscuro/claro) con tokens semánticos (`muted-aa`, `accent-strong`, `on-accent`, `warn-text`, `focus`), tipografía system-ui (escala rem sobre base 15px), espaciado (base 4px), radios, sombras, motion y paletas dataviz gobernadas (`palette-series`, `palette-graph`, `diagram-types`, `diagram-ir-*`). Auditoría de contraste embebida: `audit.pairs-aa` con 19 pares verificados por `--check`.
+- **`docs/design-system/design-system.md`** — el sistema de diseño como documento gobernado: principios (ningún color fuera de token, tema dual obligatorio, AA mínimo, system-ui, los cuatro estados son contrato), catálogo de componentes con variantes y estados (botón, input, nav-item, chip, tarjeta, tabla, migas, resultado de búsqueda, código, scrollbar), tabla de los cuatro estados loading/empty/error/success por superficie y contrato de accesibilidad (focus-visible, reduced-motion, ARIA).
+- **`skills/sdlc-orchestrator/scripts/design_tokens.py`** — emisor canónico: lee `tokens.json` (env → repo → snapshot embebido) y emite el bloque `:root` / `:root[data-theme=claro]` por subset (`core`, `graph`, `diagram`, `all`). `--check` valida estructura, paridad snapshot↔archivo y los pares AA; `--emit` imprime el CSS. `docs/design-system/sync_snapshot.py` regenera el snapshot embebido tras editar tokens.
+- **Design system UX gobernado** (`docs/design-system/ux/`): inventario de pantallas `PANT-01..08` del portal (estados + interacciones + mapa de navegación Mermaid), styleguide vivo generado desde los tokens (`build_styleguide.py` → `styleguide.html`, toggle de tema, ejemplos de los 4 estados) y renders PNG de revisión en `exports/`. El prototipo Penpot se materializa cuando el MCP tenga proyecto conectado (hoy: degradación elegante por estándar de la skill).
+- **Portal v1.5.0 — accesibilidad y estados**: anillo `:focus-visible` en todo interactivo + `prefers-reduced-motion` (shell y páginas de documento), ARIA (landmark `nav`, `aria-current` en el ítem activo, `aria-label` en botones de icono, `aria-expanded` en ayuda, `role="status"` en el estado de carga), estado **loading del iframe** (spinner del shell, PANT-08) y texto terciario migrado de `--muted` (3.9:1, fallaba AA) a `--muted-aa` (6.5:1).
+- **Portal v1.5.1 — `?tema=` en URL**: portal (shell y páginas) y diagramas IR aceptan `?tema=claro|oscuro`, igual que el grafo standalone — el parámetro gana sobre localStorage y `prefers-color-scheme` (capturas headless, enlaces con tema forzado). No persiste hasta que el usuario pulsa el toggle.
+- **Self-test `[9i]`** (14 checks nuevos): tokens canónicos consumidos por los 5 generadores, cero hex fuera del bloque de tokens en el grafo standalone, paridad de fallbacks embebidos con `tokens.json`, shell con focus-visible/ARIA/loading, y artefactos del DS versionados. Suite: **329 checks OK**.
+
+### Changed
+- **`portal_lib.py`**: `TOKENS_CSS` y el shell emiten desde `design_tokens` (placeholder `__TOKENS__`); ya no hay bloques de tokens copiados en la plantilla.
+- **`harness_graph.py`**: el grafo standalone del pipeline (`docs/graph.html`) ahora es **dual tema** (toggle ☀/☾ con la misma clave `dir-tema` del portal), todos sus colores derivan de tokens (0 hex fuera del bloque `:root`), `_STATUS_COLOR` como variables, badges de estado con `color-mix`, paletas dataviz desde `tokens.json` y contrato focus-visible/reduced-motion.
+- **`diagram_ir.py`**: bloque `:root` desde `design_tokens` (subset `diagram`, con fallback embebido verificado), `TIPO_BASE`/`ESTADOS_CAP`/acentos (trust, link) desde `tokens.json`, y subtítulos de diagrama a `--muted-aa` (AA).
+- **`code_graph.py`**: tokens y paleta del grafo de código desde `design_tokens`/`tokens.json` (mismo patrón de fallback verificado).
+- Nuevos tokens añadidos sin romper valores existentes (emisión 100% compatible; solo agrega variables): `--muted-aa`, `--accent-strong`, `--on-accent`, `--warn-text`, `--focus`.
+
+### Fixed
+- **`gate_checker.check_sprint_learning`**: la memoria learning del sprint se resuelve anclada al **proyecto del artefacto** (subiendo desde su directorio) antes que al cwd. Antes, ejecutar el gate desde la raíz de un repo que también tiene `spec/memory/entries` (p. ej. el propio arnés) leía la memoria equivocada y rechazaba reviews sanos. Bug de entorno real detectado por el self-test.
+
 ## [2.31.1] - 2026-09-12
 
 **Documentación con evidencia real.** El README se renueva con capturas del proyecto real CATI y diagramas vivos del propio arnés, y se documenta cómo una organización inyecta su conocimiento (políticas, lineamientos y patrones) en los gates.

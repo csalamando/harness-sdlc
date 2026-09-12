@@ -31,7 +31,7 @@ CLI:
 import argparse, html, json, os, re, sys
 from datetime import datetime
 
-PORTAL_VERSION = "1.4.0"
+PORTAL_VERSION = "1.5.1"
 
 # Taxonomía por ROL QUE GOBIERNA el artefacto (quién lo crea, lo aprueba y
 # responde por su vigencia), no por tipo de documento. Sin categoría genérica
@@ -51,18 +51,14 @@ CATEGORIAS = [
 ]
 _CAT_ORDEN = {c[0]: i for i, c in enumerate(CATEGORIAS)}
 
-# ── Tokens visuales compartidos (mismo set que diagram_ir v1.1 + extras) ──────
-
-TOKENS_CSS = (
-    ":root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;"
-    "--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;"
-    "--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);"
-    "--gline:#334155;--gnode:#1e293b;color-scheme:dark}"
-    ":root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;"
-    "--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;"
-    "--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);"
-    "--gline:#94a3b8;--gnode:#f1f5f9;color-scheme:light}"
-)
+# ── Tokens visuales: fuente única de verdad ───────────────────────────────────
+# docs/design-system/tokens.json → design_tokens.py emite el bloque `:root`.
+# PROHIBIDO hardcodear el bloque de tokens aquí (self_test lo verifica).
+try:
+    import design_tokens
+    TOKENS_CSS = design_tokens.tokens_css("all")
+except ImportError:  # pragma: no cover - instalación mínima sin design_tokens
+    TOKENS_CSS = ""
 
 # CSS base de las páginas de contenido (docs, métricas...). Todo con vars:
 # el tema claro/oscuro lo cambia TOKENS_CSS sin tocar las páginas.
@@ -84,7 +80,7 @@ PAGE_CSS = (
     "blockquote{border-left:3px solid var(--panel-bd);margin:1em 0;padding:.2em 1em;color:var(--sub)}"
     "hr{border:none;border-top:1px solid var(--panel-bd);margin:1.6em 0}"
     "img{max-width:100%}li{margin:.2em 0}"
-    ".pnote{color:var(--muted);font-size:.78rem;margin-bottom:1rem}"
+    ".pnote{color:var(--muted-aa);font-size:.78rem;margin-bottom:1rem}"
     # scrollbars integradas con el tema: riel invisible, thumb sutil del panel
     "html{scrollbar-width:thin;scrollbar-color:var(--panel-bd) transparent}"
     "::-webkit-scrollbar{width:9px;height:9px}"
@@ -93,6 +89,9 @@ PAGE_CSS = (
     "border:2px solid transparent;background-clip:padding-box}"
     "::-webkit-scrollbar-thumb:hover{background:var(--muted);border:2px solid transparent;"
     "background-clip:padding-box}"
+    # contrato de accesibilidad (design-system.md §7)
+    ":focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}"
+    "@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important}}"
 )
 
 # JS compartido por TODAS las páginas del portal: aplica el tema guardado,
@@ -103,7 +102,9 @@ PAGE_JS = r"""
   var root=document.documentElement;
   function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
   function apl(t){root.dataset.theme=t||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');}
-  apl(saved());
+  /* ?tema=claro|oscuro en la URL gana sobre lo guardado (capturas, enlaces) */
+  var q=null;try{q=new URLSearchParams(location.search).get('tema');}catch(e){}
+  apl(q==='claro'||q==='oscuro'?q:saved());
   window.addEventListener('message',function(e){var d=e.data||{};if(d.portal==='tema'){apl(d.tema);}});
   var pid=document.body&&document.body.getAttribute('data-page-id');
   if(pid&&window.parent!==window){
@@ -435,13 +436,12 @@ _SHELL = r"""<!DOCTYPE html>
 <title>__PROYECTO__ — Portal del proyecto</title>
 <!-- portal-version: __PVERSION__ · arnés v__HVERSION__ · generado: __GENERADO__ (artefacto derivado — no editar a mano) -->
 <style>
-:root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;
---panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;
---warn:#f59e0b;--bad:#ef4444;--shadow:rgba(0,0,0,.35);color-scheme:dark}
-:root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;
---edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;
---ok:#16a34a;--warn:#d97706;--bad:#dc2626;--shadow:rgba(15,23,42,.12);color-scheme:light}
+__TOKENS__
 *{box-sizing:border-box}
+/* contrato de accesibilidad (design-system.md §7): foco visible en todo
+   interactivo + respeto a prefers-reduced-motion */
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 html{font-size:15px}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,'Segoe UI',sans-serif;
@@ -452,7 +452,7 @@ border-bottom:1px solid var(--panel-bd);flex:none}
 border-radius:8px;padding:.28rem .55rem;cursor:pointer;font-size:.84rem;font-weight:650;white-space:nowrap}
 #topbar button:hover{border-color:var(--accent)}
 #brand{font-weight:800;font-size:.95rem;white-space:nowrap;display:flex;align-items:baseline;gap:.5rem}
-#brand .ver{color:var(--muted);font-weight:500;font-size:.73rem}
+#brand .ver{color:var(--muted-aa);font-weight:500;font-size:.73rem}
 #searchbox{position:relative;flex:1;max-width:520px;margin:0 auto;display:flex;gap:.35rem;align-items:center}
 #searchbox button{flex:none}
 #q{flex:1;width:100%;background:var(--card-bg);border:1px solid var(--panel-bd);color:var(--fg);
@@ -463,7 +463,7 @@ border-radius:10px;box-shadow:0 12px 40px var(--shadow);display:none;max-height:
 scrollbar-width:thin;scrollbar-color:var(--panel-bd) transparent}
 #qres::-webkit-scrollbar{width:8px}
 #qres::-webkit-scrollbar-thumb{background:var(--panel-bd);border-radius:4px}
-.qhead{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
+.qhead{font-size:.7rem;color:var(--muted-aa);text-transform:uppercase;letter-spacing:.06em;
 padding:.45rem .8rem .2rem}
 .qempty{padding:.7rem .8rem;color:var(--sub);font-size:.84rem;font-style:italic}
 #helpwrap{position:relative}
@@ -474,7 +474,7 @@ border-radius:10px;box-shadow:0 12px 40px var(--shadow);display:none;z-index:60;
 #helpbox li{margin:.3rem 0}
 #helpbox b{color:var(--fg)}
 #crumbs{display:flex;align-items:center;gap:.45rem;padding:.28rem .8rem;background:var(--panel-bg);
-border-bottom:1px solid var(--panel-bd);font-size:.77rem;color:var(--muted);flex:none;white-space:nowrap;
+border-bottom:1px solid var(--panel-bd);font-size:.77rem;color:var(--muted-aa);flex:none;white-space:nowrap;
 overflow:hidden;text-overflow:ellipsis}
 #crumbs button{background:var(--card-bg);border:1px solid var(--panel-bd);color:var(--fg);border-radius:6px;
 padding:.05rem .45rem;cursor:pointer;font-size:.8rem;line-height:1.3}
@@ -521,21 +521,28 @@ padding:.42rem .5rem;border-radius:8px;font-size:.9rem;font-weight:700;color:var
 #nav summary::-webkit-details-marker{display:none}
 #nav summary::before{content:"▸";color:var(--accent);transition:.15s;font-size:.67rem}
 #nav details[open]>summary::before{transform:rotate(90deg)}
-#nav summary .cnt{margin-left:auto;font-size:.67rem;color:var(--muted);background:var(--card-bg);
+#nav summary .cnt{margin-left:auto;font-size:.67rem;color:var(--muted-aa);background:var(--card-bg);
 border:1px solid var(--panel-bd);border-radius:8px;padding:0 6px}
 #nav .grp{font-size:.73rem;text-transform:uppercase;letter-spacing:.07em;color:var(--sub);margin:.55rem .5rem .15rem}
 #nav details.menu-grupo{margin:0 0 0 .6rem}
 #nav details.menu-grupo>summary{font-size:.8rem;font-weight:600;color:var(--sub);padding:.28rem .5rem}
-#nav details.menu-grupo>summary::before{font-size:.6rem;color:var(--muted)}
+#nav details.menu-grupo>summary::before{font-size:.6rem;color:var(--muted-aa)}
 #nav details.menu-grupo .grp-t{text-transform:uppercase;letter-spacing:.07em;font-size:.67rem;color:var(--sub)}
 #nav details.menu-grupo a.ni{padding-left:2.2rem}
 #nav a.ni{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 padding:.3rem .5rem .3rem 1.6rem;border-radius:7px;color:var(--sub);
 text-decoration:none;font-size:.9rem;line-height:1.25}
 #nav a.ni:hover{background:var(--card-bg);color:var(--txt)}
-#nav a.ni.act{background:rgba(59,130,246,.18);color:var(--txt);font-weight:650}
+#nav a.ni.act{background:color-mix(in srgb, var(--accent) 18%, transparent);color:var(--txt);font-weight:650}
 #main{flex:1;min-width:0;position:relative;background:var(--bg)}
 #frame{border:none;width:100%;height:100%;transform-origin:0 0;display:block}
+/* estado loading del iframe (PANT-08): spinner del shell hasta que carga la página */
+#loadstate{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:.7rem;
+background:var(--bg);color:var(--sub);font-size:.87rem;z-index:10}
+#loadstate.on{display:flex}
+#loadstate .spin{width:18px;height:18px;border-radius:50%;border:2px solid var(--panel-bd);
+border-top-color:var(--accent);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 #welcome{position:absolute;inset:0;overflow-y:auto;padding:3rem;max-width:760px;display:none}
 #welcome h1{font-size:1.5rem}
 #welcome p{color:var(--sub);line-height:1.6}
@@ -549,11 +556,11 @@ body.side-off #main{margin-left:0}
 </head>
 <body>
 <header id="topbar">
-  <button id="btn-side" title="Contraer el menú a un riel de iconos / expandirlo">☰</button>
+  <button id="btn-side" aria-label="Contraer el menú a un riel de iconos o expandirlo" title="Contraer el menú a un riel de iconos / expandirlo">☰</button>
   <div id="brand" title="portal v__PVERSION__ · arnés v__HVERSION__">◈ <span>__PROYECTO__</span></div>
-  <div id="searchbox"><button id="btn-search" title="Buscar en todo el portal (Ctrl+K o /)">🔍</button><input id="q" type="search" placeholder="Buscar en todo el portal… (Ctrl+K o /)" autocomplete="off" spellcheck="false"><div id="qres"></div></div>
+  <div id="searchbox"><button id="btn-search" aria-label="Buscar en todo el portal" title="Buscar en todo el portal (Ctrl+K o /)">🔍</button><input id="q" type="search" aria-label="Buscar en todo el portal" placeholder="Buscar en todo el portal… (Ctrl+K o /)" autocomplete="off" spellcheck="false"><div id="qres" role="listbox" aria-label="Resultados de búsqueda"></div></div>
   <span id="topxtra"></span>
-  <div id="helpwrap"><button id="btn-help" title="Ayuda — cómo navegar el portal">?</button>
+  <div id="helpwrap"><button id="btn-help" aria-label="Ayuda: cómo navegar el portal" title="Ayuda — cómo navegar el portal" aria-expanded="false">?</button>
     <div id="helpbox"><h3>Cómo navegar este portal</h3><ul>
       <li><b>Menú lateral</b>: todo el contenido agrupado por el rol que gobierna cada artefacto — negocio, arquitectura, desarrollo, QA, agilidad (métricas), procesos, UI/UX, DevSecOps, plataforma y auditoría. El botón ☰ lo contrae a un <b>riel de iconos</b>; pasa el cursor sobre el riel para desplegarlo.</li>
       <li><b>Ctrl+K</b> o <b>/</b>: búsqueda global en títulos y contenido de todas las páginas (funciona también con el foco dentro del contenido). El botón 🔍 hace lo mismo.</li>
@@ -562,16 +569,17 @@ body.side-off #main{margin-left:0}
       <li>La evidencia son los recibos; este portal es solo visualización (artefacto derivado).</li>
     </ul></div>
   </div>
-  <button id="btn-zmenos" title="Reducir tamaño de fuente">A−</button>
-  <button id="btn-zreset" title="Tamaño original">A</button>
-  <button id="btn-zmas" title="Aumentar tamaño de fuente">A+</button>
-  <button id="btn-tema" title="Tema claro/oscuro">☀️</button>
+  <button id="btn-zmenos" aria-label="Reducir tamaño de fuente" title="Reducir tamaño de fuente">A−</button>
+  <button id="btn-zreset" aria-label="Restablecer tamaño de fuente" title="Tamaño original">A</button>
+  <button id="btn-zmas" aria-label="Aumentar tamaño de fuente" title="Aumentar tamaño de fuente">A+</button>
+  <button id="btn-tema" aria-label="Cambiar tema claro u oscuro" title="Tema claro/oscuro">☀️</button>
 </header>
-<div id="crumbs"><button id="btn-back" title="Atrás (historial del portal)">‹</button><button id="btn-fwd" title="Adelante (historial del portal)">›</button><span class="hsep"></span><span id="crumb-path"></span></div>
+<div id="crumbs"><button id="btn-back" aria-label="Atrás en el historial del portal" title="Atrás (historial del portal)">‹</button><button id="btn-fwd" aria-label="Adelante en el historial del portal" title="Adelante (historial del portal)">›</button><span class="hsep"></span><span id="crumb-path"></span></div>
 <div id="layout">
-  <aside id="side"><nav id="nav"></nav></aside>
+  <aside id="side"><nav id="nav" aria-label="Secciones del portal"></nav></aside>
   <div id="main">
     <iframe id="frame" title="Contenido del portal"></iframe>
+    <div id="loadstate" role="status" aria-live="polite"><div class="spin"></div><span>Cargando página…</span></div>
     <div id="welcome"><h1>Portal vacío</h1>
       <p>Aún no hay páginas registradas. El portal se llena solo: cada skill y script del arnés registra lo que genera.</p>
       <p>Regenera con <code>harness_graph.py --proyecto .</code>.</p></div>
@@ -592,13 +600,14 @@ function esc(s){var d=document.createElement('div');d.textContent=String(s==null
 /* tema compartido con los diagramas IR (misma clave dir-tema) */
 function temaActual(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}
   return null;}
-function temaEf(){return temaActual()||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');}
+function temaEf(){try{var q=new URLSearchParams(location.search).get('tema');if(q==='claro'||q==='oscuro')return q;}catch(e){}return temaActual()||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');}
 function aplTema(t){root.dataset.theme=t;
   try{localStorage.setItem('dir-tema',t);}catch(e){}
   document.getElementById('btn-tema').textContent=t==='claro'?'\u263E':'\u2600';
   try{if(frame.contentWindow)frame.contentWindow.postMessage({portal:'tema',tema:t},'*');}catch(e){}}
 document.getElementById('btn-tema').onclick=function(){aplTema(temaEf()==='claro'?'oscuro':'claro');};
 frame.addEventListener('load',function(){
+  document.getElementById('loadstate').classList.remove('on');
   try{if(frame.contentWindow)frame.contentWindow.postMessage({portal:'tema',tema:temaEf()},'*');}catch(e){}});
 
 /* zoom compartido (dir-zoom): escala TODO el chrome (root rem) y además el
@@ -661,7 +670,8 @@ function buildNav(){
   x.addEventListener('click',function(e){var b=e.target.closest('button[data-id]');if(b)ir(b.dataset.id);});
   var hb=document.getElementById('helpbox');
   document.getElementById('btn-help').onclick=function(e){e.stopPropagation();
-    hb.style.display=hb.style.display==='block'?'none':'block';};
+    var open=hb.style.display!=='block';hb.style.display=open?'block':'none';
+    this.setAttribute('aria-expanded',open?'true':'false');};
   document.addEventListener('click',function(e){if(!e.target.closest('#helpwrap'))hb.style.display='none';});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')hb.style.display='none';});
 })();
@@ -670,7 +680,8 @@ function buildNav(){
 function curId(){var m=/#\/id\/([A-Za-z0-9\-_]+)/.exec(location.hash||'');return m?m[1]:null;}
 function mark(id){nav.querySelectorAll('.ni').forEach(function(a){
   var on=a.dataset.id===id;a.classList.toggle('act',on);
-  if(on){var d=a.closest('details');if(d&&!d.open)d.open=true;}});}
+  if(on){a.setAttribute('aria-current','page');var d=a.closest('details');if(d&&!d.open)d.open=true;}
+  else{a.removeAttribute('aria-current');}});}
 /* miga de pan + título + última página visitada (persistida por proyecto) */
 var crumbPath=document.getElementById('crumb-path');
 function catLabel(id){var c=M.categorias.filter(function(x){return x.id===id;})[0];
@@ -700,7 +711,8 @@ crumbPath.addEventListener('click',function(e){
 function show(id){
   var it=byId[id];if(!it){showWelcome();return;}
   welcome.style.display='none';frame.style.display='block';
-  if(frame.dataset.cur!==it.ruta){frame.dataset.cur=it.ruta;frame.src=it.ruta;}
+  if(frame.dataset.cur!==it.ruta){frame.dataset.cur=it.ruta;frame.src=it.ruta;
+    document.getElementById('loadstate').classList.add('on');}
   paint(id);
 }
 function showWelcome(){
@@ -794,12 +806,13 @@ buildNav();aplTema(temaEf());aplZoom();aplSide();route();
 
 
 def build_shell(m):
-    """index.html del portal a partir del manifiesto (tokens estáticos mínimos)."""
+    """index.html del portal a partir del manifiesto (tokens desde design_tokens)."""
     return (_SHELL
             .replace("__PROYECTO__", html.escape(m.get("proyecto") or "proyecto"))
             .replace("__HVERSION__", html.escape(m.get("harness_version") or "?"))
             .replace("__PVERSION__", PORTAL_VERSION)
-            .replace("__GENERADO__", html.escape(m.get("generado") or "")))
+            .replace("__GENERADO__", html.escape(m.get("generado") or ""))
+            .replace("__TOKENS__", TOKENS_CSS))
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────

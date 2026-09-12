@@ -1,0 +1,901 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""design_tokens.py — Emisor canónico de tokens CSS del arnés SDLC.
+
+Fuente única de verdad: docs/design-system/tokens.json (formato Style
+Dictionary simplificado). Todos los generadores HTML del arnés
+(portal_lib, harness_graph, code_graph, mdview, diagram_ir) deben obtener
+el bloque `:root` / `:root[data-theme=claro]` desde aquí — nunca copiar el
+bloque a mano. La regla se verifica en tests/self_test.py.
+
+Resolución del archivo (en orden):
+  1. $HARNESS_TOKENS_JSON
+  2. <raiz del repo>/docs/design-system/tokens.json  (parents[3] desde scripts/)
+  3. Snapshot embebido en este módulo (paridad verificada por --check)
+
+Uso:
+  python design_tokens.py --check           # valida estructura + contraste AA
+  python design_tokens.py --emit all        # imprime el CSS de tokens
+  python design_tokens.py --emit diagram
+  python design_tokens.py --version
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+TOKENS_VERSION = "1.0.0"
+
+# Subsets: qué grupos de variables emite cada superficie.
+#   core    → app (portal shell + páginas de documento)
+#   graph   → core + líneas/nodos de grafos (harness_graph, code_graph)
+#   diagram → core + variables específicas de diagramas IR (diagram_ir)
+#   all     → todo
+_SUBSETS = {
+    "core": ["core"],
+    "graph": ["core", "graph"],
+    "diagram": ["core", "diagram"],
+    "all": ["core", "graph", "diagram"],
+}
+
+# Pertenencia de cada variable CSS a un grupo.
+_GROUPS = {
+    "core": [
+        "bg", "fg", "txt", "muted", "muted-aa", "sub", "edge",
+        "panel-bg", "panel-bd", "card-bg",
+        "accent", "accent-strong", "on-accent",
+        "ok", "warn", "warn-text", "bad", "tier",
+        "shadow", "focus",
+    ],
+    "graph": ["gline", "gnode"],
+    "diagram": [
+        "edge-label", "chip-bg", "chip-bd", "life",
+        "act-bg", "act-bd", "seq-msg", "seq-ret",
+    ],
+}
+
+_REPO_TOKENS = Path(__file__).resolve().parents[3] / "docs" / "design-system" / "tokens.json"
+
+# ── Snapshot embebido (paridad verificada por --check contra el archivo) ─────
+_SNAPSHOT_JSON = r'''
+{
+ "meta": {
+  "name": "harness-design-tokens",
+  "version": "1.0.0",
+  "description": "Tokens canonicos del sistema de diseno de todas las superficies HTML que genera el arnes SDLC (portal, docs, diagramas, grafo de codigo). Fuente unica de verdad: los generadores emiten `:root` desde este archivo via design_tokens.py; nunca hardcodear bloques de tokens en los generadores.",
+  "emits": "CSS custom properties (--name)",
+  "themes": [
+   "oscuro",
+   "claro"
+  ],
+  "consumed-by": [
+   "skills/sdlc-orchestrator/scripts/portal_lib.py",
+   "skills/sdlc-orchestrator/scripts/harness_graph.py",
+   "skills/sdlc-orchestrator/scripts/code_graph.py",
+   "skills/sdlc-orchestrator/scripts/mdview.py",
+   "skills/sdlc-diagrams/scripts/diagram_ir.py"
+  ]
+ },
+ "color": {
+  "oscuro": {
+   "bg": {
+    "value": "#0b1220",
+    "comment": "fondo de aplicacion"
+   },
+   "fg": {
+    "value": "#e2e8f0",
+    "comment": "texto principal"
+   },
+   "txt": {
+    "value": "#f1f5f9",
+    "comment": "texto de maximo enfasis (h1, titulos)"
+   },
+   "muted": {
+    "value": "#64748b",
+    "comment": "SOLO decorativo (bordes sutiles, iconos); para texto pequeno usar muted-aa"
+   },
+   "muted-aa": {
+    "value": "#8a99b0",
+    "comment": "texto terciario accesible AA (6.5:1 sobre bg)"
+   },
+   "sub": {
+    "value": "#8ea0b8",
+    "comment": "texto secundario (7.0:1 sobre bg)"
+   },
+   "edge": {
+    "value": "#94a3b8",
+    "comment": "bordes de nodos, lineas"
+   },
+   "panel-bg": {
+    "value": "#0f172a",
+    "comment": "fondo de paneles (topbar, sidebar, modales)"
+   },
+   "panel-bd": {
+    "value": "#1e293b",
+    "comment": "borde de paneles"
+   },
+   "card-bg": {
+    "value": "#111c33",
+    "comment": "fondo de tarjetas, inputs, botones"
+   },
+   "accent": {
+    "value": "#3b82f6",
+    "comment": "acento (enlaces, estados activos) 5.1:1 sobre bg"
+   },
+   "accent-strong": {
+    "value": "#2563eb",
+    "comment": "fondo de botones primarios; texto blanco 5.2:1"
+   },
+   "on-accent": {
+    "value": "#ffffff",
+    "comment": "texto/iconos sobre accent-strong"
+   },
+   "ok": {
+    "value": "#22c55e",
+    "comment": "exito (8.2:1 sobre bg)"
+   },
+   "warn": {
+    "value": "#f59e0b",
+    "comment": "advertencia (8.7:1 sobre bg)"
+   },
+   "warn-text": {
+    "value": "#f59e0b",
+    "comment": "texto de advertencia sobre bg"
+   },
+   "bad": {
+    "value": "#ef4444",
+    "comment": "error/peligro (5.0:1 sobre bg)"
+   },
+   "tier": {
+    "value": "#f97316",
+    "comment": "nivel de riesgo"
+   },
+   "shadow": {
+    "value": "rgba(0,0,0,.35)",
+    "comment": "sombra base"
+   },
+   "focus": {
+    "value": "#3b82f6",
+    "comment": "anillo de foco visible (:focus-visible)"
+   },
+   "gline": {
+    "value": "#334155",
+    "comment": "lineas de grafos (pipeline, dependencias)"
+   },
+   "gnode": {
+    "value": "#1e293b",
+    "comment": "fondo de nodos de grafo"
+   },
+   "edge-label": {
+    "value": "#a5b4c9",
+    "comment": "etiquetas de aristas en diagramas"
+   },
+   "chip-bg": {
+    "value": "#0b1220",
+    "comment": "fondo de chips en diagramas"
+   },
+   "chip-bd": {
+    "value": "#1e293b",
+    "comment": "borde de chips en diagramas"
+   },
+   "life": {
+    "value": "#334155",
+    "comment": "lineas de vida (secuencia)"
+   },
+   "act-bg": {
+    "value": "#1e293b",
+    "comment": "fondo de activaciones (secuencia)"
+   },
+   "act-bd": {
+    "value": "#475569",
+    "comment": "borde de activaciones (secuencia)"
+   },
+   "seq-msg": {
+    "value": "#cbd5e1",
+    "comment": "mensajes (secuencia)"
+   },
+   "seq-ret": {
+    "value": "#64748b",
+    "comment": "retornos (secuencia)"
+   }
+  },
+  "claro": {
+   "bg": {
+    "value": "#eef2f7",
+    "comment": "fondo de aplicacion"
+   },
+   "fg": {
+    "value": "#1e293b",
+    "comment": "texto principal"
+   },
+   "txt": {
+    "value": "#0f172a",
+    "comment": "texto de maximo enfasis"
+   },
+   "muted": {
+    "value": "#64748b",
+    "comment": "SOLO decorativo; sobre blanco 4.8:1"
+   },
+   "muted-aa": {
+    "value": "#5b6b80",
+    "comment": "texto terciario accesible AA sobre bg"
+   },
+   "sub": {
+    "value": "#5b6b80",
+    "comment": "texto secundario (4.8:1 sobre bg)"
+   },
+   "edge": {
+    "value": "#64748b",
+    "comment": "bordes de nodos, lineas"
+   },
+   "panel-bg": {
+    "value": "#ffffff",
+    "comment": "fondo de paneles"
+   },
+   "panel-bd": {
+    "value": "#e2e8f0",
+    "comment": "borde de paneles"
+   },
+   "card-bg": {
+    "value": "#f8fafc",
+    "comment": "fondo de tarjetas, inputs, botones"
+   },
+   "accent": {
+    "value": "#2563eb",
+    "comment": "acento (4.6:1 sobre bg)"
+   },
+   "accent-strong": {
+    "value": "#2563eb",
+    "comment": "fondo de botones primarios; texto blanco 5.2:1"
+   },
+   "on-accent": {
+    "value": "#ffffff",
+    "comment": "texto/iconos sobre accent-strong"
+   },
+   "ok": {
+    "value": "#16a34a",
+    "comment": "exito"
+   },
+   "warn": {
+    "value": "#d97706",
+    "comment": "advertencia como relleno/borde; como TEXTO usar warn-text"
+   },
+   "warn-text": {
+    "value": "#92400e",
+    "comment": "texto de advertencia AA (~5.9:1 sobre bg)"
+   },
+   "bad": {
+    "value": "#dc2626",
+    "comment": "error/peligro"
+   },
+   "tier": {
+    "value": "#ea580c",
+    "comment": "nivel de riesgo"
+   },
+   "shadow": {
+    "value": "rgba(15,23,42,.12)",
+    "comment": "sombra base"
+   },
+   "focus": {
+    "value": "#2563eb",
+    "comment": "anillo de foco visible"
+   },
+   "gline": {
+    "value": "#94a3b8",
+    "comment": "lineas de grafos"
+   },
+   "gnode": {
+    "value": "#f1f5f9",
+    "comment": "fondo de nodos de grafo"
+   },
+   "edge-label": {
+    "value": "#475569",
+    "comment": "etiquetas de aristas en diagramas"
+   },
+   "chip-bg": {
+    "value": "#ffffff",
+    "comment": "fondo de chips en diagramas"
+   },
+   "chip-bd": {
+    "value": "#cbd5e1",
+    "comment": "borde de chips en diagramas"
+   },
+   "life": {
+    "value": "#cbd5e1",
+    "comment": "lineas de vida (secuencia)"
+   },
+   "act-bg": {
+    "value": "#e2e8f0",
+    "comment": "fondo de activaciones (secuencia)"
+   },
+   "act-bd": {
+    "value": "#94a3b8",
+    "comment": "borde de activaciones (secuencia)"
+   },
+   "seq-msg": {
+    "value": "#334155",
+    "comment": "mensajes (secuencia)"
+   },
+   "seq-ret": {
+    "value": "#94a3b8",
+    "comment": "retornos (secuencia)"
+   }
+  }
+ },
+ "font": {
+  "family": {
+   "sans": {
+    "value": "system-ui, 'Segoe UI', sans-serif",
+    "comment": "todo el UI"
+   },
+   "mono": {
+    "value": "ui-monospace, 'Cascadia Code', Consolas, monospace",
+    "comment": "codigo, IDs tecnicos"
+   }
+  },
+  "size": {
+   "2xs": {
+    "value": "0.67rem",
+    "px": 10,
+    "comment": "contadores, etiquetas de grupo"
+   },
+   "xs": {
+    "value": "0.73rem",
+    "px": 11,
+    "comment": "metadatos, migas, tooltips"
+   },
+   "sm": {
+    "value": "0.8rem",
+    "px": 12,
+    "comment": "texto auxiliar, resultados"
+   },
+   "md": {
+    "value": "0.87rem",
+    "px": 13,
+    "comment": "texto de UI (botones, inputs, nav)"
+   },
+   "base": {
+    "value": "1rem",
+    "px": 15,
+    "comment": "cuerpo de documento (html{font-size:15px})"
+   },
+   "lg": {
+    "value": "1.08rem",
+    "px": 16,
+    "comment": "h2 de documento"
+   },
+   "xl": {
+    "value": "1.35rem",
+    "px": 20,
+    "comment": "h1 / titulo de pagina"
+   }
+  },
+  "weight": {
+   "regular": {
+    "value": 400
+   },
+   "medium": {
+    "value": 500
+   },
+   "semibold": {
+    "value": 600
+   },
+   "bold": {
+    "value": 700
+   },
+   "extrabold": {
+    "value": 800,
+    "comment": "brand del topbar"
+   }
+  }
+ },
+ "spacing": {
+  "1": {
+   "value": "0.25rem",
+   "px": 4
+  },
+  "2": {
+   "value": "0.45rem",
+   "px": 7,
+   "comment": "gap compacto (topbar, chips)"
+  },
+  "3": {
+   "value": "0.7rem",
+   "px": 10,
+   "comment": "padding de inputs, celdas"
+  },
+  "4": {
+   "value": "1rem",
+   "px": 15
+  },
+  "5": {
+   "value": "1.5rem",
+   "px": 22,
+   "comment": "padding de pagina de documento"
+  },
+  "6": {
+   "value": "1.8rem",
+   "px": 27
+  },
+  "7": {
+   "value": "3rem",
+   "px": 45,
+   "comment": "separacion de secciones"
+  }
+ },
+ "radius": {
+  "sm": {
+   "value": "4px",
+   "comment": "chips, etiquetas"
+  },
+  "md": {
+   "value": "6px",
+   "comment": "botones pequenos, migas"
+  },
+  "lg": {
+   "value": "8px",
+   "comment": "botones, inputs, nav items"
+  },
+  "xl": {
+   "value": "10px",
+   "comment": "bloques de codigo"
+  },
+  "2xl": {
+   "value": "12px",
+   "comment": "paneles, tarjetas, canvas"
+  }
+ },
+ "shadow": {
+  "none": {
+   "value": "none"
+  },
+  "sm": {
+   "value": "0 1px 2px var(--shadow)"
+  },
+  "md": {
+   "value": "0 4px 14px var(--shadow)",
+   "comment": "dropdowns (qres, helpbox)"
+  }
+ },
+ "motion": {
+  "fast": {
+   "value": "120ms"
+  },
+  "base": {
+   "value": "150ms",
+   "comment": "transiciones de hover/estado"
+  },
+  "ease": {
+   "value": "ease"
+  },
+  "ease-out": {
+   "value": "cubic-bezier(.2,.7,.3,1)"
+  },
+  "rule": {
+   "value": "Toda animacion debe respetar prefers-reduced-motion"
+  }
+ },
+ "dataviz": {
+  "palette-series": {
+   "value": [
+    "#3b82f6",
+    "#f59e0b",
+    "#22c55e",
+    "#a78bfa",
+    "#ef4444",
+    "#14b8a6",
+    "#f472b6",
+    "#eab308",
+    "#64748b",
+    "#0ea5e9"
+   ],
+   "comment": "series categóricas de gráficas (líneas, barras apiladas) en harness_graph"
+  },
+  "palette-graph": {
+   "value": [
+    "#3b82f6",
+    "#22c55e",
+    "#f59e0b",
+    "#ef4444",
+    "#a855f7",
+    "#06b6d4",
+    "#f97316",
+    "#84cc16",
+    "#ec4899",
+    "#14b8a6",
+    "#eab308",
+    "#6366f1"
+   ],
+   "comment": "nodos del grafo de código en code_graph"
+  },
+  "diagram-types": {
+   "value": {
+    "architecture": "#3b82f6",
+    "context": "#0ea5e9",
+    "container": "#2563eb",
+    "component": "#6366f1",
+    "deployment": "#8b5cf6",
+    "dataflow": "#06b6d4",
+    "workflow": "#22c55e",
+    "lifecycle": "#84cc16",
+    "sequence": "#f59e0b",
+    "er": "#ec4899",
+    "capability-map": "#a855f7",
+    "stakeholder": "#14b8a6",
+    "threat-model": "#ef4444",
+    "codigo": "#10b981",
+    "general": "#94a3b8"
+   },
+   "comment": "color por tipo de diagrama en el portal (tarjetas de Arquitectura)"
+  },
+  "diagram-ir-trust": {
+   "value": "#fb7185",
+   "comment": "fronteras de confianza (STRIDE) en diagramas IR"
+  },
+  "diagram-ir-trust-soft": {
+   "value": "#f9a8d4",
+   "comment": "texto suave de fronteras de confianza (marcas de agua)"
+  },
+  "diagram-ir-link": {
+   "value": "#38bdf8",
+   "comment": "enlaces de detalle en diagramas IR"
+  },
+  "diagram-ir-default": {
+   "value": "#94a3b8",
+   "comment": "color por defecto de grupos sin color declarado en el IR"
+  },
+  "diagram-ir-tipo": {
+   "value": {
+    "ui": [
+     "#38bdf8",
+     "◉"
+    ],
+    "edge": [
+     "#2dd4bf",
+     "⇄"
+    ],
+    "service": [
+     "#a78bfa",
+     "⟨⟩"
+    ],
+    "security": [
+     "#f59e0b",
+     "⛨"
+    ],
+    "db": [
+     "#34d399",
+     "⛁"
+    ],
+    "job": [
+     "#94a3b8",
+     "⚙"
+    ],
+    "decision": [
+     "#f472b6",
+     "◇"
+    ],
+    "terminal": [
+     "#e2e8f0",
+     "◎"
+    ],
+    "source": [
+     "#38bdf8",
+     "▤"
+    ],
+    "transform": [
+     "#a78bfa",
+     "ƒ"
+    ],
+    "store": [
+     "#34d399",
+     "⛁"
+    ],
+    "consumer": [
+     "#fbbf24",
+     "▸"
+    ],
+    "start": [
+     "#2dd4bf",
+     "▶"
+    ],
+    "waiting": [
+     "#fbbf24",
+     "⏸"
+    ],
+    "failure": [
+     "#fb7185",
+     "✖"
+    ],
+    "actor": [
+     "#fbbf24",
+     "☺"
+    ],
+    "external": [
+     "#94a3b8",
+     "⬡"
+    ],
+    "entity": [
+     "#34d399",
+     "▦"
+    ],
+    "role": [
+     "#fbbf24",
+     "◍"
+    ],
+    "proceso": [
+     "#a78bfa",
+     "◯"
+    ]
+   },
+   "comment": "tipo de nodo → [color, glifo] en diagramas IR (contexto, componente, C4, DFD, ER…)"
+  },
+  "diagram-ir-estados": {
+   "value": {
+    "adoptar": "#34d399",
+    "madurar": "#fbbf24",
+    "mantener": "#38bdf8",
+    "retirar": "#fb7185"
+   },
+   "comment": "estados de madurez del capability-map (p. ej. BIAN)"
+  }
+ },
+ "audit": {
+  "comment": "Pares verificados por design_tokens.py --check. text-X = texto normal (AA 4.5), large = 3.0.",
+  "pairs-aa": [
+   {
+    "tema": "oscuro",
+    "fondo": "bg",
+    "texto": "fg"
+   },
+   {
+    "tema": "oscuro",
+    "fondo": "bg",
+    "texto": "txt"
+   },
+   {
+    "tema": "oscuro",
+    "fondo": "bg",
+    "texto": "sub"
+   },
+   {
+    "tema": "oscuro",
+    "fondo": "bg",
+    "texto": "muted-aa"
+   },
+   {
+    "tema": "oscuro",
+    "fondo": "bg",
+    "texto": "accent"
+   },
+   {
+    "tema": "oscuro",
+    "fondo": "bg",
+    "texto": "ok"
+   },
+   {
+    "tema": "oscuro",
+    "fondo": "bg",
+    "texto": "warn-text"
+   },
+   {
+    "tema": "oscuro",
+    "fondo": "bg",
+    "texto": "bad"
+   },
+   {
+    "tema": "oscuro",
+    "fondo": "panel-bg",
+    "texto": "fg"
+   },
+   {
+    "tema": "oscuro",
+    "fondo": "panel-bg",
+    "texto": "muted-aa"
+   },
+   {
+    "tema": "oscuro",
+    "fondo": "accent-strong",
+    "texto": "on-accent"
+   },
+   {
+    "tema": "claro",
+    "fondo": "bg",
+    "texto": "fg"
+   },
+   {
+    "tema": "claro",
+    "fondo": "bg",
+    "texto": "sub"
+   },
+   {
+    "tema": "claro",
+    "fondo": "bg",
+    "texto": "muted-aa"
+   },
+   {
+    "tema": "claro",
+    "fondo": "bg",
+    "texto": "accent"
+   },
+   {
+    "tema": "claro",
+    "fondo": "bg",
+    "texto": "warn-text"
+   },
+   {
+    "tema": "claro",
+    "fondo": "panel-bg",
+    "texto": "fg"
+   },
+   {
+    "tema": "claro",
+    "fondo": "panel-bg",
+    "texto": "muted"
+   },
+   {
+    "tema": "claro",
+    "fondo": "accent-strong",
+    "texto": "on-accent"
+   }
+  ]
+ }
+}
+'''
+
+
+def _load_doc() -> dict:
+    """Carga tokens.json: env → repo → snapshot embebido."""
+    cands = []
+    env = os.environ.get("HARNESS_TOKENS_JSON")
+    if env:
+        cands.append(Path(env))
+    cands.append(_REPO_TOKENS)
+    for p in cands:
+        try:
+            if p.is_file():
+                return json.loads(p.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+    return json.loads(_SNAPSHOT_JSON)
+
+
+_DOC_CACHE: dict | None = None
+
+
+def doc() -> dict:
+    global _DOC_CACHE
+    if _DOC_CACHE is None:
+        _DOC_CACHE = _load_doc()
+    return _DOC_CACHE
+
+
+def version() -> str:
+    return str(doc().get("meta", {}).get("version", TOKENS_VERSION))
+
+
+def _hex_luminance(hexc: str) -> float:
+    h = hexc.lstrip("#")
+    r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+    def f(c: float) -> float:
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+
+
+def contrast(fondo: str, texto: str) -> float | None:
+    """Ratio WCAG; None si alguno no es #RRGGBB (p. ej. rgba())."""
+    f, t = fondo.lstrip("#"), texto.lstrip("#")
+    if len(f) != 6 or len(t) != 6:
+        return None
+    la, lb = sorted((_hex_luminance(fondo), _hex_luminance(texto)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def tokens_css(subset: str = "all") -> str:
+    """Emite `:root{...}:root[data-theme=claro]{...}` para el subset dado."""
+    if subset not in _SUBSETS:
+        raise ValueError(f"subset '{subset}' invalido ({sorted(_SUBSETS)})")
+    grupos = _SUBSETS[subset]
+    nombres = [n for g in grupos for n in _GROUPS[g]]
+    color = doc()["color"]
+
+    def bloque(tema: str, scheme: str) -> str:
+        partes = []
+        for nombre in nombres:
+            tok = color.get(tema, {}).get(nombre)
+            if not tok:
+                raise KeyError(f"token color.{tema}.{nombre} ausente en tokens.json")
+            partes.append(f"--{nombre}:{tok['value']}")
+        partes.append(f"color-scheme:{scheme}")
+        return ":root{" + ";".join(partes) + "}" if tema == "oscuro" \
+            else ":root[data-theme=claro]{" + ";".join(partes) + "}"
+
+    return bloque("oscuro", "dark") + "\n" + bloque("claro", "light")
+
+
+def check() -> list[str]:
+    """Valida estructura y contraste AA. Devuelve lista de errores (vacía = OK)."""
+    errores: list[str] = []
+    d = doc()
+
+    # 1. Estructura mínima
+    for clave in ("meta", "color"):
+        if clave not in d:
+            errores.append(f"clave raíz '{clave}' ausente")
+    color = d.get("color", {})
+    for tema in ("oscuro", "claro"):
+        if tema not in color:
+            errores.append(f"color.{tema} ausente")
+
+    # 2. Paridad snapshot vs archivo (solo si el archivo existe)
+    env = os.environ.get("HARNESS_TOKENS_JSON")
+    archivos = [Path(env)] if env else []
+    archivos.append(_REPO_TOKENS)
+    for p in archivos:
+        if p.is_file():
+            try:
+                disco = json.loads(p.read_text(encoding="utf-8"))
+                if disco != json.loads(_SNAPSHOT_JSON):
+                    errores.append(
+                        f"DRIFT: {p} difiere del snapshot embebido en design_tokens.py "
+                        f"(regenerar el snapshot)"
+                    )
+            except (OSError, json.JSONDecodeError) as e:
+                errores.append(f"no se pudo leer {p}: {e}")
+            break
+
+    # 3. Contraste AA de los pares auditados
+    pares = d.get("audit", {}).get("pairs-aa", [])
+    for par in pares:
+        tema, fondo_n, texto_n = par["tema"], par["fondo"], par["texto"]
+        try:
+            fondo = color[tema][fondo_n]["value"]
+            texto = color[tema][texto_n]["value"]
+        except KeyError as e:
+            errores.append(f"par AA referencia token inexistente: {e}")
+            continue
+        r = contrast(fondo, texto)
+        if r is not None and r < 4.5:
+            errores.append(
+                f"AA FAIL {tema}: --{texto_n} sobre --{fondo_n} = {r:.2f} (< 4.5)"
+            )
+
+    # 4. Subsets emitibles sin huecos
+    for subset, grupos in _SUBSETS.items():
+        for g in grupos:
+            for nombre in _GROUPS[g]:
+                for tema in ("oscuro", "claro"):
+                    if nombre not in color.get(tema, {}):
+                        errores.append(f"subset '{subset}': falta color.{tema}.{nombre}")
+    return errores
+
+
+def main(argv: list[str]) -> int:
+    args = [a for a in argv if not a.startswith("--spec")]
+    if "--version" in args:
+        print(version())
+        return 0
+    if "--check" in args:
+        errs = check()
+        if errs:
+            for e in errs:
+                print(f"ERROR: {e}")
+            return 1
+        print(f"design_tokens OK v{version()} — estructura, paridad y "
+              f"{len(doc().get('audit', {}).get('pairs-aa', []))} pares AA en verde")
+        return 0
+    subset = "all"
+    if "--emit" in args:
+        i = args.index("--emit")
+        if i + 1 < len(args) and not args[i + 1].startswith("--"):
+            subset = args[i + 1]
+    print(tokens_css(subset))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -26,28 +26,64 @@ Vista (v1.1):
 Python 3 stdlib puro.
 """
 import argparse, html, json, sys
+from pathlib import Path
 
 VERSION = "1.4.0"
 
-TIPO_BASE = {
-    "ui": ("#38bdf8", "◉"), "edge": ("#2dd4bf", "⇄"), "service": ("#a78bfa", "⟨⟩"),
-    "security": ("#f59e0b", "⛨"), "db": ("#34d399", "⛁"), "job": ("#94a3b8", "⚙"),
-    "decision": ("#f472b6", "◇"), "terminal": ("#e2e8f0", "◎"),
-    "source": ("#38bdf8", "▤"), "transform": ("#a78bfa", "ƒ"), "store": ("#34d399", "⛁"),
-    "consumer": ("#fbbf24", "▸"), "start": ("#2dd4bf", "▶"), "waiting": ("#fbbf24", "⏸"),
-    "failure": ("#fb7185", "✖"),
-    # v1.2: actores y sistemas externos (diagramas de contexto C4 L1)
-    "actor": ("#fbbf24", "☺"), "external": ("#94a3b8", "⬡"),
-    # v1.3: entidades (ER) y roles (stakeholder / onion)
-    "entity": ("#34d399", "▦"), "role": ("#fbbf24", "◍"),
-    # v1.4: proceso DFD (threat-model)
-    "proceso": ("#a78bfa", "◯"),
+# ── Tokens canónicos del design system del arnés ──────────────────────────────
+# Bloque `:root` y colores de dominio desde docs/design-system/tokens.json
+# (vía design_tokens.py de la skill sdlc-orchestrator). Fallback embebido si
+# la skill no está disponible; self_test verifica que el fallback no diverja.
+try:
+    import design_tokens as _dt
+except ImportError:
+    _dt_dir = Path(__file__).resolve().parents[2] / "sdlc-orchestrator" / "scripts"
+    if _dt_dir.is_dir():
+        sys.path.insert(0, str(_dt_dir))
+    try:
+        import design_tokens as _dt
+    except ImportError:
+        _dt = None
+
+_DV_FALLBACK = {
+    "diagram-ir-tipo": {
+        "ui": ["#38bdf8", "◉"], "edge": ["#2dd4bf", "⇄"], "service": ["#a78bfa", "⟨⟩"],
+        "security": ["#f59e0b", "⛨"], "db": ["#34d399", "⛁"], "job": ["#94a3b8", "⚙"],
+        "decision": ["#f472b6", "◇"], "terminal": ["#e2e8f0", "◎"],
+        "source": ["#38bdf8", "▤"], "transform": ["#a78bfa", "ƒ"], "store": ["#34d399", "⛁"],
+        "consumer": ["#fbbf24", "▸"], "start": ["#2dd4bf", "▶"], "waiting": ["#fbbf24", "⏸"],
+        "failure": ["#fb7185", "✖"],
+        "actor": ["#fbbf24", "☺"], "external": ["#94a3b8", "⬡"],
+        "entity": ["#34d399", "▦"], "role": ["#fbbf24", "◍"],
+        "proceso": ["#a78bfa", "◯"],
+    },
+    "diagram-ir-estados": {
+        "adoptar": "#34d399", "madurar": "#fbbf24", "mantener": "#38bdf8", "retirar": "#fb7185",
+    },
+    "diagram-ir-trust": "#fb7185",
+    "diagram-ir-trust-soft": "#f9a8d4",
+    "diagram-ir-link": "#38bdf8",
 }
 
+
+def _dv(name):
+    """Color(es) de dominio desde tokens.json; fallback embebido si no hay tokens."""
+    if _dt:
+        return _dt.doc()["dataviz"][name]["value"]
+    return _DV_FALLBACK[name]
+
+
+TIPO_BASE = {k: tuple(v) for k, v in _dv("diagram-ir-tipo").items()}
+
 # v1.2: estados de madurez para capability-map (mapa de capacidades, p. ej. BIAN)
-ESTADOS_CAP = {
-    "adoptar": "#34d399", "madurar": "#fbbf24", "mantener": "#38bdf8", "retirar": "#fb7185",
-}
+ESTADOS_CAP = dict(_dv("diagram-ir-estados"))
+
+# acentos fijos de diagramas: fronteras de confianza (STRIDE) y enlaces
+TRUST = _dv("diagram-ir-trust")
+TRUST_SOFT = _dv("diagram-ir-trust-soft")
+LINK = _dv("diagram-ir-link")
+GRUPO_DEF = _dv("diagram-ir-default")
+DECISION_C = TIPO_BASE["decision"][0]
 
 # v1.3: cardinalidades ER y letras STRIDE (threat-model)
 CARDS_ER = {"1", "N", "M", "0..1", "0..N", "1..N", "1..1", "N..M"}
@@ -417,11 +453,11 @@ def _bandas(ir, pos, W, H):
                     d += 1
                 return d
             for g in sorted(bounds, key=_depth):  # externos primero
-                color = (ir.get("grupos") or {}).get(g, "#94a3b8")
+                color = (ir.get("grupos") or {}).get(g, GRUPO_DEF)
                 x1, y1, x2, y2 = bounds[g]
                 if g in trust:  # trust boundary (threat-model): borde rojo grueso
                     rect = (f'<rect x="{x1}" y="{y1}" width="{x2-x1}" height="{y2-y1}" rx="14" '
-                            f'fill="#fb718508" stroke="#fb7185" stroke-width="2" stroke-dasharray="8 4" opacity=".95"/>')
+                            f'fill="{TRUST}08" stroke="{TRUST}" stroke-width="2" stroke-dasharray="8 4" opacity=".95"/>')
                     lbl = f'⛨ {g.upper()}'
                 else:
                     rect = (f'<rect x="{x1}" y="{y1}" width="{x2-x1}" height="{y2-y1}" rx="14" '
@@ -438,12 +474,12 @@ def _bandas(ir, pos, W, H):
                         avail_lbl -= 112
                 lbl = _ellipsize(lbl, 12, max(48, avail_lbl))
                 out.append(f'<g class="hull">{rect}'
-                           f'<text x="{x1+16}" y="{y1+24}" fill="{color if g not in trust else "#fb7185"}" font-size="11" font-weight="700" letter-spacing="2">{html.escape(lbl)}</text></g>')
+                           f'<text x="{x1+16}" y="{y1+24}" fill="{color if g not in trust else TRUST}" font-size="11" font-weight="700" letter-spacing="2">{html.escape(lbl)}</text></g>')
             break  # hulls: una sola pasada (los grupos ya se iteraron en `bounds`)
     return "".join(out)
 
 _JS_FLOW = """
-const DATOS=%s, RELS=%s, COLORES=%s;
+const DATOS=%s, RELS=%s, COLORES=%s, LINKCOLOR=%s;
 let lens=[];
 function aplicar(focus){
   const act=new Set(lens);
@@ -476,7 +512,7 @@ function panel(id){
     <span style="cursor:pointer;color:var(--muted)" onclick="foco(null)">✕</span></div>
     <div style="color:var(--sub);font-size:12px;margin:.2rem 0">${d.sub} — ${d.grupo||''} · tipo ${d.tipo}${d.ubicacion?' · 📍 '+d.ubicacion:''}${d.estado?' · '+d.estado:''}</div>
     <div style="font-size:12.5px;margin:.4rem 0">${d.detalle||''}</div>
-    ${d.ir?`<div style="font-size:12px;margin:.2rem 0"><a href="${d.ir.replace('.ir.json','.html')}" style="color:#38bdf8">↗ abrir vista de detalle (${d.ir})</a></div>`:''}
+    ${d.ir?`<div style="font-size:12px;margin:.2rem 0"><a href="${d.ir.replace('.ir.json','.html')}" style="color:${LINKCOLOR}">↗ abrir vista de detalle (${d.ir})</a></div>`:''}
     <ul style="margin:.3rem 0 0;padding-left:1.1rem;font-size:12px;color:var(--fg)">${rel}</ul>`;
   p.style.display='block';
 }
@@ -495,14 +531,18 @@ if(h.startsWith('#focus=')) foco(h.slice(7));
 if(h.startsWith('#lens=')){ lens=h.slice(6).split('~'); aplicar(null); }
 """
 
-_CSS_BASE = (
+_TOKENS_FALLBACK = (
     ":root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;"
     "--edge-label:#a5b4c9;--chip-bg:#0b1220;--chip-bd:#1e293b;--panel-bg:#0f172a;--panel-bd:#1e293b;"
     "--life:#334155;--act-bg:#1e293b;--act-bd:#475569;--seq-msg:#cbd5e1;--seq-ret:#64748b;--shadow:rgba(0,0,0,.35)}"
     ":root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;--edge:#64748b;"
     "--edge-label:#475569;--chip-bg:#ffffff;--chip-bd:#cbd5e1;--panel-bg:#ffffff;--panel-bd:#e2e8f0;"
     "--life:#cbd5e1;--act-bg:#e2e8f0;--act-bd:#94a3b8;--seq-msg:#334155;--seq-ret:#94a3b8;--shadow:rgba(15,23,42,.10)}"
-    "body{background:var(--bg);margin:0;padding:2.2rem;font-family:system-ui;color:var(--fg)}"
+)
+
+_CSS_BASE = (
+    (_dt.tokens_css("diagram") if _dt else _TOKENS_FALLBACK)
+    + "body{background:var(--bg);margin:0;padding:2.2rem;font-family:system-ui;color:var(--fg)}"
     "svg{width:100%;max-width:1180px;height:auto;display:block;margin:0 auto}"
     ".node,.edge,.chip,.hull,.msg,.life,.act{transition:opacity .18s}"
     ".insights{display:flex;gap:1rem;max-width:1180px;margin:1.2rem auto 0;flex-wrap:wrap}"
@@ -527,7 +567,7 @@ _TOOLBAR = ("<div id='toolbar'>"
 _JS_UI = """
 (function(){
   const root=document.documentElement;
-  let tema=localStorage.getItem('dir-tema')||%s||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');
+  let tema=(function(){try{const q=new URLSearchParams(location.search).get('tema');if(q==='claro'||q==='oscuro')return q;}catch(e){}return null;})()||localStorage.getItem('dir-tema')||%s||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro');
   let z=parseFloat(localStorage.getItem('dir-zoom')||'1');
   function aplTema(){root.dataset.theme=tema;
     document.getElementById('btn-tema').textContent=tema==='claro'?'🌙':'☀️';
@@ -559,7 +599,7 @@ def _insights_html(ir):
     cards = []
     for c in ins:
         lis = "".join(f"<li>{html.escape(b)}</li>" for b in c["bullets"])
-        cards.append(f'<div class="ins"><b><span class="dot" style="background:{c.get("color", "#38bdf8")}"></span>'
+        cards.append(f'<div class="ins"><b><span class="dot" style="background:{c.get("color", LINK)}"></span>'
                      f'{html.escape(c["titulo"])}</b><ul>{lis}</ul></div>')
     return '<div class="insights">' + "".join(cards) + "</div>"
 
@@ -589,9 +629,9 @@ def render_flow(ir):
     s.append('<defs><marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">'
              '<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" style="fill:var(--edge)"/></marker>'
              '<marker id="arrb" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">'
-             '<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" fill="#f472b6"/></marker></defs>')
+             f'<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" style="fill:{DECISION_C}"/></marker></defs>')
     s.append(f'<text x="{MX}" y="48" style="fill:var(--txt)" font-size="23" font-weight="700">{html.escape(ir["titulo"])}</text>')
-    s.append(f'<text x="{MX}" y="70" style="fill:var(--muted)" font-size="12">derivado de {html.escape(ir.get("fuente", "IR"))} · no editar a mano · clic en un elemento para su detalle</text>')
+    s.append(f'<text x="{MX}" y="70" style="fill:var(--muted-aa)" font-size="12">derivado de {html.escape(ir.get("fuente", "IR"))} · no editar a mano · clic en un elemento para su detalle</text>')
     s.append(_bandas(ir, pos, W, H))
     # v1.4: lineas divisorias de limite de confianza (threat-model DFD) —
     # verticales entre columnas de rank, con etiqueta en la parte superior.
@@ -600,8 +640,8 @@ def render_flow(ir):
         if not isinstance(k, int):
             continue
         lx = MX + (k + 1) * (NW + RX) - RX / 2
-        s.append(f'<line x1="{lx}" y1="{MY-24}" x2="{lx}" y2="{H-26}" stroke="#fb7185" stroke-width="1.6" stroke-dasharray="10 6" opacity=".75"/>'
-                 f'<text x="{lx}" y="{H-10}" fill="#fb7185" font-size="10" font-weight="700" letter-spacing="1.2" text-anchor="middle">[ {html.escape(str(lim.get("label", "LIMITE DE CONFIANZA"))).upper()} ]</text>')
+        s.append(f'<line x1="{lx}" y1="{MY-24}" x2="{lx}" y2="{H-26}" stroke="{TRUST}" stroke-width="1.6" stroke-dasharray="10 6" opacity=".75"/>'
+                 f'<text x="{lx}" y="{H-10}" fill="{TRUST}" font-size="10" font-weight="700" letter-spacing="1.2" text-anchor="middle">[ {html.escape(str(lim.get("label", "LIMITE DE CONFIANZA"))).upper()} ]</text>')
     backi = 0
     for e in ir["aristas"]:
         x1, y1 = pos[e["desde"]]
@@ -624,9 +664,9 @@ def render_flow(ir):
             label_b = f'⚠{e["amenaza"]} · {e["label"]}' if e.get("amenaza") else e["label"]
             w = len(label_b) * 6.2 + 14
             s.append(f'<g class="edge" data-f="{e["desde"]}" data-t="{e["hasta"]}">'
-                     f'<path d="{d}" fill="none" stroke="#f472b6" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrb)"/>'
-                     f'<rect x="{(x1+x2)/2+NW/2-w/2:.0f}" y="{chan-9}" width="{w:.0f}" height="18" rx="9" style="fill:var(--chip-bg)" stroke="#f472b655"/>'
-                     f'<text x="{(x1+x2)/2+NW/2:.0f}" y="{chan+4}" fill="#f9a8d4" font-size="10.5" text-anchor="middle">{html.escape(label_b)}</text></g>')
+                     f'<path d="{d}" fill="none" stroke="{DECISION_C}" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrb)"/>'
+                     f'<rect x="{(x1+x2)/2+NW/2-w/2:.0f}" y="{chan-9}" width="{w:.0f}" height="18" rx="9" style="fill:var(--chip-bg)" stroke="{TRUST}55"/>'
+                     f'<text x="{(x1+x2)/2+NW/2:.0f}" y="{chan+4}" fill="{TRUST_SOFT}" font-size="10.5" text-anchor="middle">{html.escape(label_b)}</text></g>')
             continue
         # v1.4: arista que SALTA columnas (span > 1) — enrutar por el canal
         # inferior con estilo normal; una linea recta atravesaria los nodos
@@ -670,12 +710,12 @@ def render_flow(ir):
                  f'<rect x="{mx-w/2:.0f}" y="{my-19}" width="{w:.0f}" height="18" rx="9" style="fill:var(--chip-bg);stroke:var(--chip-bd)"/>'
                  f'<text x="{mx:.0f}" y="{my-6}" style="fill:var(--edge-label)" font-size="10.5" text-anchor="middle">{html.escape(label_e)}</text>'
                  # cardinalidades ER (v1.3): pill pequena junto a cada extremo
-                 + (f'<text x="{p1[0]+16:.0f}" y="{p1[1]-10:.0f}" fill="#34d399" font-size="10" font-weight="700">{html.escape(e["card_d"])}</text>' if e.get("card_d") else "")
-                 + (f'<text x="{p2[0]-16:.0f}" y="{p2[1]-10:.0f}" fill="#34d399" font-size="10" font-weight="700" text-anchor="end">{html.escape(e["card_h"])}</text>' if e.get("card_h") else "")
+                 + (f'<text x="{p1[0]+16:.0f}" y="{p1[1]-10:.0f}" fill="{ESTADOS_CAP['adoptar']}" font-size="10" font-weight="700">{html.escape(e["card_d"])}</text>' if e.get("card_d") else "")
+                 + (f'<text x="{p2[0]-16:.0f}" y="{p2[1]-10:.0f}" fill="{ESTADOS_CAP['adoptar']}" font-size="10" font-weight="700" text-anchor="end">{html.escape(e["card_h"])}</text>' if e.get("card_h") else "")
                  + '</g>')
     for n in ir["nodos"]:
         x, y = pos[n["id"]]
-        c, icon = TIPO.get(n["tipo"], ("#a78bfa", "?"))
+        c, icon = TIPO.get(n["tipo"], (TIPO_BASE["service"][0], "?"))
         if n.get("color"):  # v1.4: color por nodo (p. ej. interno/externo en stakeholder)
             c = n["color"]
         if n["tipo"] == "decision":
@@ -736,7 +776,7 @@ def render_flow(ir):
         rels.setdefault(e["desde"], []).append(("→", e["hasta"], e["label"]))
         rels.setdefault(e["hasta"], []).append(("←", e["desde"], e["label"]))
     js = _JS_FLOW % (json.dumps(datos, ensure_ascii=False), json.dumps(rels, ensure_ascii=False),
-                     json.dumps({k: v[0] for k, v in TIPO.items()}))
+                     json.dumps({k: v[0] for k, v in TIPO.items()}), json.dumps(LINK))
     return _page(ir, "".join(s), js)
 
 # ════════════════════════ MOTOR DE SECUENCIA ════════════════════════
@@ -809,9 +849,9 @@ def render_sequence(ir):
              '<marker id="a2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto">'
              '<path d="M0.5,0.5 L9.5,5 L0.5,9.5 z" style="fill:var(--seq-ret)"/></marker></defs>')
     s.append(f'<text x="{MX_S}" y="48" style="fill:var(--txt)" font-size="23" font-weight="700">{html.escape(ir["titulo"])}</text>')
-    s.append(f'<text x="{MX_S}" y="70" style="fill:var(--muted)" font-size="12">derivado de {html.escape(ir.get("fuente", "IR"))} · no editar a mano · clic en un participante para su detalle</text>')
+    s.append(f'<text x="{MX_S}" y="70" style="fill:var(--muted-aa)" font-size="12">derivado de {html.escape(ir.get("fuente", "IR"))} · no editar a mano · clic en un participante para su detalle</text>')
     for p in ir["participantes"]:
-        c, icon = TIPO.get(p["tipo"], ("#a78bfa", "?"))
+        c, icon = TIPO.get(p["tipo"], (TIPO_BASE["service"][0], "?"))
         x = cx[p["id"]] - PW_S / 2
         tit = _ellipsize(p["titulo"], 13, PW_S - 50)
         sub = _ellipsize(p.get("sub", ""), 10.5, PW_S - 50)
@@ -842,8 +882,8 @@ def render_sequence(ir):
         mx = (x1 + x2) / 2
         w = len(m["label"]) * 6.4 + 30
         s.append(f'<rect x="{mx-w/2:.0f}" y="{y-26}" width="{w:.0f}" height="19" rx="9.5" style="fill:var(--chip-bg);stroke:var(--chip-bd)"/>'
-                 f'<circle cx="{mx-w/2+12:.0f}" cy="{y-16.5}" r="7.5" fill="#38bdf822" stroke="#38bdf8"/>'
-                 f'<text x="{mx-w/2+12:.0f}" y="{y-13}" fill="#38bdf8" font-size="9.5" font-weight="700" text-anchor="middle">{i+1}</text>'
+                 f'<circle cx="{mx-w/2+12:.0f}" cy="{y-16.5}" r="7.5" fill="{LINK}22" stroke="{LINK}"/>'
+                 f'<text x="{mx-w/2+12:.0f}" y="{y-13}" fill="{LINK}" font-size="9.5" font-weight="700" text-anchor="middle">{i+1}</text>'
                  f'<text x="{mx-w/2+25:.0f}" y="{y-12.5}" style="fill:var(--edge-label)" font-size="10.5">{html.escape(m["label"].strip())}</text></g>')
     for pid, y0 in activo.items():
         yend = max(TOP_S + HEAD_S + i * STEP_S for i, m in enumerate(ir["mensajes"]) if m["desde"] == pid or m["hasta"] == pid)

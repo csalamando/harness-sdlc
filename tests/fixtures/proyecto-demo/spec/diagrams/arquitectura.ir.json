@@ -1,7 +1,6 @@
 {
   "kind": "flow",
   "titulo": "Demo verificacion — arquitectura con ubicaciones (C4 contenedores)",
-  "tipo": "architecture",
   "fuente": "demo-manual.ir.json",
   "bandas": "hulls",
   "grupos": {"Cliente": "#38bdf8", "Edge": "#2dd4bf", "Core": "#a78bfa", "Datos": "#34d399"},

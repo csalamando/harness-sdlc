@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="oscuro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Styleguide — Sistema de Diseño del arnés SDLC v1.0.0</title>
+<!-- artefacto derivado de docs/design-system/tokens.json — no editar a mano -->
+<style>
+:root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--muted-aa:#8a99b0;--sub:#8ea0b8;--edge:#94a3b8;--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--accent-strong:#2563eb;--on-accent:#ffffff;--ok:#22c55e;--warn:#f59e0b;--warn-text:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);--focus:#3b82f6;--gline:#334155;--gnode:#1e293b;--edge-label:#a5b4c9;--chip-bg:#0b1220;--chip-bd:#1e293b;--life:#334155;--act-bg:#1e293b;--act-bd:#475569;--seq-msg:#cbd5e1;--seq-ret:#64748b;color-scheme:dark}
+:root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--muted-aa:#5b6b80;--sub:#5b6b80;--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;--accent-strong:#2563eb;--on-accent:#ffffff;--ok:#16a34a;--warn:#d97706;--warn-text:#92400e;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);--focus:#2563eb;--gline:#94a3b8;--gnode:#f1f5f9;--edge-label:#475569;--chip-bg:#ffffff;--chip-bd:#cbd5e1;--life:#cbd5e1;--act-bg:#e2e8f0;--act-bd:#94a3b8;--seq-msg:#334155;--seq-ret:#94a3b8;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+font-family:system-ui,'Segoe UI',sans-serif;padding:2rem 2.5rem 4rem;line-height:1.55}
+h1{font-size:1.35rem;color:var(--txt);margin:.2rem 0 .3rem}
+h2{font-size:1.08rem;color:var(--txt);margin:2rem 0 .6rem;border-bottom:1px solid var(--panel-bd);
+padding-bottom:.35rem}
+.sub{color:var(--sub);font-size:.85rem;margin-bottom:1.5rem}
+.wrap{max-width:960px;margin:0 auto}
+.panel{background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:12px;
+padding:1.2rem;margin:1rem 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem}
+.swatch{border-radius:8px;padding:.5rem .6rem;min-height:64px;display:flex;flex-direction:column;
+justify-content:flex-end;font-size:.7rem;border:1px solid var(--panel-bd)}
+.swatch span{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.swatch .sw-name{font-weight:650}
+.swatch .sw-val,.swatch .sw-ratio{opacity:.85}
+.type-row{display:flex;align-items:baseline;gap:1rem;padding:.45rem 0;border-bottom:1px solid var(--panel-bd)}
+.type-token{font-family:ui-monospace,Consolas,monospace;font-size:.73rem;color:var(--muted-aa);min-width:9rem}
+/* ── componentes (contrato del design-system.md §5) ── */
+.btn{background:var(--card-bg);border:1px solid var(--panel-bd);color:var(--fg);border-radius:8px;
+padding:.32rem .7rem;font-size:.87rem;font-weight:600;cursor:pointer;font-family:inherit}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent-strong);color:var(--on-accent);border-color:transparent}
+.btn-primary:hover{filter:brightness(1.1)}
+.input{background:var(--card-bg);border:1px solid var(--panel-bd);color:var(--fg);border-radius:8px;
+padding:.4rem .8rem;font-size:.87rem;font-family:inherit;min-width:280px}
+.input:focus{outline:none;border-color:var(--accent)}
+.input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.input::placeholder{color:var(--muted-aa)}
+.nav-item{display:block;padding:.45rem .7rem;border-radius:8px;font-size:.87rem;color:var(--sub);
+text-decoration:none;cursor:pointer}
+.nav-item:hover{background:var(--card-bg);color:var(--fg)}
+.nav-item:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.nav-item.active{box-shadow:inset 2px 0 0 var(--accent);color:var(--txt);background:var(--card-bg)}
+.chip{display:inline-block;background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:4px;
+padding:1px 8px;font-size:.67rem;margin-right:.4rem}
+.chip.ok{color:var(--ok);border-color:var(--ok)}
+.chip.warn{color:var(--warn-text);border-color:var(--warn)}
+.chip.bad{color:var(--bad);border-color:var(--bad)}
+.chip.info{color:var(--accent);border-color:var(--accent)}
+.card{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:12px;padding:1rem}
+table.demo{border-collapse:collapse;width:100%;font-size:.88em}
+table.demo th,table.demo td{border-bottom:1px solid var(--panel-bd);padding:.45em .7em;text-align:left}
+table.demo th{color:var(--sub);font-size:.78em;text-transform:uppercase;letter-spacing:.04em}
+table.demo tr:hover td{background:var(--card-bg)}
+.crumbs-demo{display:flex;align-items:center;gap:.45rem;background:var(--panel-bg);
+border:1px solid var(--panel-bd);border-radius:6px;padding:.3rem .7rem;font-size:.77rem;color:var(--muted-aa)}
+.crumbs-demo b{color:var(--txt)}
+.qr-demo{padding:.5rem .8rem;border-bottom:1px solid var(--panel-bd);cursor:pointer;border-radius:6px}
+.qr-demo:hover{background:var(--card-bg)}
+.qc{font-size:.67rem;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+pre.demo{background:var(--panel-bg);border:1px solid var(--panel-bd);border-radius:10px;padding:1rem;
+overflow-x:auto;font-family:ui-monospace,'Cascadia Code',Consolas,monospace;font-size:.85em}
+kbd{background:var(--card-bg);border:1px solid var(--panel-bd);border-radius:4px;padding:1px 6px;
+font-family:ui-monospace,Consolas,monospace;font-size:.78em}
+.row{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin:.6rem 0}
+.state{border-radius:12px;border:1px solid var(--panel-bd);padding:1rem;min-height:90px}
+.state.loading{display:flex;align-items:center;gap:.7rem;color:var(--sub)}
+.spinner{width:18px;height:18px;border-radius:50%;border:2px solid var(--panel-bd);
+border-top-color:var(--accent);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.state.empty{color:var(--sub);font-style:italic}
+.state.error{background:color-mix(in srgb, var(--bad) 12%, transparent);border-color:var(--bad)}
+.state.error b{color:var(--bad)}
+.state.success{border-color:var(--ok)}
+.state.success b{color:var(--ok)}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+#themebtn{position:fixed;top:1rem;right:1.5rem}
+.tag{font-size:.67rem;color:var(--muted-aa);text-transform:uppercase;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<button id="themebtn" class="btn" aria-label="Cambiar tema">🌞 Tema</button>
+<div class="wrap">
+<h1>◈ Sistema de Diseño — arnés SDLC</h1>
+<div class="sub">v1.0.0 · tokens canónicos: <code>docs/design-system/tokens.json</code> ·
+fuentes: system-ui (sans) / ui-monospace (mono) · temas oscuro/claro</div>
+
+<h2>1. Paleta — tema oscuro</h2>
+<div class="grid"><div class="swatch" style="background:#0b1220"><span class="sw-name">--bg</span><span class="sw-val">#0b1220</span><span class="sw-ratio">fg 15.2:1</span></div>
+<div class="swatch" style="background:#e2e8f0"><span class="sw-name">--fg</span><span class="sw-val">#e2e8f0</span><span class="sw-ratio">fg 1.0:1</span></div>
+<div class="swatch" style="background:#f1f5f9"><span class="sw-name">--txt</span><span class="sw-val">#f1f5f9</span><span class="sw-ratio">fg 1.1:1</span></div>
+<div class="swatch" style="background:#64748b"><span class="sw-name">--muted</span><span class="sw-val">#64748b</span><span class="sw-ratio">fg 3.9:1</span></div>
+<div class="swatch" style="background:#8a99b0"><span class="sw-name">--muted-aa</span><span class="sw-val">#8a99b0</span><span class="sw-ratio">fg 2.3:1</span></div>
+<div class="swatch" style="background:#8ea0b8"><span class="sw-name">--sub</span><span class="sw-val">#8ea0b8</span><span class="sw-ratio">fg 2.2:1</span></div>
+<div class="swatch" style="background:#94a3b8"><span class="sw-name">--edge</span><span class="sw-val">#94a3b8</span><span class="sw-ratio">fg 2.1:1</span></div>
+<div class="swatch" style="background:#0f172a"><span class="sw-name">--panel-bg</span><span class="sw-val">#0f172a</span><span class="sw-ratio">fg 14.5:1</span></div>
+<div class="swatch" style="background:#1e293b"><span class="sw-name">--panel-bd</span><span class="sw-val">#1e293b</span><span class="sw-ratio">fg 11.9:1</span></div>
+<div class="swatch" style="background:#111c33"><span class="sw-name">--card-bg</span><span class="sw-val">#111c33</span><span class="sw-ratio">fg 13.8:1</span></div>
+<div class="swatch" style="background:#3b82f6"><span class="sw-name">--accent</span><span class="sw-val">#3b82f6</span><span class="sw-ratio">fg 3.0:1</span></div>
+<div class="swatch" style="background:#2563eb"><span class="sw-name">--accent-strong</span><span class="sw-val">#2563eb</span><span class="sw-ratio">fg 4.2:1</span></div>
+<div class="swatch" style="background:#ffffff"><span class="sw-name">--on-accent</span><span class="sw-val">#ffffff</span><span class="sw-ratio">fg 1.2:1</span></div>
+<div class="swatch" style="background:#22c55e"><span class="sw-name">--ok</span><span class="sw-val">#22c55e</span><span class="sw-ratio">fg 1.8:1</span></div>
+<div class="swatch" style="background:#f59e0b"><span class="sw-name">--warn</span><span class="sw-val">#f59e0b</span><span class="sw-ratio">fg 1.7:1</span></div>
+<div class="swatch" style="background:#f59e0b"><span class="sw-name">--warn-text</span><span class="sw-val">#f59e0b</span><span class="sw-ratio">fg 1.7:1</span></div>
+<div class="swatch" style="background:#ef4444"><span class="sw-name">--bad</span><span class="sw-val">#ef4444</span><span class="sw-ratio">fg 3.1:1</span></div>
+<div class="swatch" style="background:#f97316"><span class="sw-name">--tier</span><span class="sw-val">#f97316</span><span class="sw-ratio">fg 2.3:1</span></div>
+<div class="swatch rgba" style="background:rgba(0,0,0,.35)"><span class="sw-name">--shadow</span><span class="sw-val">rgba(0,0,0,.35)</span><span class="sw-ratio">fg —</span></div>
+<div class="swatch" style="background:#3b82f6"><span class="sw-name">--focus</span><span class="sw-val">#3b82f6</span><span class="sw-ratio">fg 3.0:1</span></div>
+<div class="swatch" style="background:#334155"><span class="sw-name">--gline</span><span class="sw-val">#334155</span><span class="sw-ratio">fg 8.4:1</span></div>
+<div class="swatch" style="background:#1e293b"><span class="sw-name">--gnode</span><span class="sw-val">#1e293b</span><span class="sw-ratio">fg 11.9:1</span></div>
+<div class="swatch" style="background:#a5b4c9"><span class="sw-name">--edge-label</span><span class="sw-val">#a5b4c9</span><span class="sw-ratio">fg 1.7:1</span></div>
+<div class="swatch" style="background:#0b1220"><span class="sw-name">--chip-bg</span><span class="sw-val">#0b1220</span><span class="sw-ratio">fg 15.2:1</span></div>
+<div class="swatch" style="background:#1e293b"><span class="sw-name">--chip-bd</span><span class="sw-val">#1e293b</span><span class="sw-ratio">fg 11.9:1</span></div>
+<div class="swatch" style="background:#334155"><span class="sw-name">--life</span><span class="sw-val">#334155</span><span class="sw-ratio">fg 8.4:1</span></div>
+<div class="swatch" style="background:#1e293b"><span class="sw-name">--act-bg</span><span class="sw-val">#1e293b</span><span class="sw-ratio">fg 11.9:1</span></div>
+<div class="swatch" style="background:#475569"><span class="sw-name">--act-bd</span><span class="sw-val">#475569</span><span class="sw-ratio">fg 6.1:1</span></div>
+<div class="swatch" style="background:#cbd5e1"><span class="sw-name">--seq-msg</span><span class="sw-val">#cbd5e1</span><span class="sw-ratio">fg 1.2:1</span></div>
+<div class="swatch" style="background:#64748b"><span class="sw-name">--seq-ret</span><span class="sw-val">#64748b</span><span class="sw-ratio">fg 3.9:1</span></div></div>
+<h2>2. Paleta — tema claro</h2>
+<div class="grid"><div class="swatch" style="background:#eef2f7"><span class="sw-name">--bg</span><span class="sw-val">#eef2f7</span><span class="sw-ratio">fg 13.0:1</span></div>
+<div class="swatch" style="background:#1e293b"><span class="sw-name">--fg</span><span class="sw-val">#1e293b</span><span class="sw-ratio">fg 1.0:1</span></div>
+<div class="swatch" style="background:#0f172a"><span class="sw-name">--txt</span><span class="sw-val">#0f172a</span><span class="sw-ratio">fg 1.2:1</span></div>
+<div class="swatch" style="background:#64748b"><span class="sw-name">--muted</span><span class="sw-val">#64748b</span><span class="sw-ratio">fg 3.1:1</span></div>
+<div class="swatch" style="background:#5b6b80"><span class="sw-name">--muted-aa</span><span class="sw-val">#5b6b80</span><span class="sw-ratio">fg 2.7:1</span></div>
+<div class="swatch" style="background:#5b6b80"><span class="sw-name">--sub</span><span class="sw-val">#5b6b80</span><span class="sw-ratio">fg 2.7:1</span></div>
+<div class="swatch" style="background:#64748b"><span class="sw-name">--edge</span><span class="sw-val">#64748b</span><span class="sw-ratio">fg 3.1:1</span></div>
+<div class="swatch" style="background:#ffffff"><span class="sw-name">--panel-bg</span><span class="sw-val">#ffffff</span><span class="sw-ratio">fg 14.6:1</span></div>
+<div class="swatch" style="background:#e2e8f0"><span class="sw-name">--panel-bd</span><span class="sw-val">#e2e8f0</span><span class="sw-ratio">fg 11.9:1</span></div>
+<div class="swatch" style="background:#f8fafc"><span class="sw-name">--card-bg</span><span class="sw-val">#f8fafc</span><span class="sw-ratio">fg 14.0:1</span></div>
+<div class="swatch" style="background:#2563eb"><span class="sw-name">--accent</span><span class="sw-val">#2563eb</span><span class="sw-ratio">fg 2.8:1</span></div>
+<div class="swatch" style="background:#2563eb"><span class="sw-name">--accent-strong</span><span class="sw-val">#2563eb</span><span class="sw-ratio">fg 2.8:1</span></div>
+<div class="swatch" style="background:#ffffff"><span class="sw-name">--on-accent</span><span class="sw-val">#ffffff</span><span class="sw-ratio">fg 14.6:1</span></div>
+<div class="swatch" style="background:#16a34a"><span class="sw-name">--ok</span><span class="sw-val">#16a34a</span><span class="sw-ratio">fg 4.4:1</span></div>
+<div class="swatch" style="background:#d97706"><span class="sw-name">--warn</span><span class="sw-val">#d97706</span><span class="sw-ratio">fg 4.6:1</span></div>
+<div class="swatch" style="background:#92400e"><span class="sw-name">--warn-text</span><span class="sw-val">#92400e</span><span class="sw-ratio">fg 2.1:1</span></div>
+<div class="swatch" style="background:#dc2626"><span class="sw-name">--bad</span><span class="sw-val">#dc2626</span><span class="sw-ratio">fg 3.0:1</span></div>
+<div class="swatch" style="background:#ea580c"><span class="sw-name">--tier</span><span class="sw-val">#ea580c</span><span class="sw-ratio">fg 4.1:1</span></div>
+<div class="swatch rgba" style="background:rgba(15,23,42,.12)"><span class="sw-name">--shadow</span><span class="sw-val">rgba(15,23,42,.12)</span><span class="sw-ratio">fg —</span></div>
+<div class="swatch" style="background:#2563eb"><span class="sw-name">--focus</span><span class="sw-val">#2563eb</span><span class="sw-ratio">fg 2.8:1</span></div>
+<div class="swatch" style="background:#94a3b8"><span class="sw-name">--gline</span><span class="sw-val">#94a3b8</span><span class="sw-ratio">fg 5.7:1</span></div>
+<div class="swatch" style="background:#f1f5f9"><span class="sw-name">--gnode</span><span class="sw-val">#f1f5f9</span><span class="sw-ratio">fg 13.4:1</span></div>
+<div class="swatch" style="background:#475569"><span class="sw-name">--edge-label</span><span class="sw-val">#475569</span><span class="sw-ratio">fg 1.9:1</span></div>
+<div class="swatch" style="background:#ffffff"><span class="sw-name">--chip-bg</span><span class="sw-val">#ffffff</span><span class="sw-ratio">fg 14.6:1</span></div>
+<div class="swatch" style="background:#cbd5e1"><span class="sw-name">--chip-bd</span><span class="sw-val">#cbd5e1</span><span class="sw-ratio">fg 9.9:1</span></div>
+<div class="swatch" style="background:#cbd5e1"><span class="sw-name">--life</span><span class="sw-val">#cbd5e1</span><span class="sw-ratio">fg 9.9:1</span></div>
+<div class="swatch" style="background:#e2e8f0"><span class="sw-name">--act-bg</span><span class="sw-val">#e2e8f0</span><span class="sw-ratio">fg 11.9:1</span></div>
+<div class="swatch" style="background:#94a3b8"><span class="sw-name">--act-bd</span><span class="sw-val">#94a3b8</span><span class="sw-ratio">fg 5.7:1</span></div>
+<div class="swatch" style="background:#334155"><span class="sw-name">--seq-msg</span><span class="sw-val">#334155</span><span class="sw-ratio">fg 1.4:1</span></div>
+<div class="swatch" style="background:#94a3b8"><span class="sw-name">--seq-ret</span><span class="sw-val">#94a3b8</span><span class="sw-ratio">fg 5.7:1</span></div></div>
+
+<h2>3. Escala tipográfica</h2>
+<div class="panel"><div class="type-row"><span class="type-token">font.size.2xs</span><span class="type-sample" style="font-size:0.67rem">Portal del proyecto — 10px</span></div>
+<div class="type-row"><span class="type-token">font.size.xs</span><span class="type-sample" style="font-size:0.73rem">Portal del proyecto — 11px</span></div>
+<div class="type-row"><span class="type-token">font.size.sm</span><span class="type-sample" style="font-size:0.8rem">Portal del proyecto — 12px</span></div>
+<div class="type-row"><span class="type-token">font.size.md</span><span class="type-sample" style="font-size:0.87rem">Portal del proyecto — 13px</span></div>
+<div class="type-row"><span class="type-token">font.size.base</span><span class="type-sample" style="font-size:1rem">Portal del proyecto — 15px</span></div>
+<div class="type-row"><span class="type-token">font.size.lg</span><span class="type-sample" style="font-size:1.08rem">Portal del proyecto — 16px</span></div>
+<div class="type-row"><span class="type-token">font.size.xl</span><span class="type-sample" style="font-size:1.35rem">Portal del proyecto — 20px</span></div></div>
+
+<h2>4. Botones</h2>
+<div class="panel">
+  <div class="row">
+    <button class="btn">Default</button>
+    <button class="btn btn-primary">Primary</button>
+    <button class="btn" disabled>Disabled</button>
+    <button class="btn" aria-label="Colapsar menú">☰ Icon</button>
+  </div>
+  <div class="tag">estados: default · hover (borde --accent) · focus-visible (anillo --focus) · disabled (.5 opacidad)</div>
+</div>
+
+<h2>5. Input de búsqueda</h2>
+<div class="panel">
+  <div class="row"><input class="input" placeholder="Buscar… (Ctrl+K o /)" aria-label="Buscar"></div>
+  <div class="tag">focus: borde --accent + anillo --focus · placeholder --muted-aa</div>
+</div>
+
+<h2>6. Navegación lateral</h2>
+<div class="panel" style="max-width:320px">
+  <a class="nav-item" tabindex="0">Inicio</a>
+  <a class="nav-item active" aria-current="page" tabindex="0">Arquitectura</a>
+  <a class="nav-item" tabindex="0">Documentación</a>
+  <div class="tag" style="margin-top:.5rem">activo: barra --accent + aria-current · hover: fondo --card-bg</div>
+</div>
+
+<h2>7. Chips de estado</h2>
+<div class="panel">
+  <span class="chip ok">OK · 291 checks</span>
+  <span class="chip warn">WARN · drift</span>
+  <span class="chip bad">ERROR · gate</span>
+  <span class="chip info">ADR-013</span>
+</div>
+
+<h2>8. Tarjeta y tabla</h2>
+<div class="panel">
+  <div class="card" style="margin-bottom:1rem"><b>Tarjeta</b><br>
+  <span style="color:var(--sub);font-size:.85rem">Fondo --card-bg, radio 2xl, borde --panel-bd.</span></div>
+  <table class="demo"><tr><th>Artefacto</th><th>Estado</th><th>Recibo</th></tr>
+  <tr><td>design-system.md</td><td>✅ vigente</td><td>rc-2026-0912</td></tr>
+  <tr><td>tokens.json</td><td>✅ vigente</td><td>rc-2026-0912</td></tr></table>
+</div>
+
+<h2>9. Migas y resultado de búsqueda</h2>
+<div class="panel">
+  <div class="crumbs-demo"><button class="btn" style="font-size:.75rem;padding:.1rem .45rem">‹</button>
+  <button class="btn" style="font-size:.75rem;padding:.1rem .45rem">›</button>
+  <span style="width:1px;height:14px;background:var(--panel-bd)"></span>
+  Inicio <span style="color:var(--sub)">/</span> <b>Arquitectura</b></div>
+  <div style="height:.7rem"></div>
+  <div class="qr-demo"><span class="qc">Arquitectura</span><br>Decisiones ADR — <b>rebrand</b> a tokens</div>
+  <div class="qr-demo"><span class="qc">Docs</span><br>User stories — criterios <b>Given/When/Then</b></div>
+</div>
+
+<h2>10. Código</h2>
+<div class="panel"><pre class="demo">python design_tokens.py --check
+# design_tokens OK v1.0.0 — estructura, paridad y 19 pares AA en verde</pre></div>
+
+<h2>11. Los cuatro estados (contrato)</h2>
+<div class="panel grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+  <div class="state loading"><div class="spinner"></div> Cargando documento…</div>
+  <div class="state empty">Documento sin contenido todavía.</div>
+  <div class="state error"><b>Error al cargar.</b> El índice no responde.
+  <div class="row" style="margin-top:.5rem"><button class="btn btn-primary" style="font-size:.78rem">Reintentar</button></div></div>
+  <div class="state success"><b>Listo.</b> 291 checks en verde · recibo vigente.</div>
+</div>
+
+<h2>12. Atajos (PANT-04)</h2>
+<div class="panel">
+  <kbd>Ctrl</kbd>+<kbd>K</kbd> buscar · <kbd>/</kbd> buscar · <kbd>Esc</kbd> cerrar ·
+  <kbd>A−</kbd>/<kbd>A+</kbd> zoom · <kbd>☰</kbd> colapsar
+</div>
+</div>
+<script>
+(function(){
+  var b=document.getElementById('themebtn');
+  function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
+  function apply(t){document.documentElement.setAttribute('data-theme',t||'oscuro');
+    b.textContent=(t==='claro')?'🌙 Tema':'🌞 Tema';}
+  var params=new URLSearchParams(location.search);
+  var q=params.get('tema'); if(q) apply(q);
+  else apply(saved()||'oscuro');
+  b.addEventListener('click',function(){
+    var t=document.documentElement.getAttribute('data-theme')==='claro'?'oscuro':'claro';
+    try{localStorage.setItem('dir-tema',t);}catch(e){} apply(t);});
+})();
+</script>
+</body>
+</html>
