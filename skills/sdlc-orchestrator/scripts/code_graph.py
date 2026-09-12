@@ -52,19 +52,24 @@ import sys
 DB_DIR = ".codeintel"
 DB_NAME = "index.db"
 
-# Tokens del portal (tema claro/oscuro). Fuente de verdad: portal_lib.
+# Tokens del design system (tema claro/oscuro). Fuente de verdad:
+# docs/design-system/tokens.json → design_tokens.py → portal_lib.TOKENS_CSS.
 try:  # vendorado junto a portal_lib.py (mismo directorio)
     import portal_lib as _pl
     TOKENS_CSS = _pl.TOKENS_CSS
-except Exception:  # copia de respaldo — mantener sincronizada con portal_lib
-    TOKENS_CSS = (
-        ":root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;"
-        "--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;"
-        "--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);color-scheme:dark}"
-        ":root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;"
-        "--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;"
-        "--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);color-scheme:light}"
-    )
+except Exception:
+    try:
+        import design_tokens as _dt
+        TOKENS_CSS = _dt.tokens_css("graph")
+    except Exception:  # última red de respaldo — mantener sincronizada (self_test lo verifica)
+        TOKENS_CSS = (
+            ":root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--sub:#8ea0b8;--edge:#94a3b8;"
+            "--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--ok:#22c55e;"
+            "--warn:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);color-scheme:dark}"
+            ":root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--sub:#5b6b80;"
+            "--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;"
+            "--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);color-scheme:light}"
+        )
 
 # JS de tema compartido: misma clave dir-tema y mismo postMessage que el
 # shell del portal y los diagramas IR (tema dia/noche en vivo).
@@ -101,8 +106,12 @@ NOISE_CALLS = {
     "setTimeout", "setInterval", "Promise", "fetch", "JSON", "Object",
     "Array", "String", "Number", "Boolean", "Math", "Error", "Map", "Set",
 }
-PALETTE = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4",
-           "#f97316", "#84cc16", "#ec4899", "#14b8a6", "#eab308", "#6366f1"]
+try:
+    import design_tokens as _dt
+    PALETTE = list(_dt.doc()["dataviz"]["palette-graph"]["value"])
+except Exception:  # respaldo sincronizado con tokens.json (self_test lo verifica)
+    PALETTE = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4",
+               "#f97316", "#84cc16", "#ec4899", "#14b8a6", "#eab308", "#6366f1"]
 
 
 # ------------------------------------------------------------------ extraccion

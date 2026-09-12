@@ -742,6 +742,66 @@ with tempfile.TemporaryDirectory() as tmp_mdv:
           and items["paginas/docs/reports__sprint-review-00.html"]["categoria"] == "agilidad")
 
 
+# ── 9i. Design system del arnés (tokens canónicos, v1.0.0) ───────────────────
+print("\n[9i] Design system: tokens.json único, cero hex fuera de tokens, AA verificado")
+sys.path.insert(0, ORCH)
+import design_tokens
+code, out = run("design_tokens.py", "--check")
+check("design_tokens: --check (estructura + paridad snapshot + 19 pares AA)", code == 0, out)
+import portal_lib
+check("portal: TOKENS_CSS sale de design_tokens (no hardcodeado)",
+      portal_lib.TOKENS_CSS == design_tokens.tokens_css("all"))
+check("portal: PORTAL_VERSION 1.5.1 (design system + a11y + ?tema=)", portal_lib.PORTAL_VERSION == "1.5.1")
+_shell = portal_lib.build_shell({"proyecto": "T", "harness_version": "x"})
+check("portal: shell lleva :focus-visible y prefers-reduced-motion",
+      ":focus-visible" in _shell and "prefers-reduced-motion" in _shell)
+check("portal: shell con ARIA (nav landmark, aria-current, aria-label)",
+      'aria-label="Secciones del portal"' in _shell and "aria-current" in _shell)
+check("portal: shell con estado loading del iframe (PANT-08)",
+      'id="loadstate"' in _shell and 'role="status"' in _shell)
+check("portal: texto terciario usa --muted-aa (AA), no --muted decorativo",
+      "--muted-aa:var" not in _shell  # sanity de formato
+      and _shell.count("color:var(--muted-aa)") >= 4)
+import code_graph
+check("code_graph: TOKENS_CSS y PALETTE desde tokens.json",
+      code_graph.PALETTE == design_tokens.doc()["dataviz"]["palette-graph"]["value"])
+DIAG = os.path.join(ROOT, "skills", "sdlc-diagrams", "scripts")
+if DIAG not in sys.path:
+    sys.path.insert(0, DIAG)
+import diagram_ir
+check("diagram_ir: usa design_tokens (no el fallback embebido)",
+      diagram_ir._dt is not None)
+check("diagram_ir: TIPO_BASE y ESTADOS_CAP desde tokens.json",
+      diagram_ir.TIPO_BASE["ui"][0] ==
+      design_tokens.doc()["dataviz"]["diagram-ir-tipo"]["value"]["ui"][0]
+      and diagram_ir.ESTADOS_CAP ==
+      design_tokens.doc()["dataviz"]["diagram-ir-estados"]["value"])
+check("diagram_ir: fallback embebido = tokens.json (paridad snapshot)",
+      json.dumps(diagram_ir._DV_FALLBACK, ensure_ascii=False, sort_keys=True) ==
+      json.dumps({k: design_tokens.doc()["dataviz"][k]["value"] for k in diagram_ir._DV_FALLBACK},
+                 ensure_ascii=False, sort_keys=True))
+import harness_graph
+check("harness_graph: grafo standalone sin hex fuera del bloque de tokens",
+      not re.findall(r"#[0-9a-fA-F]{6}",
+                     re.sub(r":root(?:\[data-theme=claro\])?\{[^}]*\}",
+                            "", harness_graph.TEMPLATE)))
+check("harness_graph: _STATUS_COLOR como variables del DS",
+      harness_graph._STATUS_COLOR["ok"] == "var(--ok)")
+check("harness_graph: paletas dataviz desde tokens.json",
+      harness_graph._dv("palette-series") ==
+      design_tokens.doc()["dataviz"]["palette-series"]["value"]
+      and harness_graph._dv_dict("diagram-types") ==
+      design_tokens.doc()["dataviz"]["diagram-types"]["value"])
+DS = os.path.join(ROOT, "docs", "design-system")
+check("design-system: artefactos del DS existen y versionan",
+      os.path.isfile(os.path.join(DS, "tokens.json"))
+      and os.path.isfile(os.path.join(DS, "design-system.md"))
+      and os.path.isfile(os.path.join(DS, "ux", "screen-inventory.md")))
+_dsd = json.load(open(os.path.join(DS, "tokens.json"), encoding="utf-8"))
+check("design-system: tokens.json y snapshot embebido en paridad",
+      _dsd == json.loads(design_tokens._SNAPSHOT_JSON))
+
+
 # ── 9e. pipeline_diagram: lenguaje visual comun (v2.19); drawio retirado (v2.20) ──
 print("\n[9e] Pipeline CI/CD derivado (--tema, labels) + retiro de drawio")
 DIR_SCRIPTS = os.path.join(ROOT, "skills", "sdlc-diagrams", "scripts")

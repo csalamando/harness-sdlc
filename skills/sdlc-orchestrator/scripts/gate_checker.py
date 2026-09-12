@@ -178,7 +178,23 @@ def check_sprint_learning(artefacto):
         return ["Sprint review sin línea 'Generado:' — regenerar con sprint_review.py"]
     inicio = per.group(1) if per else "0000-00-00"
     fin = gen.group(1)
-    entries = resolve_spec_path("spec/memory/entries", artefacto)
+    # La memoria se busca primero ANCLADA AL PROYECTO del artefacto (subiendo
+    # desde su directorio), no al cwd: si el comando corre desde la raíz de
+    # otro proyecto que también tiene spec/memory/entries (p. ej. el repo del
+    # propio arnés), la resolución cwd-primero leería la memoria equivocada.
+    entries = None
+    d = os.path.dirname(os.path.abspath(artefacto))
+    for _ in range(6):
+        cand = os.path.join(d, "spec", "memory", "entries")
+        if os.path.isdir(cand):
+            entries = cand
+            break
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    if not entries:
+        entries = resolve_spec_path("spec/memory/entries", artefacto)
     if not entries:
         return ["Sin spec/memory/entries/ — la memoria del sprint no existe (guardar una "
                 "memoria learning con las señales del sprint; si fue limpio, "
