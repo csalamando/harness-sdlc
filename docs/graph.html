@@ -3,40 +3,52 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Arnés SDLC — Grafo del pipeline (generado)</title>
 <style>
-  :root { color-scheme: dark; }
-  body { background:#0b1220; color:#e2e8f0; font-family:system-ui,sans-serif; margin:0; padding:2rem; }
-  h1 { font-size:1.3rem; } .sub { color:#94a3b8; font-size:.85rem; margin-bottom:1.5rem; }
-  .canvas { position:relative; height:540px; background:#0f172a; border:1px solid #1e293b; border-radius:12px; overflow:hidden; }
+:root{--bg:#0b1220;--fg:#e2e8f0;--txt:#f1f5f9;--muted:#64748b;--muted-aa:#8a99b0;--sub:#8ea0b8;--edge:#94a3b8;--panel-bg:#0f172a;--panel-bd:#1e293b;--card-bg:#111c33;--accent:#3b82f6;--accent-strong:#2563eb;--on-accent:#ffffff;--ok:#22c55e;--warn:#f59e0b;--warn-text:#f59e0b;--bad:#ef4444;--tier:#f97316;--shadow:rgba(0,0,0,.35);--focus:#3b82f6;--gline:#334155;--gnode:#1e293b;--edge-label:#a5b4c9;--chip-bg:#0b1220;--chip-bd:#1e293b;--life:#334155;--act-bg:#1e293b;--act-bd:#475569;--seq-msg:#cbd5e1;--seq-ret:#64748b;color-scheme:dark}
+:root[data-theme=claro]{--bg:#eef2f7;--fg:#1e293b;--txt:#0f172a;--muted:#64748b;--muted-aa:#5b6b80;--sub:#5b6b80;--edge:#64748b;--panel-bg:#ffffff;--panel-bd:#e2e8f0;--card-bg:#f8fafc;--accent:#2563eb;--accent-strong:#2563eb;--on-accent:#ffffff;--ok:#16a34a;--warn:#d97706;--warn-text:#92400e;--bad:#dc2626;--tier:#ea580c;--shadow:rgba(15,23,42,.12);--focus:#2563eb;--gline:#94a3b8;--gnode:#f1f5f9;--edge-label:#475569;--chip-bg:#ffffff;--chip-bd:#cbd5e1;--life:#cbd5e1;--act-bg:#e2e8f0;--act-bd:#94a3b8;--seq-msg:#334155;--seq-ret:#94a3b8;color-scheme:light}
+  * { box-sizing:border-box; }
+  :focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:4px; }
+  @media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition:none!important; animation:none!important; } }
+  body { background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif; margin:0; padding:2rem; }
+  h1 { font-size:1.3rem; } .sub { color:var(--sub); font-size:.85rem; margin-bottom:1.5rem; }
+  .canvas { position:relative; height:540px; background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:12px; overflow:hidden; }
   svg.edges { position:absolute; inset:0; width:100%; height:100%; }
+  .edge-line { stroke:var(--gline); }
+  .edge-loop { stroke:var(--warn); }
+  #a path { fill:var(--gline); }
+  #loop-arrow path { fill:var(--warn); }
   .node { position:absolute; transform:translate(-50%,-50%); cursor:pointer; text-align:center; width:150px; }
-  .node .dot { width:56px; height:56px; border-radius:50%; margin:0 auto; background:#1e293b; border:2px solid #3b82f6;
+  .node .dot { width:56px; height:56px; border-radius:50%; margin:0 auto; background:var(--gnode); border:2px solid var(--accent);
                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.15rem; transition:.15s; }
-  .node:hover .dot, .node.active .dot { border-color:#f59e0b; transform:scale(1.15); }
-  .node .lbl { font-size:.85rem; margin-top:.45rem; color:#cbd5e1; font-weight:600; }
-  .node .cnt { font-size:.7rem; color:#64748b; }
+  .node:hover .dot, .node.active .dot { border-color:var(--warn); transform:scale(1.15); }
+  .node .lbl { font-size:.85rem; margin-top:.45rem; color:var(--fg); font-weight:600; }
+  .node .cnt { font-size:.7rem; color:var(--muted-aa); }
   .node .gate { position:absolute; top:-18px; left:50%; transform:translateX(-50%); font-size:.62rem;
-                background:#7c2d12; color:#fdba74; border:1px solid #ea580c; border-radius:4px; padding:1px 6px; white-space:nowrap; }
-  .loop-tag { font-size:.78rem; fill:#fbbf24; font-weight:600; }
-  #panel { margin-top:1.5rem; background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:1.2rem; display:none; }
-  #panel h2 { margin:.2rem 0; font-size:1.1rem; } #panel .desc { color:#94a3b8; font-size:.85rem; max-width:60ch; }
+                background:color-mix(in srgb, var(--bad) 22%, var(--bg)); color:var(--bad); border:1px solid var(--bad); border-radius:4px; padding:1px 6px; white-space:nowrap; }
+  .loop-tag { font-size:.78rem; fill:var(--warn-text); font-weight:600; }
+  #panel { margin-top:1.5rem; background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:12px; padding:1.2rem; display:none; }
+  #panel h2 { margin:.2rem 0; font-size:1.1rem; } #panel .desc { color:var(--sub); font-size:.85rem; max-width:60ch; }
   .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:.7rem; margin-top:1rem; }
-  .card { background:#111c33; border:1px solid #1e293b; border-radius:8px; padding:.7rem; font-size:.75rem; }
-  .card b { font-size:.85rem; } .card code { color:#818cf8; font-size:.65rem; }
+  .card { background:var(--card-bg); border:1px solid var(--panel-bd); border-radius:8px; padding:.7rem; font-size:.75rem; }
+  .card b { font-size:.85rem; } .card code { color:var(--accent); font-size:.65rem; }
   .badge { display:inline-block; font-size:.6rem; border-radius:4px; padding:1px 5px; margin:1px; }
-  .in { background:#0f172a; color:#94a3b8; border:1px solid #334155; }
-  .out { background:#052e1b; color:#6ee7b7; border:1px solid #065f46; }
-  .gate-b { background:#451a03; color:#fdba74; border:1px solid #9a3412; }
-  .cond { color:#fbbf24; font-size:.62rem; }
-  .trans { margin-top:1.5rem; font-size:.8rem; color:#94a3b8; }
-  .trans b { color:#cbd5e1; }
-  footer { margin-top:2rem; font-size:.7rem; color:#475569; }
+  .in { background:var(--panel-bg); color:var(--sub); border:1px solid var(--gline); }
+  .out { background:color-mix(in srgb, var(--ok) 14%, var(--bg)); color:var(--ok); border:1px solid var(--ok); }
+  .gate-b { background:color-mix(in srgb, var(--warn) 14%, var(--bg)); color:var(--warn-text); border:1px solid var(--warn); }
+  .cond { color:var(--warn-text); font-size:.62rem; }
+  .trans { margin-top:1.5rem; font-size:.8rem; color:var(--sub); }
+  .trans b { color:var(--fg); }
+  footer { margin-top:2rem; font-size:.7rem; color:var(--muted-aa); }
+  #btn-tema { position:fixed; top:1rem; right:1.5rem; background:var(--card-bg); border:1px solid var(--panel-bd);
+              color:var(--fg); border-radius:8px; padding:.3rem .6rem; cursor:pointer; font-size:.85rem; }
+  #btn-tema:hover { border-color:var(--accent); }
 </style></head><body>
+<button id="btn-tema" aria-label="Cambiar tema claro u oscuro">🌞</button>
 <h1>🧭 Arnés SDLC — Grafo del pipeline</h1>
 <div class="sub">21 skills · generado desde el manifiesto (harness-manifest.yaml) — clic en una fase para ver sus skills y flujos</div>
 <div class="canvas" id="canvas"><svg class="edges" id="edges"></svg></div>
 <div id="panel"></div>
 <div class="trans" id="trans"></div>
-<footer>Artefacto derivado (arnés v2.31.1) — regenerar con <code>manifest_check/harness_graph.py --write</code>. No editar a mano (el drift lo detecta el self-test y el CI).</footer>
+<footer>Artefacto derivado (arnés v2.32.0) — regenerar con <code>manifest_check/harness_graph.py --write</code>. No editar a mano (el drift lo detecta el self-test y el CI).</footer>
 <script>
 const DATA = {"nodes": [{"id": 1, "title": "Setup & Visión", "phases": ["-1", "0"], "x": 9, "gate": "GATE 0", "desc": "Visión, propuesta con opciones, pricing cloud y caso de negocio. Sin GATE 0 aprobado no hay pipeline.", "skills": [{"id": "sdlc-cloud-pricing", "name": "Cloud Pricing", "in": ["architecture-proposal.md"], "out": ["cost-assumptions.yaml", "cost-estimation.md"], "gates": ["cost-estimation"], "conditional": ""}, {"id": "sdlc-devops-engineer", "name": "DevOps Engineer", "in": [], "out": ["pipeline-cicd.md", "runbook-deploy-rollback.md", "checklist-validacion-dev.md"], "gates": [], "conditional": ""}, {"id": "sdlc-product-owner", "name": "Product Owner", "in": ["epics.md", "vision.md"], "out": ["vision.md", "epics.md", "backlog.md"], "gates": ["vision", "backlog"], "conditional": ""}, {"id": "sdlc-solution-architect", "name": "Solution Architect", "in": ["architecture-proposal.md", "backlog.md", "vision.md"], "out": ["architecture-proposal.md", "technical-stories.md"], "gates": ["architecture-proposal", "technical-stories"], "conditional": ""}]}, {"id": 2, "title": "Discovery", "phases": ["1"], "x": 26, "gate": null, "desc": "Historias Gherkin, reglas de negocio, catálogo de roles gobernado y PDD (AS-IS) si automatiza procesos.", "skills": [{"id": "sdlc-business-analyst", "name": "Business Analyst", "in": ["backlog.md", "business-rules.md", "roles.md", "user-stories.md", "vision.md"], "out": ["user-stories.md", "business-rules.md", "glossary.md", "roles.md", "process-definition.md"], "gates": ["user-stories", "roles", "process-definition"], "conditional": "process-definition.md: iniciativas que automatizan/redisenan procesos"}, {"id": "sdlc-solution-architect", "name": "Solution Architect", "in": ["architecture-proposal.md", "backlog.md", "vision.md"], "out": ["architecture-proposal.md", "technical-stories.md"], "gates": ["architecture-proposal", "technical-stories"], "conditional": ""}]}, {"id": 3, "title": "Arquitectura", "phases": ["2", "3"], "x": 44, "gate": "GATE 1", "desc": "Contratos duros (OpenAPI), ADRs de 8 pasos firmados, threat modeling, prototipo de pantallas. GATE 1 habilita el paralelismo real.", "skills": [{"id": "sdlc-data-engineer", "name": "Data Engineer", "in": ["data-model.md", "security-requirements.md"], "out": ["data-governance.md"], "gates": [], "conditional": "producto con datos significativos"}, {"id": "sdlc-decision-engine", "name": "Decision Engine", "in": [], "out": [], "gates": [], "conditional": ""}, {"id": "sdlc-enterprise-architect", "name": "Enterprise Architect", "in": [], "out": ["tech-radar.yaml", "architectural-principles.yaml", "exception-log.md"], "gates": [], "conditional": "Tier 1 y excepciones al radar"}, {"id": "sdlc-security-engineer", "name": "Security Engineer", "in": ["architecture.md", "data-model.md", "threat-model.md"], "out": ["threat-model.md", "security-requirements.md"], "gates": ["threat-model"], "conditional": ""}, {"id": "sdlc-software-architect", "name": "Software Architect", "in": ["api-contract.yaml", "architecture-proposal.md", "architecture.md", "business-rules.md", "user-stories.md"], "out": ["architecture.md", "api-contract.yaml", "data-model.md", "adr", "test-plan.md", "tech-debt.md", "architecture-rules.yaml", "technical-design.md"], "gates": ["architecture", "api-contract", "test-plan", "adr"], "conditional": ""}, {"id": "sdlc-solution-architect", "name": "Solution Architect", "in": ["architecture-proposal.md", "backlog.md", "vision.md"], "out": ["architecture-proposal.md", "technical-stories.md"], "gates": ["architecture-proposal", "technical-stories"], "conditional": ""}, {"id": "sdlc-ux-designer", "name": "UX Designer", "in": ["design-system.md", "user-stories.md"], "out": ["ux-flows.md", "design-system.md", "tokens.json", "ux"], "gates": ["ux-flows", "design-system", "screen-inventory"], "conditional": "spec/ux/: iniciativas con UI"}]}, {"id": 4, "title": "Strict TDD", "phases": ["4"], "x": 63, "loop": "sprints", "gate": null, "desc": "Backend y frontend en paralelo consumiendo mocks del contrato. Tests antes que código, siempre.", "skills": [{"id": "sdlc-backend-dev-tdd", "name": "Backend TDD", "in": [], "out": ["dev-log-backend.md", "technical-design-backend.md"], "gates": [], "conditional": ""}, {"id": "sdlc-frontend-dev-tdd", "name": "Frontend TDD", "in": [], "out": ["dev-log-frontend.md", "technical-design-frontend.md"], "gates": [], "conditional": ""}, {"id": "sdlc-security-engineer", "name": "Security Engineer", "in": ["architecture.md", "data-model.md", "threat-model.md"], "out": ["threat-model.md", "security-requirements.md"], "gates": ["threat-model"], "conditional": ""}, {"id": "sdlc-technical-writer", "name": "Technical Writer", "in": ["api-contract.yaml", "glossary.md", "ux-flows.md"], "out": ["docs"], "gates": [], "conditional": ""}]}, {"id": 5, "title": "QA & Seguridad", "phases": ["5"], "x": 80, "gate": "GATE 2 / 2.5", "desc": "E2E desde Gherkin, regresión, carga y DAST. Un bug vuelve al dev con el test exacto que lo reproduce.", "skills": [{"id": "sdlc-qa-automation", "name": "QA Automation", "in": ["tests-e2e"], "out": ["qa-report.md"], "gates": ["qa-report"], "conditional": ""}, {"id": "sdlc-security-engineer", "name": "Security Engineer", "in": ["architecture.md", "data-model.md", "threat-model.md"], "out": ["threat-model.md", "security-requirements.md"], "gates": ["threat-model"], "conditional": ""}, {"id": "sdlc-technical-writer", "name": "Technical Writer", "in": ["api-contract.yaml", "glossary.md", "ux-flows.md"], "out": ["docs"], "gates": [], "conditional": ""}]}, {"id": 6, "title": "Release & Operación", "phases": ["6", "7"], "x": 94, "loop": "continuo", "gate": "GATE 3", "desc": "Deploy con rollback probado, diagramas derivados con recibo, SLOs, postmortems y medición de impacto que realimenta el backlog.", "skills": [{"id": "sdlc-cloud-engineer", "name": "Cloud Engineer", "in": [], "out": ["cloud-costs.md", "despliegue.ir.json"], "gates": [], "conditional": ""}, {"id": "sdlc-cloud-pricing", "name": "Cloud Pricing", "in": ["architecture-proposal.md"], "out": ["cost-assumptions.yaml", "cost-estimation.md"], "gates": ["cost-estimation"], "conditional": ""}, {"id": "sdlc-devops-engineer", "name": "DevOps Engineer", "in": [], "out": ["pipeline-cicd.md", "runbook-deploy-rollback.md", "checklist-validacion-dev.md"], "gates": [], "conditional": ""}, {"id": "sdlc-product-analyst", "name": "Product Analyst", "in": [], "out": ["impact-report.md"], "gates": [], "conditional": ""}, {"id": "sdlc-sre", "name": "SRE", "in": ["architecture.md"], "out": ["slo.md"], "gates": ["slo"], "conditional": ""}, {"id": "sdlc-technical-writer", "name": "Technical Writer", "in": ["api-contract.yaml", "glossary.md", "ux-flows.md"], "out": ["docs"], "gates": [], "conditional": ""}]}], "loops": [[4, 4, "sprints (TDD red→green)"], [5, 4, "TDD QA Bug (Red)"], [6, 4, "Hotfix Prod"], [3, 4, "Delta-Spec Replan (spec_diff)"], [6, 1, "impact-report → backlog"]], "transversal": [{"id": "sdlc-diagrams", "name": "Diagramas", "gates": []}, {"id": "sdlc-memory", "name": "Memoria", "gates": []}, {"id": "sdlc-orchestrator", "name": "Orquestador", "gates": []}]};
 const canvas = document.getElementById('canvas'), svg = document.getElementById('edges');
@@ -46,9 +58,9 @@ function edges() {
   let s = '';
   const X = id => DATA.nodes.find(n=>n.id===id).x/100*W;
   for (let i=0;i<DATA.nodes.length-1;i++)
-    s += `<line x1="${X(DATA.nodes[i].id)}" y1="${y}" x2="${X(DATA.nodes[i+1].id)}" y2="${y}" stroke="#334155" stroke-width="2" marker-end="url(#a)"/>`;
+    s += `<line class="edge-line" x1="${X(DATA.nodes[i].id)}" y1="${y}" x2="${X(DATA.nodes[i+1].id)}" y2="${y}" stroke-width="2" marker-end="url(#a)"/>`;
   for (const [f,t,lbl] of DATA.loops) {
-    if (f===t) { const x=X(f); s += `<path d="M ${x-24} ${y-28} C ${x-60} ${y-110}, ${x+60} ${y-110}, ${x+24} ${y-28}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3" marker-end="url(#loop-arrow)"/>
+    if (f===t) { const x=X(f); s += `<path class="edge-loop" d="M ${x-24} ${y-28} C ${x-60} ${y-110}, ${x+60} ${y-110}, ${x+24} ${y-28}" fill="none" stroke-dasharray="4 3" marker-end="url(#loop-arrow)"/>
       <text class="loop-tag" x="${x}" y="${y-100}" text-anchor="middle">${lbl}</text>`; continue; }
     const x1=X(f), x2=X(t), span=Math.abs(f-t);
     const r=34;                                      // radio del nodo: el arco termina en su borde, no tapado
@@ -56,12 +68,12 @@ function edges() {
     const lift = 80 + 45*span;                       // arcos largos van más afuera: no se pisan
     const my = f>t ? y+lift : y-lift;
     const apex = (y+my)/2;                           // punto medio real de la curva Bézier
-    s += `<path d="M ${x1} ${y} Q ${(x1+x2)/2} ${my}, ${ex} ${y}" fill="none" stroke="#f59e0b" stroke-dasharray="4 3" marker-end="url(#loop-arrow)"/>
+    s += `<path class="edge-loop" d="M ${x1} ${y} Q ${(x1+x2)/2} ${my}, ${ex} ${y}" fill="none" stroke-dasharray="4 3" marker-end="url(#loop-arrow)"/>
           <text class="loop-tag" x="${(x1+x2)/2}" y="${apex + (f>t?18:-8)}" text-anchor="middle">↺ ${lbl}</text>`;
   }
   svg.innerHTML = `<defs>
-    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#334155"/></marker>
-    <marker id="loop-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#f59e0b"/></marker>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
+    <marker id="loop-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z"/></marker>
   </defs>` + s;
 }
 function nodes() {
@@ -71,7 +83,7 @@ function nodes() {
     d.className = 'node'; d.style.left = n.x+'%'; d.style.top = '50%';
     d.innerHTML = `${n.gate?`<span class="gate">⛔ ${n.gate}</span>`:''}
       <div class="dot">${n.id}</div>
-      <div class="lbl">${n.title}${n.loop?` <span style="color:#f59e0b">↺${n.loop}</span>`:''}</div>
+      <div class="lbl">${n.title}${n.loop?` <span style="color:var(--warn)">↺${n.loop}</span>`:''}</div>
       <div class="cnt">${n.skills.length} skills</div>`;
     d.onclick = () => show(n, d);
     canvas.appendChild(d);
@@ -91,4 +103,16 @@ function show(n, el) {
 document.getElementById('trans').innerHTML =
   '⚙️ <b>Transversales (todas las fases):</b> ' + DATA.transversal.map(s=>s.name).join(' · ');
 edges(); nodes(); addEventListener('resize', edges);
+/* tema claro/oscuro compartido con el portal y los diagramas (misma clave dir-tema) */
+(function(){
+  var b=document.getElementById('btn-tema');
+  function saved(){try{return localStorage.getItem('dir-tema');}catch(e){return null;}}
+  function apply(t){document.documentElement.setAttribute('data-theme',t);
+    b.textContent=t==='claro'?'☾':'☀';}
+  var q=new URLSearchParams(location.search).get('tema');
+  if(q) apply(q);
+  else apply(saved()||(matchMedia('(prefers-color-scheme: light)').matches?'claro':'oscuro'));
+  b.onclick=function(){var t=document.documentElement.getAttribute('data-theme')==='claro'?'oscuro':'claro';
+    try{localStorage.setItem('dir-tema',t);}catch(e){} apply(t);};
+})();
 </script></body></html>
