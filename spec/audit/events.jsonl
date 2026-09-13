@@ -1,0 +1,1 @@
+{"seq": 1, "ts": "2026-09-13T02:33:27+00:00", "evento": "audit_init", "harness_version": "2.32.0", "nota": "Inicialización del log de auditoría del arnés (portal + design system)", "proyecto": "harness-sdlc", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "hash": "9a271689c33fba01b006663c854b6b31f2da1802a26d67a8fb43aa80e9e3be1f"}

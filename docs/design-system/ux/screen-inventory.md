@@ -11,9 +11,26 @@ adapted: true
 > cada pantalla referencia la **capacidad del portal** que cubre (búsqueda, navegación,
 > tema, zoom, diagramas). Todo lo demás sigue el estándar: estados loading/empty/error/
 > success, interacciones con destino, y aceptación con recibo.
-> Diseño visual: prototipo Penpot (se materializa cuando el MCP tenga proyecto conectado;
-> hoy hay wireframes de referencia en `styleguide.html` + renders en `exports/`).
+> Diseño visual: prototipo gobernado en **Penpot** (proyecto «Arnes SDLC — Portal», 8
+> pantallas PANT-01..08 construidas con el MCP y con interacciones navegables conectadas;
+> export del `.penpot` pendiente de descarga manual a esta carpeta) + renders de revisión
+> en `exports/` (8 PNG, uno por pantalla, verificados visualmente).
 > Tokens: [`../tokens.json`](../tokens.json) · Contrato visual: [`../design-system.md`](../design-system.md).
+>
+> **Identificadores canónicos (adaptación):** el portal es infraestructura transversal del
+> arnés, así que sus HU-xx son *capacidades del portal* (no historias de un proyecto) y sus
+> ROL-xx son los roles canónicos del arnés:
+>
+> | PANT | HU (capacidad) | ROL (operador principal) |
+> |---|---|---|
+> | PANT-01 | HU-01 visión de avance del pipeline | ROL-01 cualquier rol del arnés |
+> | PANT-02 | HU-02 lectura de spec renderizada | ROL-01 cualquier rol del arnés |
+> | PANT-03 | HU-03 búsqueda global de documentos | ROL-01 cualquier rol del arnés |
+> | PANT-04 | HU-04 descubribilidad de atajos | ROL-01 cualquier rol del arnés |
+> | PANT-05 | HU-05 diagramas IR interactivos | ROL-02 arquitecto / equipo técnico |
+> | PANT-06 | HU-06 métricas y salud del pipeline | ROL-03 QA / DevOps / EA |
+> | PANT-07 | HU-07 memoria y trazabilidad | ROL-01 cualquier rol del arnés |
+> | PANT-08 | HU-08 feedback de carga y fallo | ROL-04 el sistema (sin operador) |
 
 ## PANT-01 — Portal · Inicio (dashboard del pipeline)
 
@@ -139,13 +156,22 @@ flowchart LR
     P02 -. carga/fallo .-> P08["PANT-08 Estados shell"]
 ```
 
+### Conexiones implementadas en el prototipo Penpot
+
+| Origen | Disparador | Acción |
+|---|---|---|
+| PANT-01 chip «bugs QA – TDD ×1» y sidebar «Arquitectura» | click | navega a PANT-02 |
+| PANT-01 caja de búsqueda | click | abre PANT-03 como overlay |
+| PANT-01 botón «?» | click | abre PANT-04 como overlay |
+| PANT-03 filas «vision.md» y «ADR-001» | click | navega a PANT-02 |
+
 ---
 
 ## Aceptación del prototipo
 
-La aprobación sobre los renders / prototipo navegable se registra con recibo
-(cuando el MCP de Penpot tenga proyecto conectado, el `.penpot` se versiona en
-esta carpeta y los renders en `exports/`):
+La aprobación sobre los renders / prototipo navegable se registra con recibo.
+El `.penpot` versionado se descarga desde Penpot (File → Exportar como .penpot) a esta
+carpeta; los renders de revisión viven en `exports/`:
 
 ```bash
 python3 skills/sdlc-orchestrator/scripts/receipt.py emit docs/design-system/ux/screen-inventory.md --role ux-designer

@@ -1,0 +1,11 @@
+{
+  "artefacto": "D:\\AI Projects\\harness-sdlc\\docs\\design-system\\ux\\screen-inventory.md",
+  "sha256": "75fb6c65a8e03a9118fb14bd54df8f0429f5004abdda498cec143e86560cc308",
+  "gate": "GATE 1",
+  "tipo": "screen-inventory",
+  "rol": "ux-designer",
+  "emitido": "2026-09-12T21:33:10",
+  "estado": "vigente",
+  "harness_version": "2.32.0",
+  "approved_by": "csalamando"
+}
