@@ -7,7 +7,7 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
-## [Unreleased]
+## [2.33.0] - 2026-09-12
 
 **Prototipo gobernado en Penpot.** El inventario de pantallas PANT-01..08 deja de ser degradación elegante: las 8 pantallas están construidas y verificadas en el proyecto Penpot «Arnes SDLC — Portal» (instancia autoalojada, MCP oficial), con interacciones navegables conectadas, y el inventario tiene **recibo GATE 1 vigente** (aprobado por csalamando, 9 checks OK).
 
@@ -16,10 +16,11 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **Interacciones navegables conectadas y verificadas**: PANT-01 → PANT-02 (chip «bugs QA» y sidebar «Arquitectura»), PANT-01 → PANT-03/PANT-04 como overlays (caja de búsqueda y botón «?»), PANT-03 → PANT-02 (filas «vision.md» / «ADR-001»).
 - **Renders de revisión reales** (`docs/design-system/ux/exports/`, 8 PNG): exportados del prototipo y verificados visualmente; sustituyen a los renders ilustrativos previos.
 - **Identificadores canónicos de adaptación** en `screen-inventory.md`: tabla PANT → HU-xx (capacidad del portal) / ROL-xx (rol canónico del arnés), que permite que `gate_checker --tipo screen-inventory` valide el inventario adaptado (9 checks OK).
-- **Recibo GATE 1 emitido** sobre `docs/design-system/ux/screen-inventory.md` (`--approved-by csalamando`) y **log de auditoría inicializado** (`spec/audit/events.jsonl`).
+- **`docs/design-system/ux/prototipo.penpot` versionado**: export del proyecto Penpot (742 KB, zip validado: 735 entradas, mismo file-id del proyecto), cerrando el artefacto gobernado del estándar de la skill `sdlc-ux-designer`.
+- **Recibo GATE 1 emitido** sobre `docs/design-system/ux/screen-inventory.md` (`--approved-by csalamando`, sha256 `d1cec7aa…`) y **log de auditoría inicializado** (`spec/audit/events.jsonl`).
 
 ### Notas
-- El `.penpot` versionado se descarga manual desde Penpot (File → Exportar) a `docs/design-system/ux/`; el MCP no exporta archivos.
+- El export se descargó desde la UI de Penpot (File → Exportar como .penpot): el RPC de exportación de la instancia local rechazaba la petición (`No matching clause`, exporter no disponible) y el MCP no exporta archivos. Recibo re-emitido tras anotar el `.penpot` en el inventario (revoca el SHA anterior por diseño).
 
 ## [2.32.0] - 2026-09-12
 

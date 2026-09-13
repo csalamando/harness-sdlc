@@ -12,9 +12,10 @@ adapted: true
 > tema, zoom, diagramas). Todo lo demás sigue el estándar: estados loading/empty/error/
 > success, interacciones con destino, y aceptación con recibo.
 > Diseño visual: prototipo gobernado en **Penpot** (proyecto «Arnes SDLC — Portal», 8
-> pantallas PANT-01..08 construidas con el MCP y con interacciones navegables conectadas;
-> export del `.penpot` pendiente de descarga manual a esta carpeta) + renders de revisión
-> en `exports/` (8 PNG, uno por pantalla, verificados visualmente).
+> pantallas PANT-01..08 construidas con el MCP, interacciones navegables conectadas);
+> export versionado en [`prototipo.penpot`](prototipo.penpot) (zip validado: 735 entradas,
+> mismo file-id del proyecto) + renders de revisión en `exports/` (8 PNG, uno por
+> pantalla, verificados visualmente).
 > Tokens: [`../tokens.json`](../tokens.json) · Contrato visual: [`../design-system.md`](../design-system.md).
 >
 > **Identificadores canónicos (adaptación):** el portal es infraestructura transversal del
@@ -170,8 +171,9 @@ flowchart LR
 ## Aceptación del prototipo
 
 La aprobación sobre los renders / prototipo navegable se registra con recibo.
-El `.penpot` versionado se descarga desde Penpot (File → Exportar como .penpot) a esta
-carpeta; los renders de revisión viven en `exports/`:
+El `.penpot` versionado vive en [`prototipo.penpot`](prototipo.penpot) (descargado desde
+Penpot: File → Exportar como .penpot, validado como zip íntegro); los renders de revisión
+viven en `exports/`:
 
 ```bash
 python3 skills/sdlc-orchestrator/scripts/receipt.py emit docs/design-system/ux/screen-inventory.md --role ux-designer
