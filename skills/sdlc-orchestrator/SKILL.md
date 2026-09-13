@@ -4,7 +4,7 @@ description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pi
 harness-role: orchestrator
 harness-phases: "transversal"
 harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/, spec/audit/, spec/pipeline-state.md"
-harness-version: "2.33.0"
+harness-version: "2.33.1"
 ---
 
 
@@ -57,7 +57,7 @@ El Arquitecto de Software es el **Decision Owner técnico**: el PO define el QU�
 ## Responsabilidades
 
 1. `spec/pipeline-state.md` es **derivado** (v2.22, N7): lo regenera `pipeline_state.py` desde la matriz de autoridad + recibos + memoria de auditoría + `detect_stack.py`. Nunca se edita a mano ni recibe recibo (certificar narración era la brecha B-14); `--check` en CI falla si hay drift.
-2. Antes de invocar un rol, verificar su DoR: entradas presentes **y con recibo vigente** (ver Recibos). Registrar la activación con `skill_metrics.py use --skill <rol> --fase <N>` (telemetría v2.4: sin este registro, el trabajo del rol cuenta como *freestyle* en METRICS.md). Desde v2.16 `receipt.py emit` auto-registra la activación como respaldo contra el olvido (deduplicada contra el uso manual), pero el registro manual **antes** de activar sigue siendo la fuente primaria.
+2. Antes de invocar un rol, verificar su DoR: entradas presentes **y con recibo vigente** (ver Recibos). Registrar la activación con `skill_metrics.py use --skill <rol> --fase <N>` (telemetría v2.4: sin este registro, el trabajo del rol cuenta como *freestyle* en METRICS.md). Desde v2.16 `receipt.py emit` auto-registra la activación como respaldo contra el olvido (deduplicada contra el uso manual), pero el registro manual **antes** de activar sigue siendo la fuente primaria. La fase del auto-registro se deriva de las `harness-phases` declaradas por la skill (v2.33.1: si la fase del gate está entre las declaradas se usa la del gate; si no, manda la fase declarada de la skill — una skill mono-fase aprobando en un gate de otra fase cuenta en la suya).
 3. Al recibir un artefacto, ejecutar `gate_checker.py`; si pasa, **emitir recibo** con `receipt.py emit`, incluyendo telemetría si está disponible: `--tokens-in/-out --tokens-src reportado` cuando la plataforma del agente expone el consumo, o `--tokens-src estimado` (chars/4, lo calcula el script) cuando no; `--attempts K` si el gate necesitó reintentos.
 4. Armar el paquete de contexto mínimo por rol con `context_packager.py` — nunca pasar toda la spec a todos. Si existe `spec/INDEX.md` va primero (orientación de una página).
 5. Ante cambio de spec: declarar relación (supersedes/conflicts_with) y correr `spec_diff_impact.py --cambiado <art> --apply` (v2.22, N2) — la herramienta invalida derivadamente los recibos downstream y los audita; ya no depende de la memoria del agente. Además los recibos guardan el hash de sus dependencias upstream: `receipt.py verify` invalida derivadamente aunque el `--apply` se haya olvidado. Complementar con `code_intel.py impact <artefacto/símbolo>` (impacto en código) y re-ejecutar solo fases afectadas.

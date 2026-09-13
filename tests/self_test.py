@@ -970,6 +970,25 @@ with tempfile.TemporaryDirectory() as tmp:
     check("N8 sprint: variantes de gate normalizadas (GATE-0 ≡ GATE 0, una fila)",
           out.count("| GATE 0 |") == 2 and "GATE-0" not in out, out)
 
+    # v2.33.1: la fase del auto-registro se deriva de las harness-phases de la
+    # skill, no solo del gate — ux-designer (fase 2) aprobando en GATE 1 debe
+    # contar en su fase; security-engineer (2/4/5) en GATE 2 mantiene la del gate.
+    art3 = os.path.join(tmp, "spec", "ux-test.md")
+    open(art3, "w", encoding="utf-8").write("# ux\n")
+    runm("receipt.py", "emit", art3, "--gate", "GATE 1", "--role", "ux-designer",
+         "--approved-by", "Karlo")
+    art4 = os.path.join(tmp, "spec", "sec-test.md")
+    open(art4, "w", encoding="utf-8").write("# sec\n")
+    runm("receipt.py", "emit", art4, "--gate", "GATE 2", "--role", "security-engineer")
+    uses = [_j.loads(l) for l in open(os.path.join(tmp, "spec", "metrics", "usage.jsonl"), encoding="utf-8") if l.strip()]
+    fase_por_skill = {u["skill"]: (u["fase"], u.get("fase_src", "")) for u in uses}
+    check("v2.33.1: ux-designer en GATE 1 registra SU fase declarada (2, src=skill)",
+          fase_por_skill.get("ux-designer") == ("2", "skill"), str(fase_por_skill))
+    check("v2.33.1: security-engineer en GATE 2 mantiene la fase del gate (5, src=gate)",
+          fase_por_skill.get("security-engineer") == ("5", "gate"), str(fase_por_skill))
+    check("v2.33.1: product-owner en GATE 0 registra fase 0 (gate ∈ declaradas)",
+          fase_por_skill.get("product-owner") == ("0", "gate"), str(fase_por_skill))
+
     # N3: status --strict falla cuando aparece un recibo no vigente (al final,
     # para no contaminar los conteos de retrabajo de los checks N8 anteriores)
     open(art2, "a", encoding="utf-8").write("cambio sin gate\n")

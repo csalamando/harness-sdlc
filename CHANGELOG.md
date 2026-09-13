@@ -7,6 +7,18 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.33.1] - 2026-09-13
+
+**Parches de diseño menores detectados en la revisión de gobierno del propio arnés.** La fase del auto-registro de activaciones se deriva de la skill y la excepción de ubicación del prototipo del portal queda documentada.
+
+### Fixed
+- **`receipt.py` — fase del auto-registro derivada de la skill**: el registro automático de activación en `spec/metrics/usage.jsonl` (respaldo v2.16) tomaba la fase del gate (`audit_log.gate_fase`), así una skill mono-fase aprobando en un gate de otra fase quedaba mal contada — ux-designer (fase 2) emitiendo su recibo GATE 1 registraba fase "3" y distorsionaba la cobertura por fase de METRICS.md. Nueva regla: si la fase del gate está entre las `harness-phases` declaradas por la skill se usa la del gate (precisa para skills multi-fase como security-engineer 2/4/5); si no, manda la fase declarada de la skill; sin skill localizable (scripts vendorados en el proyecto) degrada a la fase del gate como antes. El evento registra `fase_src: skill|gate` para trazabilidad.
+- **Self-test**: 3 checks nuevos sobre la derivación de fase (ux-designer→2/skill, security-engineer→5/gate, product-owner→0/gate). Suite: **332 checks OK**.
+
+### Documentación
+- **`sdlc-ux-designer`**: excepción documentada de ubicación del prototipo — cuando las pantallas pertenecen al design system del propio arnés (portal PANT-01..08), el artefacto gobernado puede vivir en `docs/design-system/ux/` junto a los tokens canónicos; todo proyecto gobernado sigue usando `spec/ux/`. El gobierno (inventario + archivo versionado + exports + recibo) es idéntico en ambos casos.
+- **`sdlc-orchestrator`**: la responsabilidad #2 documenta la nueva derivación de fase del auto-registro.
+
 ## [2.33.0] - 2026-09-12
 
 **Prototipo gobernado en Penpot.** El inventario de pantallas PANT-01..08 deja de ser degradación elegante: las 8 pantallas están construidas y verificadas en el proyecto Penpot «Arnes SDLC — Portal» (instancia autoalojada, MCP oficial), con interacciones navegables conectadas, y el inventario tiene **recibo GATE 1 vigente** (aprobado por csalamando, 9 checks OK).

@@ -114,6 +114,46 @@ def deps_mismatch(spec_dir, rec):
     return None
 
 
+def _skill_declared_phases(role):
+    """Fases declaradas por la skill del rol en su frontmatter harness-phases
+    (lista de enteros; 'transversal' -> []). None si la skill no se encuentra
+    (p. ej. scripts vendorados en el proyecto sin el arbol de skills al lado)."""
+    if not role:
+        return None
+    skill = role if role.startswith("sdlc-") else f"sdlc-{role}"
+    md = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", skill, "SKILL.md")
+    if not os.path.isfile(md):
+        return None
+    import re as _re
+    m = _re.search(r'^harness-phases:\s*"?([^"\n]+)"?\s*$',
+                   open(md, encoding="utf-8", errors="replace").read(), _re.M)
+    if not m:
+        return []
+    return [int(t) for t in _re.findall(r'-?\d+', m.group(1))]
+
+
+def _fase_de_activacion(role, gate, gate_fase_fn):
+    """v2.33.1: la fase del auto-registro se deriva de la skill, no solo del gate.
+    Regla: si la fase del gate esta entre las declaradas por la skill, se usa (es
+    precisa para skills multi-fase como security 2/4/5); si no, y la skill declara
+    fases, manda la fase declarada (una skill de una sola fase activada en un gate
+    de otra fase — p. ej. ux-designer aprobando en GATE 1 — debe contar en SU fase).
+    Sin skill localizable (scripts vendorados), degrada a la fase del gate."""
+    fase_gate = gate_fase_fn(gate) if gate_fase_fn else "?"
+    declaradas = _skill_declared_phases(role)
+    if declaradas is None:
+        return fase_gate, "gate"
+    try:
+        fg = int(fase_gate)
+    except (ValueError, TypeError):
+        fg = None
+    if fg is not None and fg in declaradas:
+        return fase_gate, "gate"
+    if declaradas:
+        return str(declaradas[0]), "skill"
+    return fase_gate, "gate"
+
+
 def cmd_emit(a):
     if not os.path.isfile(a.artefacto):
         print(f"FALLO: no existe {a.artefacto}"); sys.exit(1)
@@ -203,20 +243,22 @@ def cmd_emit(a):
     # de que la skill produjo; cierra la brecha de metricas muertas cuando el agente
     # olvida 'skill_metrics.py use'. skill_metrics report deduplica contra usos manuales.
     # v2.21 (ADR-004): la activacion TAMBIEN queda como evento 'use' en la memoria de
-    # auditoria, con la fase derivada del catalogo unico gate_fase (adios fase '?').
+    # auditoria. v2.33.1: la fase se deriva de las harness-phases declaradas por la
+    # skill (con la del gate cuando aplica), no solo del catalogo gate_fase — una
+    # skill mono-fase aprobando en un gate de otra fase (ux-designer en GATE 1)
+    # contaba en la fase equivocada y distorsionaba la cobertura por fase.
     if a.role:
         try:
             from audit_log import gate_fase as _gate_fase
         except ImportError:
             _gate_fase = None
-        if _gate_fase:
-            fase = _gate_fase(a.gate)
-        else:
+        if _gate_fase is None:
             GATE_FASE = {"GATE 0": "0", "GATE 1": "3", "GATE 2": "5", "GATE 2.5": "5", "GATE 3": "6"}
-            fase = GATE_FASE.get(a.gate, "?")
+            _gate_fase = lambda g: GATE_FASE.get(g, "?")
+        fase, fase_src = _fase_de_activacion(a.role, a.gate, _gate_fase)
         skill = a.role.replace("sdlc-", "")
         ev = {"ts": datetime.datetime.now().isoformat(timespec="seconds"), "tipo": "use",
-              "skill": skill, "fase": fase, "modo": "", "auto": "receipt"}
+              "skill": skill, "fase": fase, "fase_src": fase_src, "modo": "", "auto": "receipt"}
         md = os.path.join(a.spec_dir, "metrics")
         os.makedirs(md, exist_ok=True)
         with open(os.path.join(md, "usage.jsonl"), "a", encoding="utf-8") as fh:
