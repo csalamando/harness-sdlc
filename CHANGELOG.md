@@ -7,6 +7,17 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.33.2] - 2026-09-13
+
+**Anti-drift del prototipo: los tokens del design system son upstream del inventario de pantallas.** Un cambio en `tokens.json` ahora revoca derivadamente el recibo del prototipo aprobado — el contrato visual usa los tokens reales, así que si los tokens cambian, las pantallas se re-aprueban.
+
+### Fixed
+- **`spec_diff_impact.py` — `tokens.json` añadido como dependencia upstream de `screen-inventory.md`**: hasta aquí, cambiar los tokens del design system no invalidaba el recibo del prototipo (brecha de drift Penpot/Figma detectada en la revisión de gobierno del propio arnés). Con `receipt.py verify` los recibos guardan el hash de sus dependencias upstream, así que la invalidación es derivada aunque el `--apply` se olvide.
+- **Self-test**: check nuevo — `tokens.json` revoca `screen-inventory.md`. Suite: **333 checks OK**.
+
+### Documentación
+- **`sdlc-ux-designer` y `sdlc-orchestrator`**: la regla "cambio = re-aprobación" del prototipo ahora incluye explícitamente los tokens del design system como disparador.
+
 ## [2.33.1] - 2026-09-13
 
 **Parches de diseño menores detectados en la revisión de gobierno del propio arnés.** La fase del auto-registro de activaciones se deriva de la skill y la excepción de ubicación del prototipo del portal queda documentada.

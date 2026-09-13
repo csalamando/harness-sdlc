@@ -85,6 +85,10 @@ for art in GOVERNED:
 code, out = run("spec_diff_impact.py", "--cambiado", "roles.md")
 for promised in ("user-stories.md", "ux-flows.md", "test-plan.md", "screen-inventory.md"):
     check(f"roles.md revoca {promised} (promesa v2.7/v2.8)", code == 0 and promised in out)
+# v2.33.2: cambiar los tokens del DS revoca el prototipo aprobado (anti-drift Penpot)
+code, out = run("spec_diff_impact.py", "--cambiado", "tokens.json")
+check("tokens.json revoca screen-inventory.md (anti-drift del prototipo, v2.33.2)",
+      code == 0 and "screen-inventory.md" in out, out)
 
 # ── 4. Matriz de autoridad cubre los artefactos con skill dueña ───────────────
 print("\n[4] Matriz de autoridad (lección v2.8.1: 'SIN REGLA' = cualquiera aprueba)")

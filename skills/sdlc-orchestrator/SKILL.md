@@ -4,7 +4,7 @@ description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pi
 harness-role: orchestrator
 harness-phases: "transversal"
 harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/, spec/audit/, spec/pipeline-state.md"
-harness-version: "2.33.1"
+harness-version: "2.33.2"
 ---
 
 
@@ -75,7 +75,7 @@ Cada artefacto de `spec/` tiene **un solo rol dueño**, declarado en `spec/autho
 - **Frontera dura en Git**: `assets/CODEOWNERS-template` + branch protection con "Require review from Code Owners" — un PR que toca `spec/adr/` no se mergea sin el Arquitecto.
 - Cambiar la matriz es un cambio de gobierno: owner `orchestrator`, requiere PR y queda auditado.
 - **Roles y PDD del BA (v2.7)**: `spec/roles.md` (catálogo gobernado: nombre + acciones habilitadas + contexto + restricciones) y `spec/process-definition.md` (PDD AS-IS firmado por el Process Owner, condicional a iniciativas que automatizan/rediseñan procesos) son artefactos con owner `business-analyst`. `gate_checker.py --tipo roles` valida la estructura y que los ROL-xx citados en `user-stories.md` existan en el catálogo; `--tipo process-definition` valida el PDD. Si existe `roles.md`, toda HU debe citar ROL-xx definidos.
-- **Prototipo de pantallas del UX (v2.8)**: `spec/ux/` (inventario `screen-inventory.md` con PANT-xx + archivo de diseño Penpot versionado + exports PNG/SVG) es artefacto con owner `ux-designer`, condicional a iniciativas con UI. Es el **mecanismo de validación temprana con negocio**: GATE 1 exige el inventario con recibo vigente para las pantallas del sprint — sin prototipo aprobado, el Dev Front no implementa esas pantallas. `gate_checker.py --tipo screen-inventory` valida la estructura y que las HU-xx citadas existan en `user-stories.md`. Si cambian HU/flujos/roles que tocan pantallas, `spec_diff_impact.py` revoca el recibo de `spec/ux/` y las pantallas se re-aprueban.
+- **Prototipo de pantallas del UX (v2.8)**: `spec/ux/` (inventario `screen-inventory.md` con PANT-xx + archivo de diseño Penpot versionado + exports PNG/SVG) es artefacto con owner `ux-designer`, condicional a iniciativas con UI. Es el **mecanismo de validación temprana con negocio**: GATE 1 exige el inventario con recibo vigente para las pantallas del sprint — sin prototipo aprobado, el Dev Front no implementa esas pantallas. `gate_checker.py --tipo screen-inventory` valida la estructura y que las HU-xx citadas existan en `user-stories.md`. Si cambian HU/flujos/roles que tocan pantallas **o los tokens del design system** (v2.33.2: `tokens.json` es upstream del inventario), `spec_diff_impact.py` revoca el recibo de `spec/ux/` y las pantallas se re-aprueban.
 
 ## Recibos: confiar en evidencia, no en narración
 

@@ -30,7 +30,10 @@ DEPENDS_ON = {
     "design-system.md":     ["user-stories.md"],
     "tokens.json":          ["design-system.md"],
     # v2.8 — inventario de pantallas del prototipo gobernado (spec/ux/)
-    "screen-inventory.md":  ["user-stories.md", "roles.md", "ux-flows.md"],
+    # v2.33.2: tokens.json es upstream — un cambio de tokens del DS invalida el
+    # prototipo aprobado (anti-drift Penpot/Figma: el contrato visual usa los
+    # colores/tipografía reales; si cambian, las pantallas se re-aprueban)
+    "screen-inventory.md":  ["user-stories.md", "roles.md", "ux-flows.md", "tokens.json"],
     "architecture.md":      ["user-stories.md", "business-rules.md", "architecture-proposal.md"],
     "adr":                  ["architecture.md"],
     "tech-radar.yaml":      [],
