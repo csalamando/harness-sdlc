@@ -375,6 +375,11 @@ La versión 1.1 incorpora patrones de Receipt-Driven Development, adaptados al a
 - **`detect_stack.py`** (Fase -1): detecta stack y test runner; sin runner (exit 2) los gates de cobertura no son exigibles y Strict TDD queda en pausa hasta configurarlo.
 - **Perfiles de modelo por fase** (`references/model-profiles.md` del orquestador): tier económico/intermedio/potente por rol, con ejemplo de `model_list` para LiteLLM.
 
+### Trampas frecuentes de gobierno (aprendidas en producción)
+
+- **Versionar `spec/receipts/` activa el requisito de recibos de IR en todo lo que cuelgue de esa raíz.** El gate `architecture` (v2.21) exige recibo propio de cada IR referenciado (`diagrams/*.ir.json`) *solo si existe* `spec/receipts/` resuelto desde el artefacto. Un repo que nunca tuvo recibos y commitea el primero (p. ej. el recibo GATE 1 de un inventario de pantallas) descubre de golpe que las plantillas con IR de ejemplo fallan su propio gate. Fix: emitir el recibo del fixture (`receipt.py emit <ir> --gate FASE-2 --role software-architect`). Detectado en v2.33.0 del propio arnés: 328/329 → 329/329.
+- **Un cambio de versión en `harness-manifest.yaml` drifta `docs/graph.html`.** El grafo del pipeline es derivado: tras cualquier bump de versión, regenerar localmente (`manifest_check.py --write && harness_graph.py --write`) y commitear en el mismo release. Si no, el workflow `derivados` detecta drift y su autofix necesita `GITHUB_TOKEN` con permiso de escritura (Settings → Actions → Workflow permissions → *Read and write*); con solo lectura falla con 403.
+
 ---
 
 ## 5b. Novedades v2.0 (gobernanza de decisiones)

@@ -19,6 +19,10 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **`docs/design-system/ux/prototipo.penpot` versionado**: export del proyecto Penpot (742 KB, zip validado: 735 entradas, mismo file-id del proyecto), cerrando el artefacto gobernado del estándar de la skill `sdlc-ux-designer`.
 - **Recibo GATE 1 emitido** sobre `docs/design-system/ux/screen-inventory.md` (`--approved-by csalamando`, sha256 `d1cec7aa…`) y **log de auditoría inicializado** (`spec/audit/events.jsonl`).
 
+### Fixed
+- **Self-test del arnés (job `consistency`)**: commitear `spec/receipts/` por primera vez activó por diseño (v2.21) el requisito de recibo propio de los IR referenciados; la plantilla `architecture.md` (el ejemplo, v2.8.1) quedó sin recibo de su fixture IR. Se emite el recibo FASE 2 del fixture → 329/329 checks. Trampa documentada en la guía de uso («Trampas frecuentes de gobierno»).
+- **CI `derivados` (403 en autofix)**: `GITHUB_TOKEN` del repo elevado a *Read and write* (Settings → Actions → Workflow permissions) para que la rama `autofix/derivados` pueda publicarse. Drift del grafo regenerado y commiteado en el release.
+
 ### Notas
 - El export se descargó desde la UI de Penpot (File → Exportar como .penpot): el RPC de exportación de la instancia local rechazaba la petición (`No matching clause`, exporter no disponible) y el MCP no exporta archivos. Recibo re-emitido tras anotar el `.penpot` en el inventario (revoca el SHA anterior por diseño).
 
