@@ -7,6 +7,20 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [Unreleased]
+
+**Prototipo gobernado en Penpot.** El inventario de pantallas PANT-01..08 deja de ser degradación elegante: las 8 pantallas están construidas y verificadas en el proyecto Penpot «Arnes SDLC — Portal» (instancia autoalojada, MCP oficial), con interacciones navegables conectadas, y el inventario tiene **recibo GATE 1 vigente** (aprobado por csalamando, 9 checks OK).
+
+### Added
+- **Prototipo Penpot PANT-01..08** (proyecto «Arnes SDLC — Portal»): las 8 pantallas del portal construidas con el MCP de Penpot sobre `docs/design-system/tokens.json` (colores y tipografía reales del DS), verificadas visualmente una a una.
+- **Interacciones navegables conectadas y verificadas**: PANT-01 → PANT-02 (chip «bugs QA» y sidebar «Arquitectura»), PANT-01 → PANT-03/PANT-04 como overlays (caja de búsqueda y botón «?»), PANT-03 → PANT-02 (filas «vision.md» / «ADR-001»).
+- **Renders de revisión reales** (`docs/design-system/ux/exports/`, 8 PNG): exportados del prototipo y verificados visualmente; sustituyen a los renders ilustrativos previos.
+- **Identificadores canónicos de adaptación** en `screen-inventory.md`: tabla PANT → HU-xx (capacidad del portal) / ROL-xx (rol canónico del arnés), que permite que `gate_checker --tipo screen-inventory` valide el inventario adaptado (9 checks OK).
+- **Recibo GATE 1 emitido** sobre `docs/design-system/ux/screen-inventory.md` (`--approved-by csalamando`) y **log de auditoría inicializado** (`spec/audit/events.jsonl`).
+
+### Notas
+- El `.penpot` versionado se descarga manual desde Penpot (File → Exportar) a `docs/design-system/ux/`; el MCP no exporta archivos.
+
 ## [2.32.0] - 2026-09-12
 
 **Sistema de diseño del arnés.** Toda la UI HTML que genera el arnés (portal, inicio/dashboard, diagramas IR, grafo de código) pasa a derivar de tokens canónicos únicos en `docs/design-system/tokens.json`, con contraste WCAG AA verificado por script y contrato de accesibilidad. Adiós a los ~285 colores hardcodeados y a las 4 copias del bloque `:root` copiadas a mano.
