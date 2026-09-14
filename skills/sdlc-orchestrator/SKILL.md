@@ -4,7 +4,7 @@ description: "Orquestador del arnés SDLC con SDD+TDD. Usar para coordinar el pi
 harness-role: orchestrator
 harness-phases: "transversal"
 harness-owns: "spec/authority-matrix.yaml, spec/team-roster.yaml, spec/risk-tier.yaml, spec/dashboard.html, spec/METRICS.md, spec/metrics/, spec/reports/, spec/audit/, spec/pipeline-state.md"
-harness-version: "2.33.3"
+harness-version: "2.33.4"
 ---
 
 
@@ -72,7 +72,7 @@ Cada artefacto de `spec/` tiene **un solo rol dueño**, declarado en `spec/autho
 
 - `receipt.py emit --role <rol>`: si el artefacto tiene owner en la matriz, el rol debe coincidir o **el gate no reconoce la aprobación** (un dev emitiendo un ADR → recibo rechazado; un arquitecto emitiendo user-stories → rechazado). El rol queda registrado en el recibo y `verify` lo re-valida contra la matriz vigente.
 - `authority_check.py <artefacto> --role <rol>` o `--author <usuario-git> --team spec/team-roster.yaml`: validación standalone para CI (plantilla de workflow: `assets/ci-spec-governance.yml`; roster: `assets/team-roster-template.yaml`).
-- **Frontera dura en Git**: `assets/CODEOWNERS-template` + branch protection con "Require review from Code Owners" — un PR que toca `spec/adr/` no se mergea sin el Arquitecto.
+- **Frontera dura en Git**: `codeowners_gen.py` (v2.33.4) deriva `.github/CODEOWNERS` desde la matriz + el roster — nunca una plantilla copiada a mano que se desactualiza — + branch protection con "Require review from Code Owners": un PR que toca `spec/adr/` no se mergea sin el Arquitecto. Un rol sin titular queda comentado como SIN TITULAR (visible); `--check` en CI falla si matriz/roster y CODEOWNERS divergen.
 - Cambiar la matriz es un cambio de gobierno: owner `orchestrator`, requiere PR y queda auditado.
 - **Roles y PDD del BA (v2.7)**: `spec/roles.md` (catálogo gobernado: nombre + acciones habilitadas + contexto + restricciones) y `spec/process-definition.md` (PDD AS-IS firmado por el Process Owner, condicional a iniciativas que automatizan/rediseñan procesos) son artefactos con owner `business-analyst`. `gate_checker.py --tipo roles` valida la estructura y que los ROL-xx citados en `user-stories.md` existan en el catálogo; `--tipo process-definition` valida el PDD. Si existe `roles.md`, toda HU debe citar ROL-xx definidos.
 - **Prototipo de pantallas del UX (v2.8)**: `spec/ux/` (inventario `screen-inventory.md` con PANT-xx + archivo de diseño Penpot versionado + exports PNG/SVG) es artefacto con owner `ux-designer`, condicional a iniciativas con UI. Es el **mecanismo de validación temprana con negocio**: GATE 1 exige el inventario con recibo vigente para las pantallas del sprint — sin prototipo aprobado, el Dev Front no implementa esas pantallas. `gate_checker.py --tipo screen-inventory` valida la estructura y que las HU-xx citadas existan en `user-stories.md`. Si cambian HU/flujos/roles que tocan pantallas **o los tokens del design system** (v2.33.2: `tokens.json` es upstream del inventario), `spec_diff_impact.py` revoca el recibo de `spec/ux/` y las pantallas se re-aprueban.
@@ -142,6 +142,7 @@ Ejecutar con `python3 scripts/<nombre>.py`:
 - `advisor.py --adr <adr> --risk-tier N [--output <json>]`: identifica stakeholders del Advice Process por áreas de impacto.
 - `arch_signoff.py --adr <adr> --architect "Nombre"`: firma arquitectónica; genera recibo ARCH-xxx.json con SHA-256 del ADR y artefactos de diseño.
 - `authority_check.py <artefacto> --role <rol> | --author <usuario> --team spec/team-roster.yaml`: valida que quien emite/firma un artefacto sea su rol dueño según `spec/authority-matrix.yaml`. Exit 1 si no está autorizado.
+- `codeowners_gen.py [--spec-dir spec/] [--root .] [--check]` (v2.33.4): deriva `.github/CODEOWNERS` desde la matriz de autoridad + el roster — una línea por artefacto gobernado con los titulares reales del rol dueño. Un rol sin persona en el roster queda comentado como SIN TITULAR (la frontera no aplica en GitHub para ese artefacto: visible, nunca ausente en silencio). `--check` es el anti-drift para CI: tocar matriz o roster sin regenerar = exit 1. Requiere activar "Require review from Code Owners" en la protección de rama — el archivo sin la protección es decorativo.
 - `code_intel.py --root <proyecto> index|symbol|context|impact|tests|search|map|stats`: inteligencia de código local (grafo de símbolos en SQLite, incremental, sin daemon). `context` evita leer archivos completos; `impact` calcula blast radius; `tests` lista tests candidatos para GATE 2.
 - `code_graph.py emit|check|stats [--root <proyecto>] [--include-tests]` (v2.27): vistas derivadas del índice code_intel — grafo interactivo de archivos y grafo estático de módulos en `spec/diagrams/` (los recoge el portal en Arquitectura). Ejecutar tras cada reindex; `check` falla si las vistas quedan atrás del índice.
 - `arch_lint.py [--root .] [--rules spec/architecture-rules.yaml]` (v2.21, N9): linter de invariantes arquitectónicos — si el proyecto declara arquitectura por capas, verifica que el código la respete (`ast` para Python, patrones para JS/TS). Exit 1 por violación o config inválida; registra el hecho en la memoria de auditoría. Sin reglas declaradas, exit 0 (condicional).

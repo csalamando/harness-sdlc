@@ -7,6 +7,23 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.33.4] - 2026-09-13
+
+**CODEOWNERS derivado, no copiado a mano.** La frontera dura en Git se genera desde las dos fuentes de verdad del gobierno de identidades (matriz de autoridad + roster) — la plantilla manual se desactualizaba en silencio (de hecho ya estaba vieja respecto a la matriz: cost-estimation, roles.md, tdd-waiver…).
+
+### Added
+- **`codeowners_gen.py`** (orquestador): deriva `.github/CODEOWNERS` — una línea por artefacto gobernado con los titulares reales del rol dueño (`spec/user-stories.md @ana`). Un rol sin persona en el roster no desaparece en silencio: la línea queda comentada como `# SIN TITULAR` y se reporta como warning (la frontera no aplica en GitHub para ese artefacto — visible). `--check` es el anti-drift para CI: tocar matriz o roster sin regenerar = exit 1.
+- **`authority_check.load_roster()`**: parser del roster reutilizable (usuario → roles), ahora compartido por `roles_of_author` y el generador.
+
+### Removed
+- **`assets/CODEOWNERS-template`** (orquestador): reemplazada por el generador. La plantilla copiada a mano era exactamente el tipo de artefacto que el arnés prohíbe: narración sin verificación.
+
+### Documentación
+- **`sdlc-orchestrator`**: la frontera dura en Git ahora es el CODEOWNERS derivado + branch protection; `codeowners_gen.py` documentado en la sección de scripts.
+- **`sdlc-devops-engineer`**: Fase -1 — tras diligenciar el roster, derivar `.github/CODEOWNERS` con `codeowners_gen.py` y activar "Require review from Code Owners".
+- **Guía de uso**: sección de autoridad actualizada al generador.
+- **Self-test**: 4 checks nuevos (derivación con titulares reales, cero SIN TITULAR con roster completo, --check sin drift y con drift al tocar el roster, rol sin titular comentado y visible). Suite: **345 checks OK**.
+
 ## [2.33.3] - 2026-09-13
 
 **Fase -1 coherente y con dientes: roster real, pausa de TDD verificable y stack greenfield explícito.** Nace de la revisión de la Fase -1: DevOps no puede montar CI/CD de un stack que aún no se decide — Fase -1 es bootstrap de gobierno agnóstico de stack, y sus dos estados blandos (roster plantilla, pausa de TDD narrativa) pasan a ser verificables.

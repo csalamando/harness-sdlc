@@ -43,17 +43,27 @@ def owner_of(artefacto, rules):
     return None
 
 
-def roles_of_author(author, team_path):
-    """Roles de un usuario según spec/team-roster.yaml (parseo mínimo)."""
+def load_roster(team_path):
+    """Roster completo como dict usuario -> [roles] (parseo mínimo, sin PyYAML;
+    una línea por miembro: `  usuario: [rol-1, rol-2]`). None si no existe."""
     import re
     try:
         text = open(team_path, encoding="utf-8").read()
     except FileNotFoundError:
+        return None
+    roster = {}
+    for m in re.finditer(r"^\s{2}([A-Za-z0-9_.-]+):\s*\[?([^\]\n]+)\]?\s*$",
+                         text, re.MULTILINE):
+        roster[m.group(1)] = [r.strip() for r in m.group(2).split(",") if r.strip()]
+    return roster
+
+
+def roles_of_author(author, team_path):
+    """Roles de un usuario según spec/team-roster.yaml."""
+    roster = load_roster(team_path)
+    if roster is None:
         return None  # sin roster no se puede mapear
-    m = re.search(rf"^\s*{re.escape(author)}:\s*\[?([^\]\n]+)\]?\s*$", text, re.MULTILINE)
-    if not m:
-        return []
-    return [r.strip() for r in m.group(1).split(",") if r.strip()]
+    return roster.get(author, [])
 
 
 def check(artefacto, role=None, author=None, team=None, matrix=DEFAULT_MATRIX):

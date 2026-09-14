@@ -1283,10 +1283,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # diligenciar el roster con personas reales (karlo encarna varios roles)
     open(os.path.join(tmp, "spec", "team-roster.yaml"), "w", encoding="utf-8").write(
         "members:\n"
-        "  karlo: [product-owner, business-analyst, ux-designer, software-architect,\n"
-        "          solution-architect, cloud-pricing, security-engineer, data-engineer,\n"
-        "          backend-dev, frontend-dev, qa-automation, devops-engineer,\n"
-        "          cloud-engineer, sre, technical-writer, product-analyst]\n")
+        "  karlo: [product-owner, business-analyst, ux-designer, software-architect, solution-architect, cloud-pricing, security-engineer, data-engineer, backend-dev, frontend-dev, qa-automation, devops-engineer, cloud-engineer, sre, technical-writer, product-analyst, enterprise-architect, orchestrator, decision-engine]\n")
 
     # crear los 3 artefactos de GATE 0 + recibos → verde
     def w3(rel, content):
@@ -1365,6 +1362,31 @@ with tempfile.TemporaryDirectory() as tmp:
     ps = open(os.path.join(tmp, "spec", "pipeline-state.md"), encoding="utf-8").read()
     check("v2.33.3: pipeline-state declara stack PENDIENTE DE DECISIÓN en greenfield",
           c == 0 and "PENDIENTE DE DECISIÓN" in ps and "EN PAUSA" in ps, ps[:200])
+
+    # v2.33.4: CODEOWNERS derivado de matriz + roster (frontera dura sin plantilla manual)
+    c, o = run("codeowners_gen.py", "--spec-dir", "spec/", "--root", tmp, cwd=tmp)
+    co_path = os.path.join(tmp, ".github", "CODEOWNERS")
+    co = open(co_path, encoding="utf-8").read() if os.path.isfile(co_path) else ""
+    check("v2.33.4: codeowners_gen deriva .github/CODEOWNERS con titulares reales",
+          c == 0 and "spec/user-stories.md" in co and "@karlo" in co
+          and "GENERADO por codeowners_gen.py" in co, o)
+    check("v2.33.4: roster completo (todos los roles con titular) = cero SIN TITULAR",
+          "SIN TITULAR" not in co, str([l for l in co.splitlines() if "SIN TITULAR" in l]))
+    c, o = run("codeowners_gen.py", "--spec-dir", "spec/", "--root", tmp, "--check", cwd=tmp)
+    check("v2.33.4: --check sin drift tras generar (exit 0)", c == 0, o)
+    open(os.path.join(tmp, "spec", "team-roster.yaml"), "a", encoding="utf-8").write(
+        "  luis: [product-owner]\n")
+    c, o = run("codeowners_gen.py", "--spec-dir", "spec/", "--root", tmp, "--check", cwd=tmp)
+    check("v2.33.4: tocar el roster invalida el CODEOWNERS (--check exit 1)",
+          c == 1 and "DRIFT" in o, o)
+    # rol sin titular: la línea queda comentada y visible, nunca ausente en silencio
+    open(os.path.join(tmp, "spec", "team-roster.yaml"), "w", encoding="utf-8").write(
+        "members:\n  karlo: [product-owner]\n")
+    c, o = run("codeowners_gen.py", "--spec-dir", "spec/", "--root", tmp, cwd=tmp)
+    co2 = open(co_path, encoding="utf-8").read()
+    check("v2.33.4: rol sin titular queda comentado como SIN TITULAR (visible)",
+          c == 0 and "# SIN TITULAR: spec/user-stories.md" in co2
+          and "business-analyst sin persona" in co2, o)
 
 # ── 10g. N7: pipeline-state derivado — fin del estado narrado ────────────────
 print("\n[10g] pipeline-state derivado de hechos, con --check anti-drift")
