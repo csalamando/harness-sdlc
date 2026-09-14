@@ -99,6 +99,8 @@ artifacts:
     owner: devops-engineer    # v2.29: los runbooks/checklists de despliegue tienen dueño
   - path: spec/checklist-validacion-dev.md
     owner: devops-engineer    # v2.29
+  - path: spec/tdd-waiver.md
+    owner: devops-engineer    # v2.33.3: waiver de la pausa de Strict TDD (sin test runner en GATE 2); exige recibo con --approved-by
   - path: spec/docs/
     owner: technical-writer   # v2.29: guías de usuario/desarrollador doc-as-code
 

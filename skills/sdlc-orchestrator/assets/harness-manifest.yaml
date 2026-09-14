@@ -2,7 +2,7 @@
 # NO editar a mano: la fuente de verdad es el frontmatter harness-* de cada SKILL.md,
 # y la lista de scripts se deriva del disco. Drift = fallo en self_test y en CI.
 manifest-version: 1
-harness-version: "2.33.2"
+harness-version: "2.33.3"
 skill-count: 21
 skills:
   - name: sdlc-backend-dev-tdd
@@ -52,7 +52,7 @@ skills:
   - name: sdlc-devops-engineer
     role: devops-engineer
     phases: [-1, 6]
-    owns: [spec/diagrams/pipeline-cicd.md, spec/runbook-deploy-rollback.md, spec/checklist-validacion-dev.md]
+    owns: [spec/diagrams/pipeline-cicd.md, spec/runbook-deploy-rollback.md, spec/checklist-validacion-dev.md, spec/tdd-waiver.md]
     gates: []
     optional-deps: []
     scripts: []

@@ -7,6 +7,23 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.33.3] - 2026-09-13
+
+**Fase -1 coherente y con dientes: roster real, pausa de TDD verificable y stack greenfield explícito.** Nace de la revisión de la Fase -1: DevOps no puede montar CI/CD de un stack que aún no se decide — Fase -1 es bootstrap de gobierno agnóstico de stack, y sus dos estados blandos (roster plantilla, pausa de TDD narrativa) pasan a ser verificables.
+
+### Added
+- **Roster de personas reales exigible en GATE 0/1** (`gate_verify.py`, transversal 3): `spec/team-roster.yaml` siguiendo siendo la plantilla (o sin miembros) = fallo del gate. La matriz de autoridad dice qué rol posee cada artefacto; el roster dice qué humano encarna cada rol — sin roster real, `authority_check --author` y el CODEOWNERS son letra muerta.
+- **Pausa de Strict TDD con dientes** (`gate_verify.py`, transversal 4): `detect_stack.py` exit 2 (sin test runner) bloquea GATE 2 salvo **waiver aprobado por humano** — `spec/tdd-waiver.md` (plantilla nueva en `sdlc-devops-engineer/assets/`, owner `devops-engineer` en la matriz) con recibo vigente emitido con `--approved-by`. Cierra la trampa documentada en producción ("la pausa fue narrativa", TopBirds).
+- **Aprobación degradada visible** (`receipt.py`): si el aprobador de un gate humano encarna el **mismo rol** que emite el artefacto (según el roster), se imprime warning no bloqueante y queda registrado en la auditoría (`nota: aprobacion degradada`). Legítimo en equipos de una persona; invisible nunca más.
+- **Estado greenfield explícito** (`pipeline_state.py`): sin stack detectado ya no se ve como brownfield roto — el estado derivado declara "PENDIENTE DE DECISIÓN (GATE 0 / ADR de Fase 2) | Strict TDD EN PAUSA" con su plan de resolución.
+
+### Documentación
+- **`sdlc-devops-engineer`**: Fase -1 reescrita — agnóstica de stack por diseño (detecta brownfield, no adivina greenfield), paso explícito de roster real, waiver de TDD, y aclaración de que el pipeline real y la IaC son Fase 6 (aquí solo pipelines vacíos verdes).
+- **README**: la fila de Fase -1 ya no dice "CI/CD + IaC base" (engañoso); describe el bootstrap de gobierno real.
+- **`sdlc-orchestrator`**: GATE 1 exige roster diligenciado y añade el disparador post-ADR de stack (re-generar pipeline-state y confirmar runner o waiver, sin esperar a Fase 4); descripción de `gate_verify.py` actualizada.
+- **Matriz de autoridad**: nueva entrada `spec/tdd-waiver.md` → `devops-engineer`.
+- **Self-test**: 6 checks nuevos (roster plantilla falla GATE 0, aprobación degradada advertida y auditada, GATE 2 sin runner/waiver falla, GATE 2 con waiver pasa, pipeline-state greenfield explícito). Suite: **339 checks OK**.
+
 ## [2.33.2] - 2026-09-13
 
 **Anti-drift del prototipo: los tokens del design system son upstream del inventario de pantallas.** Un cambio en `tokens.json` ahora revoca derivadamente el recibo del prototipo aprobado — el contrato visual usa los tokens reales, así que si los tokens cambian, las pantallas se re-aprueban.

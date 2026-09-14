@@ -9,7 +9,10 @@ todo artefacto exigible:
 
 Además, verificaciones transversales según el gate:
   - memoria de auditoría íntegra (audit_verify.py) en todos los gates;
-  - GATE 2: arch_lint en verde si existe spec/architecture-rules.yaml;
+  - GATE 0/1: roster diligenciado con personas reales, no la plantilla (v2.33.3);
+  - GATE 2: arch_lint en verde si existe spec/architecture-rules.yaml, y test
+    runner configurado (detect_stack) o waiver aprobado spec/tdd-waiver.md
+    con recibo vigente (v2.33.3 — la pausa de Strict TDD deja de ser narrativa);
   - condicionales del routing: --sin-ui / --sin-datos / --sin-procesos excluyen
     los artefactos condicionales que no aplican (mismo criterio que
     manifest_check.py --routing).
@@ -84,6 +87,46 @@ def receipt_vigente(spec_dir, artefacto):
     if rec.get("sha256") != h:
         return False, "hash no coincide (editado sin re-aprobar)"
     return True, ""
+
+
+def roster_diligenciado(spec_dir):
+    """(ok, detalle) — v2.33.3: Fase -1 no termina sin roster real.
+    La matriz de autoridad dice qué rol posee cada artefacto; el roster dice qué
+    humano encarna cada rol. Con la plantilla intacta, authority_check --author y
+    el CODEOWNERS derivado son letra muerta."""
+    p = os.path.join(spec_dir, "team-roster.yaml")
+    if not os.path.isfile(p):
+        return False, "spec/team-roster.yaml: NO EXISTE — init_project.py lo scaffolda"
+    text = open(p, encoding="utf-8").read()
+    if "# agregar aquí el resto del equipo" in text:
+        return False, ("spec/team-roster.yaml: sigue siendo la PLANTILLA — "
+                       "diligenciar personas reales (usuario-git → roles) en Fase -1")
+    import re
+    miembros = re.findall(r"^\s{2}\S+:\s*\[?[^\]\n]+\]?\s*$", text, re.MULTILINE)
+    if not miembros:
+        return False, "spec/team-roster.yaml: sin miembros definidos (usuario: [roles])"
+    return True, ""
+
+
+def runner_ok(spec_dir, root):
+    """(ok, detalle) — v2.33.3: la pausa de Strict TDD tiene dientes.
+    detect_stack exit 2 (sin test runner) bloquea GATE 2 salvo waiver aprobado
+    por humano: spec/tdd-waiver.md con recibo vigente (emitido con --approved-by)."""
+    r = subprocess.run([sys.executable, os.path.join(HERE, "detect_stack.py"),
+                        "--project-dir", root], capture_output=True, text=True)
+    if r.returncode != 2:
+        return True, ""
+    waiver = os.path.join(spec_dir, "tdd-waiver.md")
+    if os.path.isfile(waiver):
+        ok, det = receipt_vigente(spec_dir, waiver)
+        if ok:
+            return True, ""
+        return False, (f"sin test runner (detect_stack exit 2) y waiver {det} — "
+                       "re-aprobar spec/tdd-waiver.md")
+    return False, ("sin test runner configurado (detect_stack exit 2): Strict TDD "
+                   "sigue EN PAUSA al entrar a Fase 4 — configurar un runner o "
+                   "registrar waiver aprobado por humano en spec/tdd-waiver.md "
+                   "con recibo (--approved-by)")
 
 
 def main():
@@ -164,6 +207,20 @@ def main():
                            capture_output=True, text=True)
         if r.returncode != 0:
             fallos.append("arch_lint: el código viola los invariantes declarados")
+
+    # Transversal 3 (GATE 0/1, v2.33.3): roster real — sin personas mapeadas a
+    # roles, la matriz de autoridad y el CODEOWNERS no tienen a quién aplicar
+    if gate in ("GATE 0", "GATE 1"):
+        ok, detalle = roster_diligenciado(a.spec_dir)
+        if not ok:
+            fallos.append(detalle)
+
+    # Transversal 4 (GATE 2, v2.33.3): la pausa de Strict TDD no es narrativa —
+    # entrar a Fase 4 sin test runner exige waiver aprobado por humano
+    if gate == "GATE 2":
+        ok, detalle = runner_ok(a.spec_dir, a.root)
+        if not ok:
+            fallos.append(detalle)
 
     print(f"GATE VERIFY {gate}: {len(verificados)} verificados, "
           f"{len(fallos)} faltantes/incumplidos, {len(excl)} excluidos por routing")

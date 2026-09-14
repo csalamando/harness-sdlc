@@ -172,6 +172,23 @@ def cmd_emit(a):
         if gate_es_humano(gn) and not a.approved_by:
             print(f"FALLO: {gn} es un gate HUMANO — exige --approved-by <identidad> "
                   f"del aprobador. El agente no puede auto-aprobarse."); sys.exit(1)
+        # v2.33.3: si el aprobador humano encarna el MISMO rol que emite el
+        # artefacto (según team-roster.yaml), la aprobación humana es degradada —
+        # legítimo en equipos de una persona, pero debe quedar VISIBLE, nunca
+        # invisible. Warning no bloqueante, registrado en la auditoría.
+        if gate_es_humano(gn) and a.approved_by and a.role:
+            try:
+                from authority_check import roles_of_author
+                roles_ap = roles_of_author(a.approved_by,
+                                           os.path.join(a.spec_dir, "team-roster.yaml"))
+                if roles_ap and a.role in roles_ap:
+                    print(f"  ⚠ APROBACIÓN DEGRADADA: {a.approved_by} encarna el rol "
+                          f"emisor ({a.role}) según el roster — emisor y aprobador "
+                          "son la misma persona. Visible en auditoría; en equipos "
+                          "con más gente, buscar un aprobador distinto al emisor.")
+                    a._aprobacion_degradada = True
+            except ImportError:
+                pass
     else:
         print("  ⚠ audit_log.py no encontrado junto a receipt.py — emitiendo SIN "
               "validar el catalogo de gates ni registrar auditoria (scripts "
@@ -235,10 +252,15 @@ def cmd_emit(a):
     print(f"RECIBO EMITIDO ({a.gate}): {a.artefacto}\n  sha256: {rec['sha256'][:16]}...  -> {p}")
     # ADR-004: hecho en la memoria de auditoria. Si habia un recibo previo no
     # vigente, esta emision es una RE-emision (retrabajo) — queda explícito.
+    _notas = []
+    if prev_estado in ("invalidado", "revocado"):
+        _notas.append("re-emision (recibo previo no vigente)")
+    if getattr(a, "_aprobacion_degradada", False):
+        _notas.append(f"aprobacion degradada: {a.approved_by} encarna el rol emisor ({a.role})")
     _audit(a.spec_dir, "emit", artefacto=_rel(a.spec_dir, a.artefacto), gate=a.gate,
            rol=a.role or "", sha256=rec["sha256"], approved_by=a.approved_by or "",
            attempts=str(a.attempts) if a.attempts and int(a.attempts) > 1 else "",
-           nota="re-emision (recibo previo no vigente)" if prev_estado in ("invalidado", "revocado") else "")
+           nota="; ".join(_notas))
     # v2.16: auto-registro de la activacion en usage.jsonl — el recibo ES evidencia
     # de que la skill produjo; cierra la brecha de metricas muertas cuando el agente
     # olvida 'skill_metrics.py use'. skill_metrics report deduplica contra usos manuales.

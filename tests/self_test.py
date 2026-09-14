@@ -1274,8 +1274,19 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out = runv("--gate", "GATE 0")
     check("N4: gate_verify GATE 0 sin artefactos falla listándolos",
           code == 1 and "architecture-proposal.md" in out and "NO EXISTE" in out, out)
+    # v2.33.3: el roster sin diligenciar (plantilla) es fallo de gobierno en GATE 0/1
+    check("v2.33.3: roster plantilla = fallo de GATE 0 (personas reales exigibles)",
+          "PLANTILLA" in out and "team-roster" in out, out)
     code, out = runv("--gate", "gate2")
     check("N4: gate_verify rechaza gates fuera del catálogo", code == 1, out)
+
+    # diligenciar el roster con personas reales (karlo encarna varios roles)
+    open(os.path.join(tmp, "spec", "team-roster.yaml"), "w", encoding="utf-8").write(
+        "members:\n"
+        "  karlo: [product-owner, business-analyst, ux-designer, software-architect,\n"
+        "          solution-architect, cloud-pricing, security-engineer, data-engineer,\n"
+        "          backend-dev, frontend-dev, qa-automation, devops-engineer,\n"
+        "          cloud-engineer, sre, technical-writer, product-analyst]\n")
 
     # crear los 3 artefactos de GATE 0 + recibos → verde
     def w3(rel, content):
@@ -1314,6 +1325,46 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out = runv("--gate", "GATE 1", "--sin-ui")
     check("N4: --sin-ui excluye los artefactos condicionales del routing",
           "excluidos por routing" in out and "ux-flows" in out, out)
+
+    # v2.33.3: aprobación degradada visible — aprobador que encarna el rol emisor
+    nota = os.path.join(tmp, "spec", "nota-humana.md")
+    open(nota, "w", encoding="utf-8").write("# nota\n")
+    c, o = run("receipt.py", "--spec-dir", "spec/", "emit", nota,
+               "--gate", "GATE 1", "--role", "business-analyst",
+               "--approved-by", "karlo", cwd=tmp)
+    check("v2.33.3: emisor=aprobador (mismo humano) advierte aprobación degradada",
+          c == 0 and "APROBACIÓN DEGRADADA" in o, o)
+    evs_d = [_j2.loads(l) for l in
+             open(os.path.join(tmp, "spec", "audit", "events.jsonl"), encoding="utf-8")]
+    check("v2.33.3: la aprobación degradada queda registrada en la auditoría",
+          any("aprobacion degradada" in (e.get("nota") or "") for e in evs_d),
+          str([e.get("nota") for e in evs_d]))
+
+    # v2.33.3: GATE 2 sin test runner bloquea (la pausa de TDD tiene dientes)
+    code, out = runv("--gate", "GATE 2")
+    check("v2.33.3: GATE 2 sin runner ni waiver falla (pausa con dientes)",
+          code == 1 and "test runner" in out, out)
+    # con waiver aprobado por humano (recibo vigente) + qa-report aprobado: verde
+    import shutil as _sh
+    _sh.copy(os.path.join(ROOT, "skills", "sdlc-qa-automation", "assets", "qa-report.md"),
+             os.path.join(tmp, "spec", "qa-report.md"))
+    _sh.copy(os.path.join(ROOT, "skills", "sdlc-devops-engineer", "assets", "tdd-waiver.md"),
+             os.path.join(tmp, "spec", "tdd-waiver.md"))
+    for art_w, rol_w in (("qa-report.md", "qa-automation"),
+                         ("tdd-waiver.md", "devops-engineer")):
+        c, o = run("receipt.py", "--spec-dir", "spec/", "emit",
+                   os.path.join(tmp, "spec", art_w), "--gate", "GATE 2",
+                   "--role", rol_w, "--approved-by", "karlo", cwd=tmp)
+        assert c == 0, o
+    code, out = runv("--gate", "GATE 2")
+    check("v2.33.3: GATE 2 con waiver aprobado + qa-report vigente pasa (exit 0)",
+          code == 0, out)
+
+    # v2.33.3: pipeline-state explicita el greenfield (pendiente de decisión)
+    c, o = run("pipeline_state.py", "--spec-dir", "spec/", "--root", tmp, cwd=tmp)
+    ps = open(os.path.join(tmp, "spec", "pipeline-state.md"), encoding="utf-8").read()
+    check("v2.33.3: pipeline-state declara stack PENDIENTE DE DECISIÓN en greenfield",
+          c == 0 and "PENDIENTE DE DECISIÓN" in ps and "EN PAUSA" in ps, ps[:200])
 
 # ── 10g. N7: pipeline-state derivado — fin del estado narrado ────────────────
 print("\n[10g] pipeline-state derivado de hechos, con --check anti-drift")

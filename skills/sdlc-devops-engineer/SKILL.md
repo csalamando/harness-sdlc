@@ -3,7 +3,7 @@ name: sdlc-devops-engineer
 description: "DevOps Engineer del arnés SDLC. Usar en Fase -1 para inicializar el proyecto (repo, estructura spec/, tablero, pipelines vacíos) y en Fase 6 para construir pipelines CI/CD completos (lint → unit → contract → E2E → build → deploy), infraestructura como código (Terraform/Bicep), ambientes dev/staging/prod y estrategia de rollback. Dispara ante: CI/CD, pipelines, infraestructura como código, Terraform, ambientes, setup de proyecto, rollback, runbook."
 harness-role: devops-engineer
 harness-phases: "-1, 6"
-harness-owns: "spec/diagrams/pipeline-cicd.md, spec/runbook-deploy-rollback.md, spec/checklist-validacion-dev.md"
+harness-owns: "spec/diagrams/pipeline-cicd.md, spec/runbook-deploy-rollback.md, spec/checklist-validacion-dev.md, spec/tdd-waiver.md"
 ---
 
 
@@ -13,12 +13,15 @@ Habilitas al equipo: montas la infraestructura del propio arnés (Fase -1) y el 
 
 ## Fase -1: Setup del proyecto (una sola vez)
 
+Fase -1 es **agnóstica de stack** por diseño: bootstrap de gobierno, no construcción. El stack se *detecta* si ya hay código (brownfield) o se *decide* después (greenfield: propuesta en GATE 0, ADR firmado en Fase 2) — nunca se adivina aquí.
+
 1. Inicializar el proyecto con `init_project.py --proyecto <nombre>` (v2.22: scaffold determinista — estructura `spec/`, matriz de autoridad, roster, radar y auditoría con génesis+bootstrap) y completar `src/`, `tests/{unit,contract,e2e}`, `infra/`, `pipelines/`, `CHANGELOG.md`.
-2. El stack y test runner quedan en `spec/pipeline-state.md` — lo deriva `pipeline_state.py` (que corre `detect_stack.py`); nunca se edita a mano. Si no hay test runner (exit 2), configurar uno antes de Fase 4 — sin runner no hay gates de cobertura exigibles.
-3. Inicializar memoria: `spec/memory/entries/`, agregar `spec/memory/.index/` al `.gitignore`.
-4. Crear tablero (Jira/GitHub Projects) con columnas del pipeline.
-5. Pipelines vacíos pero funcionando (hello-world en CI).
-6. Permisos y ramas protegidas: `main` solo vía PR con checks verdes.
+2. **Diligenciar `spec/team-roster.yaml` con personas reales** (v2.33.3): la matriz de autoridad dice *qué rol posee cada artefacto*; el roster dice *qué humano encarna cada rol*. Con la plantilla intacta, `authority_check --author` y el CODEOWNERS derivado son letra muerta — `gate_verify.py` falla en GATE 0/1 si el roster sigue siendo template. Una persona con varios roles es legítimo (declararlo); pero si emisor y aprobador de un gate humano son la misma persona, `receipt.py` lo advierte y lo registra en auditoría (aprobación degradada visible, no invisible).
+3. Detección de stack honesta: correr `detect_stack.py` (lo deriva `pipeline_state.py` en `spec/pipeline-state.md` — nunca se edita a mano). **Brownfield**: registra stack y runner detectados. **Greenfield**: el estado correcto es "PENDIENTE DE DECISIÓN (GATE 0 / ADR de Fase 2)" — no es un error, es el punto de partida. Si no hay test runner (exit 2), Strict TDD queda **EN PAUSA con dientes**: `gate_verify.py --gate "GATE 2"` bloquea la entrada a Fase 4 sin runner configurado o waiver aprobado por humano (`spec/tdd-waiver.md`, plantilla: `assets/tdd-waiver.md`, con recibo `--approved-by`). La pausa ya no es narrativa.
+4. Inicializar memoria: `spec/memory/entries/`, agregar `spec/memory/.index/` al `.gitignore`.
+5. Crear tablero (Jira/GitHub Projects) con columnas del pipeline.
+6. **Pipelines vacíos pero funcionando** (hello-world en CI). El pipeline real (lint → unit → contract → E2E → build → deploy) y la IaC real son Fase 6 — aquí NO se monta CI/CD del stack porque el stack aún puede no existir.
+7. Permisos y ramas protegidas: `main` solo vía PR con checks verdes.
 
 ## Fase 6: CI/CD y despliegue
 

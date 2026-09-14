@@ -47,7 +47,15 @@ def _detect_stack(root):
                             "--project-dir", root], capture_output=True, text=True,
                            timeout=60)
         lineas = [l.strip() for l in r.stdout.splitlines() if l.strip()]
-        return " | ".join(lineas[:3]) if lineas else f"exit {r.returncode}"
+        base = " | ".join(lineas[:3]) if lineas else f"exit {r.returncode}"
+        # v2.33.3: greenfield sano ≠ brownfield roto — sin stack detectado es un
+        # estado explícito con su plan de resolución, no una ausencia ambigua.
+        if r.returncode == 2 and "ninguno conocido" in r.stdout:
+            return ("PENDIENTE DE DECISIÓN (greenfield: el stack se decide en "
+                    "GATE 0 y se firma en el ADR de Fase 2) | Strict TDD: EN PAUSA "
+                    "hasta configurar un test runner (o waiver aprobado: "
+                    "spec/tdd-waiver.md con recibo) | " + base)
+        return base
     except (OSError, subprocess.TimeoutExpired):
         return "no disponible"
 

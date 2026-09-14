@@ -141,7 +141,7 @@ Cada artefacto vive en `spec/` versionada en Git y tiene **un único rol dueño*
 
 | Fase | Rol activo | Artefactos generados (salida gobernada) |
 |---|---|---|
-| **-1 · Setup** | `sdlc-devops-engineer` | CI/CD + IaC base, detección de stack (`detect_stack.py`) — sin test runner, TDD queda en pausa explícita |
+| **-1 · Setup** | `sdlc-devops-engineer` | Scaffold de gobierno (`init_project.py`: matriz de autoridad, **roster de personas reales**, auditoría) · pipelines vacíos funcionando · detección de stack honesta (`detect_stack.py`: brownfield detecta, greenfield queda "pendiente de decisión" hasta GATE 0/ADR) — sin test runner, TDD queda en pausa **con dientes** (GATE 2 exige runner o waiver aprobado) |
 | **0 · Discovery** | `sdlc-product-owner` · `sdlc-solution-architect` · `sdlc-cloud-pricing` | Visión y épicas · **propuesta de arquitectura con opciones** · historias técnicas (enablers, deuda, spikes, NFRs) · **estimación CAPEX/OPEX/TCO** por escenario → **GATE 0** |
 | **1 · Análisis** | `sdlc-business-analyst` | Historias de usuario + Gherkin · reglas de negocio · **catálogo de roles gobernado** (`roles.md`) · PDD AS-IS firmado por el Process Owner (si automatiza procesos) |
 | **2 · Diseño** | `sdlc-ux-designer` · `sdlc-software-architect` · `sdlc-security-engineer` · `sdlc-data-engineer` · `sdlc-decision-engine` · `sdlc-enterprise-architect` | Prototipo de pantallas gobernado (Penpot, `spec/ux/`) + design tokens · `architecture.md` + **diagramas IR** · contratos **OpenAPI** · modelo de datos · **ADRs firmados** (8 pasos + scorecard + Advice Log) · **historias técnicas de alto nivel** (`technical-design.md`, aprobadas por el Architect) · threat model · test-plan |
