@@ -129,9 +129,9 @@ Todo gate que pasa **emite recibo**; todo consumo downstream **verifica recibo**
 
 | Gate | Tipo | Qué exige |
 |---|---|---|
-| **GATE 0** | 🧑 humano | Iniciativa aprobada: propuesta de arquitectura con ≥2 opciones + recomendación justificada (scorecard con costo), historias técnicas y estimación **CAPEX/OPEX/TCO vigente** (AWS/Azure, 3 escenarios). Sin caso de negocio, no hay pipeline. |
-| **GATE 1** | 🧑 humano | Spec consolidada + sin conflictos de memoria pendientes + políticas org attestadas + **cada ADR Tier 1-2 con 8 pasos validados, Advice Log, Tech Radar cruzado y firma vigente** + **prototipo de pantallas aprobado si hay UI**. Sin esto, cero código. |
-| **GATE 2** | 🤖 automático | Todas las historias verificadas E2E. Bug crítico → se devuelve al dev **con el test que lo reproduce**. |
+| **GATE 0** | 🧑 humano | Iniciativa aprobada: propuesta de arquitectura con ≥2 opciones + recomendación justificada (scorecard con costo), historias técnicas y estimación **CAPEX/OPEX/TCO vigente** (AWS/Azure, 3 escenarios) + **roster de personas reales diligenciado** (sin él, la matriz de autoridad no tiene a quién aplicar). Sin caso de negocio, no hay pipeline. |
+| **GATE 1** | 🧑 humano | Spec consolidada + sin conflictos de memoria pendientes + políticas org attestadas + roster real + **cada ADR Tier 1-2 con 8 pasos validados, Advice Log, Tech Radar cruzado y firma vigente** + **prototipo de pantallas aprobado si hay UI** + runner del stack decidido configurado (o waiver aprobado). Sin esto, cero código. |
+| **GATE 2** | 🤖 automático | Todas las historias verificadas E2E + **test runner presente o waiver aprobado** (la pausa de Strict TDD no es narrativa). Bug crítico → se devuelve al dev **con el test que lo reproduce**. |
 | **GATE 2.5** | 🤖 automático | Ninguna vulnerabilidad crítica/alta abierta. |
 | **GATE 3** | 🧑 humano | Staging validado + rollback probado + diagramas derivados regenerados desde su fuente con recibo vigente. |
 
@@ -322,7 +322,7 @@ Los gates de entrega (2, 2.5, 3) aplican **siempre**, sin importar la ruta.
 
 ## 🛠 Herramientas del arnés (stdlib + Git, sin dependencias)
 
-`init_project.py` (scaffold determinista) · `gate_verify.py` · `gate_checker.py` · `receipt.py` · `audit_log.py` + `audit_verify.py` · `pipeline_state.py` · `spec_diff_impact.py --apply` (invalidación derivada) · `authority_check.py` · `arch_signoff.py` · `arch_lint.py` (la arquitectura como política binaria sobre el código) · `contract_diff.py` (bloquea breaking changes de API sin bump mayor) · `circuit_breaker.py` + `blast_radius_check.py` (HITL: el agente se congela y solo un humano lo descongela) · `code_intel.py` (grafo de símbolos, blast radius, menos tokens) · `context_packager.py` · `traceability_matrix.py` · `skill_metrics.py` · `sprint_review.py` · `tdd_order_check.py` · `manifest_check.py` · `harness_graph.py` (portal del proyecto) · `harness_doctor.py` · `diagram_ir.py` · `pipeline_diagram.py` · `diagram_render.py`
+`init_project.py` (scaffold determinista) · `gate_verify.py` · `gate_checker.py` · `receipt.py` · `audit_log.py` + `audit_verify.py` · `pipeline_state.py` · `spec_diff_impact.py --apply` (invalidación derivada) · `authority_check.py` · `codeowners_gen.py` (CODEOWNERS derivado de matriz + roster, con anti-drift) · `arch_signoff.py` · `arch_lint.py` (la arquitectura como política binaria sobre el código) · `contract_diff.py` (bloquea breaking changes de API sin bump mayor) · `circuit_breaker.py` + `blast_radius_check.py` (HITL: el agente se congela y solo un humano lo descongela) · `code_intel.py` (grafo de símbolos, blast radius, menos tokens) · `context_packager.py` · `traceability_matrix.py` · `skill_metrics.py` · `sprint_review.py` · `tdd_order_check.py` · `manifest_check.py` · `harness_graph.py` (portal del proyecto) · `harness_doctor.py` · `diagram_ir.py` · `pipeline_diagram.py` · `diagram_render.py`
 
 **Regla de gobierno:** toda herramienta produce o consume un artefacto versionado. Si una decisión solo existe en una llamada, no existe.
 
