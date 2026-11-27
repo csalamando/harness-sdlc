@@ -1,0 +1,100 @@
+{
+  "catalogo": "PLT-01",
+  "version": "1.0.0",
+  "titulo": "Catálogo de diagramas de arquitectura — routing del arnés",
+  "propuesta_origen": "docs/propuestas/01-Catalogo-Diagramas-Arquitectura.md",
+  "principio": "Una fuente gobernada por diagrama; toda imagen o documento generado es una vista derivada.",
+  "diagramas": [
+    {
+      "id": "D1",
+      "nombre": "Contexto de negocio y usuarios",
+      "pregunta": "¿Quién usa esto y para qué existe?",
+      "fuente": "IR",
+      "tipo_ir": "context",
+      "sintaxis": "spec/diagrams/contexto.ir.json",
+      "vista": "diagram_ir.py → HTML interactivo; PNG/SVG derivado para la wiki",
+      "iconos_diagrams": false,
+      "motivo": "C4 L1 exige un sistema central, actores y relaciones comprensibles por negocio; el foco y el detalle aportan más que iconos de productos."
+    },
+    {
+      "id": "D2",
+      "nombre": "Contenedores y servicios (C4 N2)",
+      "pregunta": "¿De qué piezas se compone y con qué stack?",
+      "fuente": "IR",
+      "tipo_ir": "container",
+      "sintaxis": "spec/diagrams/contenedores.ir.json",
+      "vista": "diagram_ir.py → HTML interactivo con iconos; Diagrams opcional → PNG/SVG/PDF",
+      "iconos_diagrams": true,
+      "motivo": "El IR conserva stack, protocolos, ubicación y drill-down; Diagrams aporta la iconografía cloud sin convertirse en otra fuente."
+    },
+    {
+      "id": "D3",
+      "nombre": "Despliegue e infraestructura",
+      "pregunta": "¿Dónde corre, en qué cuenta y a cargo de quién?",
+      "fuente": "IR",
+      "tipo_ir": "deployment",
+      "sintaxis": "spec/diagrams/despliegue.ir.json",
+      "vista": "diagram_ir.py → HTML interactivo con iconos; Diagrams opcional → PNG/SVG/PDF",
+      "iconos_diagrams": true,
+      "adaptadores": {
+        "kubernetes": "KubeDiagrams → IR deployment (planificado: manifiestos/Helm/Kustomize offline; clúster solo opt-in)"
+      },
+      "motivo": "Los hulls anidados representan región→VPC→subnet y la ubicación es exigible; Kubernetes se importa sin reemplazar el diseño aprobado."
+    },
+    {
+      "id": "D4",
+      "nombre": "Flujos funcionales principales",
+      "pregunta": "¿Cómo viaja la operación del usuario?",
+      "fuente": "Mermaid",
+      "tipo_ir": null,
+      "sintaxis": "sequenceDiagram embebido en la spec/wiki",
+      "vista": "Renderer Mermaid de la wiki o diagram_render.py → SVG/PNG",
+      "iconos_diagrams": false,
+      "motivo": "Mermaid sequenceDiagram expresa mejor autonumber, notas, bloques de error y compensación; el IR sequence queda para secuencias simples que necesiten foco/lens."
+    },
+    {
+      "id": "D5",
+      "nombre": "Integración y mensajería",
+      "pregunta": "¿Con qué sistemas habla, por qué protocolo y patrón?",
+      "fuente": "IR",
+      "tipo_ir": "integration",
+      "sintaxis": "spec/diagrams/integracion.ir.json",
+      "vista": "diagram_ir.py → HTML interactivo; matriz de integración como complemento",
+      "iconos_diagrams": true,
+      "motivo": "Cada arista conserva protocolo, patrón, path BIAN y referencia C2 en datos estructurados; el foco permite explorar una integración sin saturar el mapa."
+    },
+    {
+      "id": "D6",
+      "nombre": "Flujo de datos (DFD)",
+      "pregunta": "¿De dónde vienen los datos, a dónde van y cómo viajan protegidos?",
+      "fuente": "IR",
+      "tipo_ir": "dataflow",
+      "sintaxis": "spec/diagrams/flujo-datos.ir.json",
+      "vista": "diagram_ir.py → HTML interactivo; tabla de clasificación y almacenes como complemento",
+      "iconos_diagrams": false,
+      "motivo": "La clasificación, minimización, modo, protocolo y cifrado son semántica gobernada, no decoración; el lens permite aislar fuentes, transformaciones y destinos."
+    },
+    {
+      "id": "D7",
+      "nombre": "Componentes internos (C4 N3)",
+      "pregunta": "¿Cómo está armado por dentro el componente crítico?",
+      "fuente": "IR",
+      "tipo_ir": "component",
+      "sintaxis": "spec/diagrams/componente-<nombre>.ir.json",
+      "vista": "diagram_ir.py → HTML interactivo con drill-down desde D2",
+      "iconos_diagrams": false,
+      "motivo": "El boundary del contenedor y el enlace ↗ entre niveles mantienen la navegación C4; solo se documentan componentes críticos justificados."
+    },
+    {
+      "id": "D8",
+      "nombre": "Seguridad y fronteras de confianza",
+      "pregunta": "¿Dónde cruzan los datos zonas de distinta confianza y con qué controles?",
+      "fuente": "IR",
+      "tipo_ir": "threat-model",
+      "sintaxis": "spec/diagrams/seguridad-fronteras.ir.json",
+      "vista": "diagram_ir.py → HTML interactivo STRIDE; tabla de certificados/secretos sin valores como complemento",
+      "iconos_diagrams": true,
+      "motivo": "Trust boundaries, límites por rank y amenazas STRIDE ya tienen validación; los iconos son opcionales y nunca sustituyen los controles."
+    }
+  ]
+}

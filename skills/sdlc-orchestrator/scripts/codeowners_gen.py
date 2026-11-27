@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""codeowners_gen.py — CODEOWNERS derivado de la matriz de autoridad + roster (v2.33.4).
+"""codeowners_gen.py — CODEOWNERS derivado de la matriz de autoridad + roster (v2.34.0).
 
 La frontera dura en Git ("un PR que toca spec/adr/ no se mergea sin el Arquitecto")
 deja de ser una plantilla copiada a mano que se desactualiza: se DERIVA de las dos
@@ -28,7 +28,7 @@ sys.dont_write_bytecode = True
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 HEADER = [
-    "# CODEOWNERS — GENERADO por codeowners_gen.py (arnés SDLC v2.33.4)",
+    "# CODEOWNERS — GENERADO por codeowners_gen.py (arnés SDLC v2.34.0)",
     "# Fuentes de verdad: spec/authority-matrix.yaml + spec/team-roster.yaml",
     "# NO editar a mano: drift = fallo de CI (codeowners_gen.py --check).",
     "# Para que muerda: Settings → Branches → Branch protection →",

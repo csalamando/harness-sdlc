@@ -76,7 +76,7 @@ Y el pipeline CI/CD no se dibuja a mano: `pipeline_diagram.py` lo **deriva de lo
 
 ![Pipeline CI/CD de CATI derivado de los workflows](demos/cati-diagrama-pipeline.png)
 
-Diagramas vivos interactivos (IR): tema claro/oscuro, zoom, badges de ubicación de despliegue (☁ nube / ⌂ on-premise / ◈ otro), insights y foco compartible por URL:
+Diagramas vivos interactivos (IR): tema claro/oscuro, zoom, badges de ubicación de despliegue (☁ nube / ⌂ on-premise / ◈ otro), insights y foco compartible por URL. El catálogo PLT-01 asigna una sola fuente a D1–D8: IR para siete diagramas y Mermaid `sequenceDiagram` para D4; los iconos de Python Diagrams se cachean con SHA-256 y se incrustan sin red. KubeDiagrams→IR y los exports mediante Diagrams están planificados.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="demos/arch-diagrams-oscuro.png">

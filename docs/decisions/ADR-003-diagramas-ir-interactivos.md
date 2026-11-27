@@ -1,6 +1,7 @@
 # ADR-003: Diagramas interactivos derivados de IR (`diagram_ir.py`)
 
-**Estado:** ACEPTADA (v2.17) · **Fecha:** 2026-09-05 · **Risk Tier:** 2
+**Estado:** ACEPTADA (v2.17) · **Fecha:** 2026-09-05 · **Risk Tier:** 2  
+**Enmienda vigente:** ADR-005 (v2.34.0) fija el routing PLT-01 D1–D8, añade iconos Diagrams opcionales y retira las referencias históricas a coexistencia con Draw.io. El resto de esta ADR conserva su contexto y decisiones originales.
 
 ## 1. Problem Statement
 

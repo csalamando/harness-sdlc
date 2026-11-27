@@ -85,7 +85,8 @@ ORCH_SCRIPTS = ["gate_checker.py", "context_packager.py", "spec_diff_impact.py",
                 "code_intel.py", "spec_index.py", "skill_metrics.py", "sprint_review.py",
                 "manifest_check.py"]
 MEM_SCRIPTS = ["mem.py", "mem_mcp.py"]
-DIAGRAM_SCRIPTS = ["diagram_render.py", "diagram_ir.py", "pipeline_diagram.py"]
+DIAGRAM_SCRIPTS = ["diagram_render.py", "diagram_ir.py", "pipeline_diagram.py",
+                   "diagram_catalog.py", "diagram_icons.py"]
 
 
 def load_manifest(skills_dir):

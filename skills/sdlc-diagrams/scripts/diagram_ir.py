@@ -25,10 +25,10 @@ Vista (v1.1):
 
 Python 3 stdlib puro.
 """
-import argparse, html, json, sys
+import argparse, base64, html, json, re, sys
 from pathlib import Path
 
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 
 # ── Tokens canónicos del design system del arnés ──────────────────────────────
 # Bloque `:root` y colores de dominio desde docs/design-system/tokens.json
@@ -89,6 +89,62 @@ DECISION_C = TIPO_BASE["decision"][0]
 CARDS_ER = {"1", "N", "M", "0..1", "0..N", "1..N", "1..1", "N..M"}
 STRIDE = {"S", "T", "R", "I", "D", "E"}
 
+# v1.5: iconos Diagrams opcionales. El ID canónico provider.categoria.recurso
+# se resuelve primero en la caché versionada junto al IR y luego en el paquete
+# diagrams instalado. El HTML siempre incrusta los bytes: nunca depende de red.
+ICONO_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*\.[a-z0-9][a-z0-9_-]*\.[a-z0-9][a-z0-9_-]*$")
+
+
+def icon_parts(icono):
+    return icono.split(".") if isinstance(icono, str) and ICONO_RE.fullmatch(icono) else None
+
+
+def icon_cache_path(icono, base_dir):
+    parts = icon_parts(icono)
+    return Path(base_dir) / "icons" / parts[0] / parts[1] / f"{parts[2]}.png" if parts else None
+
+
+def icon_source(icono, base_dir):
+    """Devuelve el PNG canónico desde caché o diagrams; nunca descarga."""
+    cached = icon_cache_path(icono, base_dir)
+    if cached and cached.is_file():
+        return cached
+    if not icon_parts(icono):
+        return None
+    try:
+        import diagrams
+    except ImportError:
+        return None
+    resources = Path(diagrams.__file__).resolve().parent.parent / "resources"
+    provider, category, name = icon_parts(icono)
+    candidate = resources / provider / category / f"{name}.png"
+    return candidate if candidate.is_file() else None
+
+
+def icon_data(icono, base_dir):
+    source = icon_source(icono, base_dir)
+    return base64.b64encode(source.read_bytes()).decode("ascii") if source else None
+
+
+def icon_errors(ir):
+    base_dir = ir.get("_base_dir", ".")
+    errs = []
+    for p in ir.get("participantes", []):
+        if p.get("icono"):
+            errs.append(f"participante '{p.get('id')}': 'icono' aún solo se admite en nodos flow")
+    for n in ir.get("nodos", []):
+        icono = n.get("icono")
+        if not icono:
+            continue
+        if not icon_parts(icono):
+            errs.append(f"nodo '{n.get('id')}': icono '{icono}' inválido (provider.categoria.recurso)")
+        elif n.get("tipo") == "decision":
+            errs.append(f"nodo '{n.get('id')}': los nodos decision no admiten 'icono'")
+        elif not icon_source(icono, base_dir):
+            errs.append(f"nodo '{n.get('id')}': icono '{icono}' no resoluble; ejecute "
+                        "diagram_icons.py sync --ir <archivo> con diagrams==0.25.1 instalado")
+    return errs
+
 # ════════════════════════ VALIDACION ════════════════════════
 
 def load_ir(path):
@@ -96,6 +152,7 @@ def load_ir(path):
         ir = json.load(f)
     if "kind" not in ir:
         ir["kind"] = "sequence" if "participantes" in ir else "flow"
+    ir["_base_dir"] = str(Path(path).resolve().parent)
     return ir
 
 # Categoria semantica del diagrama (campo top-level opcional "tipo").
@@ -108,8 +165,9 @@ def load_ir(path):
 # "component" (C4 L3, drill-down via "ir" en nodos), "er" (cardinalidades),
 # "stakeholder" (onion concentrico via "anidados"), "threat-model" (trust
 # boundaries via "trust" + amenazas STRIDE en aristas).
+# v1.5: "integration" (D5: protocolo, patrón, path BIAN y referencia C2).
 TIPOS_IR = {"architecture", "sequence", "workflow", "dataflow", "lifecycle",
-            "context", "container", "capability-map",
+            "context", "container", "capability-map", "integration",
             "deployment", "component", "er", "stakeholder", "threat-model"}
 
 def validate_ir(ir):
@@ -128,6 +186,8 @@ def validate_ir(ir):
         for p in ir.get("participantes", []):
             if not p.get("id") or not p.get("titulo"):
                 errs.append(f"participante sin id/titulo: {p!r}")
+            if p.get("id") in ids:
+                errs.append(f"participante con id duplicado '{p.get('id')}'")
             ids.add(p.get("id"))
             if p.get("tipo") not in TIPO_BASE:
                 errs.append(f"participante '{p.get('id')}' tipo desconocido '{p.get('tipo')}'")
@@ -145,6 +205,8 @@ def validate_ir(ir):
         for n in ir.get("nodos", []):
             if not n.get("id") or not n.get("titulo"):
                 errs.append(f"nodo sin id/titulo: {n!r}")
+            if n.get("id") in ids:
+                errs.append(f"nodo con id duplicado '{n.get('id')}'")
             ids.add(n.get("id"))
             if n.get("tipo") not in TIPO_BASE and n.get("tipo") not in (ir.get("tipos") or {}):
                 errs.append(f"nodo '{n.get('id')}' tipo desconocido '{n.get('tipo')}'")
@@ -247,6 +309,7 @@ def validate_ir(ir):
     for c in ir.get("insights", []):
         if not c.get("titulo") or not c.get("bullets"):
             errs.append(f"insight sin titulo/bullets: {c!r}")
+    errs.extend(icon_errors(ir))
     return errs
 
 # ════════════════════════ AJUSTE DE TEXTO (sin desborde) ════════════════════════
@@ -731,23 +794,32 @@ def render_flow(ir):
         if n.get("central"):  # sistema bajo descripcion (context C4 L1): doble anillo destacado
             outer += (f'<rect x="{x-9}" y="{y-9}" width="{NW+18}" height="{NH+18}" rx="18" fill="none" '
                       f'stroke="{c}" stroke-width="2.2" stroke-dasharray="2 4"/>')
+        datos_icono = icon_data(n["icono"], ir["_base_dir"]) if n.get("icono") else None
+        tx = x + (52 if datos_icono else 42)
+        tw = NW - (64 if datos_icono else 54)
+        marca = (
+            f'<circle cx="{x+24}" cy="{y+25}" r="17" fill="{c}26" stroke="{c}99"/>'
+            f'<image href="data:image/png;base64,{datos_icono}" x="{x+10}" y="{y+11}" width="28" height="28" preserveAspectRatio="xMidYMid meet"/>'
+            if datos_icono else
+            f'<circle cx="{x+22}" cy="{y+24}" r="11" fill="{c}26" stroke="{c}99"/>'
+            f'<text x="{x+22}" y="{y+28.5}" fill="{c}" font-size="11" text-anchor="middle">{icon}</text>'
+        )
         g = [f'<g class="node" data-id="{n["id"]}" data-tipo="{n["tipo"]}" style="cursor:pointer">'
              f'<rect x="{x+2}" y="{y+3}" width="{NW}" height="{NH}" rx="12" style="fill:var(--shadow)"/>{outer}'
              f'<rect class="card" x="{x}" y="{y}" width="{NW}" height="{NH}" rx="12" fill="{c}14" stroke="{c}" stroke-width="1.4"/>'
-             f'<circle cx="{x+22}" cy="{y+24}" r="11" fill="{c}26" stroke="{c}99"/>'
-             f'<text x="{x+22}" y="{y+28.5}" fill="{c}" font-size="11" text-anchor="middle">{icon}</text>']
-        lineas = _wrap(n["titulo"], 13.5, NW - 54, 2)
+             f'{marca}']
+        lineas = _wrap(n["titulo"], 13.5, tw, 2)
         fs_t = 13.5
         if len(lineas) > 1:
-            lineas = _wrap(n["titulo"], 12.5, NW - 54, 2)
+            lineas = _wrap(n["titulo"], 12.5, tw, 2)
             fs_t = 12.5
         if len(lineas) == 1:
-            g.append(f'<text x="{x+42}" y="{y+29}" style="fill:var(--txt)" font-size="{fs_t + 0.5}" font-weight="650">{html.escape(lineas[0])}</text>'
-                     f'<text x="{x+42}" y="{y+50}" style="fill:var(--sub)" font-size="11.5">{html.escape(_ellipsize(n.get("sub", ""), 11.5, NW - 54))}</text>')
+            g.append(f'<text x="{tx}" y="{y+29}" style="fill:var(--txt)" font-size="{fs_t + 0.5}" font-weight="650">{html.escape(lineas[0])}</text>'
+                     f'<text x="{tx}" y="{y+50}" style="fill:var(--sub)" font-size="11.5">{html.escape(_ellipsize(n.get("sub", ""), 11.5, tw))}</text>')
         else:
-            g.append(f'<text x="{x+42}" y="{y+22}" style="fill:var(--txt)" font-size="12.5" font-weight="650">{html.escape(lineas[0])}</text>'
-                     f'<text x="{x+42}" y="{y+37}" style="fill:var(--txt)" font-size="12.5" font-weight="650">{html.escape(lineas[1])}</text>'
-                     f'<text x="{x+42}" y="{y+55}" style="fill:var(--sub)" font-size="10.5">{html.escape(_ellipsize(n.get("sub", ""), 10.5, NW - 54))}</text>')
+            g.append(f'<text x="{tx}" y="{y+22}" style="fill:var(--txt)" font-size="12.5" font-weight="650">{html.escape(lineas[0])}</text>'
+                     f'<text x="{tx}" y="{y+37}" style="fill:var(--txt)" font-size="12.5" font-weight="650">{html.escape(lineas[1])}</text>'
+                     f'<text x="{tx}" y="{y+55}" style="fill:var(--sub)" font-size="10.5">{html.escape(_ellipsize(n.get("sub", ""), 10.5, tw))}</text>')
         if n.get("ubicacion"):
             g.append(_badge(x, y, NW, n["ubicacion"], c))
         if n.get("ir"):  # drill-down C4 (v1.3): el nodo enlaza a otro IR (vista de detalle)
@@ -909,7 +981,7 @@ def _elements(ir):
     """Elementos comparables: {(clase, id): dict-normalizado}."""
     out = {}
     for n in ir.get("nodos", []) + ir.get("participantes", []):
-        out[("nodo", n["id"])] = {k: n.get(k) for k in ("titulo", "sub", "tipo", "grupo", "detalle", "ubicacion", "estado", "central", "ir", "color")}
+        out[("nodo", n["id"])] = {k: n.get(k) for k in ("titulo", "sub", "tipo", "grupo", "detalle", "ubicacion", "estado", "central", "ir", "color", "icono")}
     for e in ir.get("aristas", []):
         out[("arista", f'{e["desde"]}→{e["hasta"]}:{e.get("label")}')] = {"dash": bool(e.get("dash")), "back": bool(e.get("back")),
             "card_d": e.get("card_d"), "card_h": e.get("card_h"), "amenaza": e.get("amenaza")}

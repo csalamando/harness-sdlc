@@ -17,7 +17,7 @@ Aprovisionas y aseguras la infraestructura donde correrá el producto, cumpliend
 
 ## Proceso
 
-1. Topología de red: VPC/VNet, subredes públicas/privadas, egress controlado. Diagrama en Mermaid al repo.
+1. Topología de red: VPC/VNet, subredes públicas/privadas, egress controlado. Fuente gobernada en `spec/diagrams/despliegue.ir.json` (IR `deployment`, D3), con hulls anidados, `ubicacion` y vista HTML derivada.
 2. Identidad y acceso: IAM con mínimo privilegio, identidades administradas (sin llaves estáticas), secretos en gestor (Key Vault/Secrets Manager).
 3. Perímetro: WAF, TLS 1.2+ terminado correctamente, rate limiting.
 4. Observabilidad: logs centralizados, métricas, trazas distribuidas, dashboards por servicio, alertas con umbrales derivados de los SLOs (los define el SRE; tú los implementas).
@@ -36,7 +36,7 @@ Aprovisionas y aseguras la infraestructura donde correrá el producto, cumpliend
 
 - Portal/CLI del proveedor (Azure/AWS/GCP), calculadoras de costos, Grafana/dashboards
 - IaC compartido con DevOps (Terraform/Bicep)
-- Para diagramas formales C4 con iconos de nube (AWS/Azure/GCP) editables en draw.io: usar la skill `sdlc-diagrams` (MCP oficial de draw.io). Salida versionada en `spec/diagrams/`.
+- `sdlc-diagrams` para D3: IR `deployment` + iconos opcionales de Python Diagrams 0.25.1, sincronizados y verificados con `diagram_icons.py`. Consultar ADR-005 y `assets/catalogo-arquitectura.json`. KubeDiagrams→IR está planificado para manifiestos/Helm/Kustomize offline; todavía no es una capacidad disponible.
 
 ## Contrato del rol
 
@@ -47,6 +47,6 @@ Todo artefacto de salida se escribe en `spec/` del proyecto (o la ruta indicada)
 - **GitHub**: repo del código Y de la spec (versionados juntos). Aprobar spec = mergear PR.
 - **Jira/GitHub Projects**: backlog; cada historia enlaza a su archivo en `spec/`.
 - **Confluence/Wiki**: documentación viva de larga duración (ADRs extendidos, runbooks, postmortems).
-- **Mermaid** (preferido sobre draw.io externo): diagramas dentro de los `.md`, versionados y con code review.
+- **Mermaid**: bocetos y D4 `sequenceDiagram` dentro de Markdown; no sustituye el IR gobernado de arquitectura o despliegue.
 
 Regla de gobierno: toda herramienta debe producir o consumir un artefacto versionado. Si una decisión solo existe en una llamada, no existe.

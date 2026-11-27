@@ -336,30 +336,15 @@ El servidor stdio `mem_mcp.py` expone 16 herramientas (`mem_save`, `mem_search`,
 
 ## 4b. Diagramas (`sdlc-diagrams`)
 
-Genera todas las familias de diagramas del arnés como `.drawio` editables versionados en `spec/diagrams/`: C4, arquitectura/despliegue cloud con iconos oficiales AWS/Azure/GCP, secuencia UML, BPMN 2.0, Gantt, GitFlow y flujos de proceso. Una sola skill con una referencia por familia (carga bajo demanda). Sirve al Architect (Fase 2), Cloud Engineer (Fase 6), BA (BPMN, Fase 1), DevOps (GitFlow, Fase -1) y PO (Gantt/roadmap).
+El arnés usa **routing por pregunta arquitectónica** (ADR-005). El IR JSON versionado en `spec/diagrams/` es la fuente de D1 contexto, D2 contenedores, D3 despliegue, D5 integración, D6 datos, D7 componentes y D8 seguridad. D4 flujos funcionales usa Mermaid `sequenceDiagram`. Draw.io está retirado.
 
-**Decisión clave por familia**: XML nativo para C4, cloud y BPMN (control fino, iconos exactos vía `search_shapes`); importación Mermaid (`open_drawio_mermaid`) para secuencia, Gantt y GitFlow (sintaxis declarativa, el importador hace el layout).
+- **Vista IR**: `diagram_ir.py` deriva HTML autocontenido con foco, lens, detalle, insights, tema claro/oscuro, validación, diff y anti-drift.
+- **Iconos opcionales**: `diagram_icons.py sync --ir <archivo>` copia desde Python Diagrams 0.25.1 únicamente los PNG referenciados y crea `icons/index.json` con SHA-256. `check` verifica la caché sin el paquete; el renderer la incrusta sin red y sin Graphviz.
+- **Catálogo ejecutable**: `diagram_catalog.py list|route|render|check` consulta la decisión D1–D8 y evita que la referencia Markdown diverja del JSON canónico.
+- **Pipelines**: `pipeline_diagram.py` deriva Mermaid desde GitHub Actions; `diagram_render.py` renderiza Mermaid opcionalmente vía `mmdc`.
+- **Planificado, no disponible aún**: adaptador KubeDiagrams→IR para manifiestos/Helm/Kustomize offline y exports PNG/SVG/PDF mediante Diagrams.
 
-### Requisito: MCP oficial de draw.io
-
-```json
-// .vscode/mcp.json / .cursor/mcp.json / Claude Code: claude mcp add drawio -- npx -y @drawio/mcp
-{ "servers": { "drawio": { "command": "npx", "args": ["-y", "@drawio/mcp"] } } }
-```
-
-- **Tool server** (`npx @drawio/mcp`, stdio): `open_drawio_xml`, `search_shapes` (~10.000 shapes: AWS, Azure, GCP, K8s...), `open_drawio_mermaid`, y edición de páginas (`list_pages`/`get_page`/`set_page`). Abre el editor en el navegador. Recomendada para IDEs.
-- **App server** (`https://mcp.draw.io/mcp`, remoto): `create_diagram` con preview inline en chat (Claude.ai, Cursor con MCP Apps).
-- Sin MCP disponible: la skill genera igualmente el `.drawio` en disco (editable en app.diagrams.net) — el MCP es el visor, no una dependencia del entregable.
-
-### Flujo
-
-1. Elegir nivel C4; un `.drawio` multipágina, una página por nivel.
-2. **Resolver iconos con `search_shapes` antes de escribir XML** — nunca inventar rutas; la skill incluye style strings listos para C4 y los servicios más usados de AWS (`mxgraph.aws4.*`), Azure (`img/lib/azure2/**.svg`) y GCP.
-3. Construir XML con convenciones C4 (colores oficiales, boundary como contenedor, edges con protocolo, leyenda).
-4. `open_drawio_xml` para previsualizar/editar; persistir en `spec/diagrams/` con trazabilidad a HU/EP en el nombre de página.
-5. La skill trae `assets/c4-contenedores-ejemplo.drawio` (Azure: APIM + Functions + SQL + Key Vault) como plantilla de partida.
-
-Los diagramas de despliegue reflejan el IaC: si `infra/` cambia, el orquestador marca el diagrama como impactado vía `spec_diff_impact`.
+Flujo: elegir la ruta con `diagram_catalog.py route --diagrama <D1..D8>`, editar solo la fuente, validar/renderizar, revisar el diff y aprobar con recibo del rol dueño. Si `infra/` cambia, `spec_diff_impact.py` marca el IR de despliegue como impactado.
 
 ---
 
@@ -478,19 +463,18 @@ El reporte gerencial del arnés crece: además del `impact-report.md` del Produc
 
 ---
 
-## 5h. Novedades v2.6 (diagramas como mecanismo de aceptación)
+## 5h. Diagramas como mecanismo de aceptación (estado vigente, v2.34.0)
 
-Los diagramas dejan de ser solo documentación: son un **punto de control de gobierno**. Ningún diagrama cuenta como válido sin recibo de aprobación del rol dueño sobre su contenido — igual que cualquier artefacto de la spec.
+Los diagramas son un **punto de control de gobierno**. Ninguno cuenta como válido sin recibo de aprobación del rol dueño sobre su fuente.
 
-- **Dos direcciones:**
-  - **Derivados de fuente** (se recrean, NUNCA se editan a mano): la regeneración *propone* el cambio → el diff en Git se revisa → el rol dueño lo *acepta* con `receipt.py emit --role <rol>`. Un cambio de IaC o de pipeline sin diagrama aprobado **no está aceptado**.
-  - **De diseño** (C4, BPMN, secuencia, Gantt, GitFlow): edición manual, pero si la spec que representan cambia (ADR supersedeado, architecture.md, reglas de negocio), `spec_diff_impact.py` revoca su recibo y deben actualizarse y re-aprobarse.
-- **`iac_to_diagram.py`** (nuevo, `sdlc-diagrams/scripts/`): topología de despliegue derivada de `terraform.tfstate` (lo *realmente* desplegado) o ARM/Bicep compilado — Python stdlib puro, no ejecuta Terraform. Iconos oficiales AWS/Azure/GCP, clusters por módulo/resource group. `check` = **drift detection** (exit 1 si el diagrama difiere de la fuente: alguien cambió el IaC sin aprobación, o el diagrama se editó a mano).
-- **`pipeline_diagram.py`**: flowchart Mermaid por workflow de GitHub Actions (triggers, jobs, `needs:`) + validación de `needs:` inexistentes y ciclos de dependencias — sin binarios externos. `validate` exit 1 si el pipeline está roto; `check` = drift detection.
-- **`diagram_render.py`**: render headless a SVG/PNG — drawio-desktop CLI (el SVG embebe el fuente: la imagen sigue editable en app.diagrams.net) o mmdc (renderiza bloques Mermaid dentro de Markdown y reescribe las referencias: ideal para doc-as-code del technical-writer). Motores opcionales con degradación elegante: sin ellos, el fuente versionado sigue siendo el entregable (nunca bloquea).
-- **Matriz de autoridad**: `spec/diagrams/despliegue.drawio` → `cloud-engineer`; `spec/diagrams/pipeline-cicd.md` → `devops-engineer`. Los diagramas de diseño los aprueba el rol dueño del artefacto que representan.
-- **Gates**: GATE 3 exige diagramas derivados regenerados y con recibo vigente; Fase 8 corre los `check` de drift en el cierre del sprint; en CI, un job con `check` falla el PR si hay drift.
-- `harness_doctor.py`: compila los 3 scripts de diagramas y reporta motores de render disponibles (informativo).
+- **Fuente y derivados**: el IR (o el Mermaid de D4) se revisa y aprueba; HTML/SVG/PNG se regeneran, nunca se editan a mano. El diff en Git evidencia el cambio y `check` detecta drift.
+- **Routing D1–D8**: siete diagramas usan IR; D4 usa Mermaid `sequenceDiagram`. El catálogo canónico y ADR-005 evitan fuentes paralelas.
+- **Despliegue**: `spec/diagrams/despliegue.ir.json` → `cloud-engineer`, con `diagram_ir.py validate|render|check`. Los iconos opcionales se gobiernan con `diagram_icons.py sync|check` y su lock SHA-256.
+- **Pipelines**: `spec/diagrams/pipeline-cicd.md` → `devops-engineer`; `pipeline_diagram.py` deriva Mermaid de GitHub Actions y valida referencias/ciclos.
+- **Render Mermaid**: `diagram_render.py` usa `mmdc` opcional para SVG/PNG; sin motor, el fuente versionado sigue siendo el entregable.
+- **Gates**: GATE 3 exige diagramas derivados regenerados y recibo vigente; Fase 8 y CI ejecutan los checks de drift.
+- **Planificado**: importación Kubernetes offline mediante KubeDiagrams→IR y exports estáticos mediante Diagrams. No forman parte todavía del flujo disponible.
+- `harness_doctor.py`: compila los cinco scripts de diagramas y reporta `mmdc` como motor opcional.
 
 ---
 

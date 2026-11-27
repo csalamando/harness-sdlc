@@ -2,7 +2,7 @@
 # NO editar a mano: la fuente de verdad es el frontmatter harness-* de cada SKILL.md,
 # y la lista de scripts se deriva del disco. Drift = fallo en self_test y en CI.
 manifest-version: 1
-harness-version: "2.33.4"
+harness-version: "2.34.0"
 skill-count: 21
 skills:
   - name: sdlc-backend-dev-tdd
@@ -61,8 +61,8 @@ skills:
     phases: [transversal]
     owns: []
     gates: []
-    optional-deps: [mmdc]
-    scripts: [diagram_ir.py, diagram_render.py, pipeline_diagram.py]
+    optional-deps: [mmdc, diagrams==0.25.1]
+    scripts: [diagram_catalog.py, diagram_icons.py, diagram_ir.py, diagram_render.py, pipeline_diagram.py]
   - name: sdlc-enterprise-architect
     role: enterprise-architect
     phases: [2]

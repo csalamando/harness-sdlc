@@ -557,6 +557,118 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out = rund("diff", "--old", os.path.join(FIX, "diagram-flow.ir.json"), "--new", p2)
     check("diff detecta nodo agregado (exit 2)", code == 2 and "[nodo] nuevo" in out, out)
 
+# ── 9c2. Routing PLT-01 + iconos Diagrams autocontenidos (ADR-005, v2.34) ────
+print("\n[9c2] Catálogo D1-D8 e iconos Diagrams con caché verificable")
+DIAG_SCRIPTS = os.path.join(ROOT, "skills", "sdlc-diagrams", "scripts")
+CAT_SCRIPT = os.path.join(DIAG_SCRIPTS, "diagram_catalog.py")
+ICON_SCRIPT = os.path.join(DIAG_SCRIPTS, "diagram_icons.py")
+def rundiag(script, *args):
+    p = subprocess.run([sys.executable, script, *args], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", cwd=ROOT)
+    return p.returncode, (p.stdout + p.stderr).strip()
+
+code, out = rundiag(CAT_SCRIPT, "list")
+check("catálogo PLT-01 contiene exactamente D1..D8",
+      code == 0 and re.findall(r"^(D[1-8])\s", out, re.M) == [f"D{i}" for i in range(1, 9)], out)
+code, out = rundiag(CAT_SCRIPT, "check")
+check("catálogo: referencia Markdown derivada sin drift", code == 0 and "8 rutas" in out, out)
+code, out = rundiag(CAT_SCRIPT, "route", "--diagrama", "D4")
+check("routing D4 usa Mermaid sequenceDiagram",
+      code == 0 and "Fuente: Mermaid" in out and "sequenceDiagram" in out, out)
+code, out = rundiag(CAT_SCRIPT, "route", "--diagrama", "D3", "--kubernetes")
+check("routing D3 declara KubeDiagrams→IR como planificado",
+      code == 0 and "KubeDiagrams" in out and "planificado" in out, out)
+with tempfile.TemporaryDirectory() as tmp:
+    original = os.path.join(ROOT, "skills", "sdlc-diagrams", "references", "catalogo-arquitectura.md")
+    copia = os.path.join(tmp, "catalogo.md")
+    shutil.copyfile(original, copia)
+    open(copia, "a", encoding="utf-8").write("\nEdición manual\n")
+    code, out = rundiag(CAT_SCRIPT, "check", "--out", copia)
+    check("catálogo: check detecta una referencia editada a mano", code == 1 and "DRIFT" in out, out)
+
+# sync se prueba con recursos locales simulados: la suite sigue siendo stdlib y
+# no exige Diagrams/Graphviz. Se verifican copia, lock, render y hash real.
+if DIAG_SCRIPTS not in sys.path:
+    sys.path.insert(0, DIAG_SCRIPTS)
+import base64, hashlib
+import diagram_icons
+with tempfile.TemporaryDirectory() as tmp:
+    png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
+    sources = {}
+    for icono in ("aws.compute.ec2", "k8s.compute.deploy"):
+        src = os.path.join(tmp, icono + ".png")
+        open(src, "wb").write(png)
+        sources[icono] = src
+    ir_path = os.path.join(tmp, "integracion.ir.json")
+    base_ir = {"kind": "flow", "tipo": "integration", "titulo": "Integración",
+               "nodos": [{"id": "app", "titulo": "API", "tipo": "service",
+                          "icono": "aws.compute.ec2"}], "aristas": []}
+    json.dump(base_ir, open(ir_path, "w", encoding="utf-8"), ensure_ascii=False)
+    original_resolver = diagram_icons.package_resource
+    diagram_icons.package_resource = lambda icono: sources[icono]
+    try:
+        sync_code = diagram_icons.sync(ir_path)
+        segundo = os.path.join(tmp, "kubernetes.ir.json")
+        json.dump({**base_ir, "titulo": "Kubernetes", "nodos": [
+            {"id": "pod", "titulo": "Deployment", "tipo": "service",
+             "icono": "k8s.compute.deploy"}]}, open(segundo, "w", encoding="utf-8"))
+        sync_code_2 = diagram_icons.sync(segundo)
+    finally:
+        diagram_icons.package_resource = original_resolver
+    lock_file = os.path.join(tmp, "icons", "index.json")
+    lock = json.load(open(lock_file, encoding="utf-8")) if os.path.isfile(lock_file) else {}
+    check("iconos sync: copia recursos y fija Diagrams 0.25.1 + SHA-256",
+          sync_code == 0 and lock.get("diagrams_version") == "0.25.1"
+          and lock.get("iconos", {}).get("aws.compute.ec2", {}).get("sha256") == hashlib.sha256(png).hexdigest())
+    check("iconos sync: fusiona entradas de varios IR sin borrar las anteriores",
+          sync_code_2 == 0 and set(lock.get("iconos", {})) == {"aws.compute.ec2", "k8s.compute.deploy"})
+    code, out = rund("validate", "--ir", ir_path)
+    check("IR integration (D5) con icono Diagrams pasa validate", code == 0, out)
+    out_html = os.path.join(tmp, "integracion.html")
+    code, out = rund("render", "--ir", ir_path, "--out", out_html)
+    contenido = open(out_html, encoding="utf-8").read() if os.path.isfile(out_html) else ""
+    sin_w3 = contenido.replace("http://www.w3.org/2000/svg", "")
+    check("iconos render: PNG incrustado como data: sin URLs externas",
+          code == 0 and "data:image/png;base64," in contenido and "http" not in sin_w3, out)
+    code, out = rund("check", "--ir", ir_path, "--out", out_html)
+    check("iconos render: check sin drift usando solo la caché", code == 0, out)
+    code, out = rundiag(ICON_SCRIPT, "check", "--ir", ir_path)
+    check("iconos check: lock y hash vigentes sin paquete Diagrams", code == 0, out)
+    cached = os.path.join(tmp, "icons", "aws", "compute", "ec2.png")
+    original_png = open(cached, "rb").read()
+    open(cached, "ab").write(b"alterado")
+    code, out = rundiag(ICON_SCRIPT, "check", "--ir", ir_path)
+    check("iconos check: alterar un byte del PNG rompe SHA-256", code == 1 and "SHA-256" in out, out)
+    open(cached, "wb").write(original_png)
+
+    malformed = dict(base_ir)
+    malformed["nodos"] = [{**base_ir["nodos"][0], "icono": "aws/ec2"}]
+    bad_icon = os.path.join(tmp, "icono-invalido.ir.json")
+    json.dump(malformed, open(bad_icon, "w", encoding="utf-8"))
+    code, out = rund("validate", "--ir", bad_icon)
+    check("iconos validate: rechaza ID fuera de provider.categoria.recurso",
+          code == 1 and "provider.categoria.recurso" in out, out)
+    missing = dict(base_ir)
+    missing["nodos"] = [{**base_ir["nodos"][0], "icono": "aws.compute.recurso-inexistente"}]
+    missing_icon = os.path.join(tmp, "icono-inexistente.ir.json")
+    json.dump(missing, open(missing_icon, "w", encoding="utf-8"))
+    code, out = rund("validate", "--ir", missing_icon)
+    check("iconos validate: rechaza recurso no resoluble", code == 1 and "no resoluble" in out, out)
+    duplicate = dict(base_ir)
+    duplicate["nodos"] = [dict(base_ir["nodos"][0]), dict(base_ir["nodos"][0])]
+    duplicate_ir = os.path.join(tmp, "duplicado.ir.json")
+    json.dump(duplicate, open(duplicate_ir, "w", encoding="utf-8"))
+    code, out = rund("validate", "--ir", duplicate_ir)
+    check("IR validate: rechaza IDs de nodo duplicados", code == 1 and "duplicado" in out, out)
+
+live_docs = [os.path.join(ROOT, p) for p in (
+    "skills/sdlc-diagrams/SKILL.md", "skills/sdlc-cloud-engineer/SKILL.md",
+    "docs/guia-de-uso-arnes-sdlc.md", "README.md")]
+live_text = "\n".join(open(p, encoding="utf-8").read() for p in live_docs)
+check("documentación viva sin instrucciones de Draw.io/IaC retirados",
+      not any(s in live_text for s in ("MCP oficial de draw.io", "iac_to_diagram.py", "despliegue.drawio")))
+
 # ── 9d. mdview: visor Markdown de la spec dentro del portal (v2.18/2.20) ─────
 print("\n[9d] mdview.py (docs Markdown → páginas del portal)")
 MDV = os.path.join(ORCH, "mdview.py")

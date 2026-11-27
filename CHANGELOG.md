@@ -7,6 +7,21 @@ Todas las novedades relevantes del arnés se documentan aquí. Formato basado en
 - **MINOR** (2.x.0): skills nuevas, gates nuevos, features retrocompatibles.
 - **PATCH** (2.1.x): correcciones en scripts, plantillas o documentación.
 
+## [2.34.0] - 2026-11-26
+
+**Routing híbrido de diagramas PLT-01 e iconos autocontenidos.** ADR-005 asigna una fuente única a los ocho diagramas de arquitectura: IR gobernado para D1–D3 y D5–D8, Mermaid `sequenceDiagram` para D4. Python Diagrams aporta iconos sin reemplazar el IR; KubeDiagrams queda definido como futuro adaptador Kubernetes→IR.
+
+### Added
+- **`diagram_catalog.py` + `assets/catalogo-arquitectura.json`**: routing canónico D1–D8, consulta por diagrama y referencia Markdown derivada con `check` anti-drift.
+- **IR `integration` (D5)** e **iconos opcionales en nodos flow** con IDs canónicos `provider.categoria.recurso`; validación de recursos, IDs duplicados y diff de cambios de icono.
+- **`diagram_icons.py sync|check`**: caché local de solo los PNG referenciados, lock `icons/index.json` con Diagrams 0.25.1, ruta relativa y SHA-256, fusión de entradas entre IR y verificación sin el paquete instalado.
+- **HTML con PNG incrustados como `data:`**: validar/renderizar con caché no requiere red, Graphviz ni Diagrams; los IR sin iconos conservan la ruta stdlib anterior.
+- **Regresión**: routing, anti-drift, integración D5, iconos, fusión de caché, hashes, IDs inválidos/duplicados y limpieza de instrucciones retiradas.
+
+### Documentación
+- **ADR-005** y nota de enmienda en ADR-003; `sdlc-diagrams`, `sdlc-cloud-engineer`, guía de uso y README actualizados al routing vigente.
+- **Alcance honesto**: el adaptador KubeDiagrams→IR y los exports PNG/SVG/PDF mediante Diagrams quedan planificados; no se anuncian como disponibles.
+
 ## [2.33.4] - 2026-09-13
 
 **CODEOWNERS derivado, no copiado a mano.** La frontera dura en Git se genera desde las dos fuentes de verdad del gobierno de identidades (matriz de autoridad + roster) — la plantilla manual se desactualizaba en silencio (de hecho ya estaba vieja respecto a la matriz: cost-estimation, roles.md, tdd-waiver…).
